@@ -88,16 +88,6 @@ async def health():
     """Health check endpoint."""
     return HealthResponse(status="ok", version="1.0.0")
 
-@app.get("/api/debug")
-async def debug():
-    import os
-    key = os.environ.get("ANTHROPIC_API_KEY", "NOT_SET")
-    return {
-        "key_exists": key != "NOT_SET" and len(key) > 0,
-        "key_length": len(key) if key != "NOT_SET" else 0,
-        "key_prefix": key[:12] + "..." if len(key) > 12 else "TOO_SHORT"
-    }
-
 @app.post("/api/verify", response_model=VerifyResponse)
 async def verify(request: VerifyRequest):
     """Run verification on a query."""
