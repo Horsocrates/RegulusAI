@@ -61,6 +61,16 @@ class BattleResponse(BaseModel):
     guarded_time: float
     comparison: str  # "MATCH", "CORRECTED", "BLOCKED"
 
+class DualResponse(BaseModel):
+    query: str
+    claude_answer: str | None
+    claude_valid: bool
+    claude_time: float
+    openai_answer: str | None
+    openai_valid: bool
+    openai_time: float
+    agreement: bool  # Согласны ли модели
+
 # ============================================================================
 # FastAPI App
 # ============================================================================
@@ -210,3 +220,54 @@ async def battle(request: VerifyRequest):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/dual", response_model=DualResponse)
+async def dual(request: VerifyRequest):
+    """Run verification on both Claude and OpenAI, compare results."""
+    import asyncio
+    import time
+
+    async def run_with_provider(provider: str):
+        start = time.time()
+        try:
+            if provider == "claude":
+                api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+                client = ClaudeClient(api_key=api_key)
+            else:
+                api_key = os.environ.get("OPENAI_API_KEY", "")
+                client = OpenAIClient(api_key=api_key)
+
+            orch = Orchestrator(llm_client=client, policy=Policy.LEGACY_PRIORITY)
+            result = await orch.process_query(request.query)
+
+            answer = result.result.primary_max.content[:2000] if result.result.primary_max else None
+            valid = result.result.primary_max is not None
+
+            return {
+                "answer": answer,
+                "valid": valid,
+                "time": time.time() - start
+            }
+        except Exception as e:
+            return {
+                "answer": f"Error: {str(e)}",
+                "valid": False,
+                "time": time.time() - start
+            }
+
+    # Запускаем параллельно
+    claude_result, openai_result = await asyncio.gather(
+        run_with_provider("claude"),
+        run_with_provider("openai")
+    )
+
+    return DualResponse(
+        query=request.query,
+        claude_answer=claude_result["answer"],
+        claude_valid=claude_result["valid"],
+        claude_time=claude_result["time"],
+        openai_answer=openai_result["answer"],
+        openai_valid=openai_result["valid"],
+        openai_time=openai_result["time"],
+        agreement=claude_result["valid"] == openai_result["valid"]
+    )

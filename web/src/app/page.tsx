@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Shield, Loader2, CheckCircle, XCircle, AlertTriangle, Swords, Clock } from "lucide-react";
-import { verifyQuery, battleQuery, VerifyResponse, BattleResponse, Step } from "@/lib/api";
+import { verifyQuery, battleQuery, dualQuery, VerifyResponse, BattleResponse, DualResponse, Step } from "@/lib/api";
 
 const DOMAIN_NAMES: Record<string, string> = {
   "E_0": "D1 Identification",
@@ -145,29 +145,88 @@ function BattleView({ result }: { result: BattleResponse }) {
   );
 }
 
+function DualView({ result }: { result: DualResponse }) {
+  return (
+    <div className="space-y-4">
+      {/* Agreement Banner */}
+      <div className={`p-4 rounded-lg text-center font-medium text-lg ${
+        result.agreement
+          ? "bg-green-100 text-green-800"
+          : "bg-yellow-100 text-yellow-800"
+      }`}>
+        {result.agreement ? "✓ Models Agree" : "⚠ Models Disagree"}
+      </div>
+
+      {/* Split View */}
+      <div className="grid md:grid-cols-2 gap-4">
+        {/* Claude */}
+        <div className={`border rounded-lg p-4 ${result.claude_valid ? "bg-purple-50 border-purple-200" : "bg-red-50 border-red-200"}`}>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-purple-700">🟣 Claude</h3>
+            <div className="flex items-center gap-2">
+              <span className={`text-xs px-2 py-1 rounded ${result.claude_valid ? "bg-green-200 text-green-800" : "bg-red-200 text-red-800"}`}>
+                {result.claude_valid ? "Valid" : "Invalid"}
+              </span>
+              <span className="text-xs text-gray-500">{result.claude_time.toFixed(2)}s</span>
+            </div>
+          </div>
+          {result.claude_answer ? (
+            <ExpandableText text={result.claude_answer} maxLength={300} />
+          ) : (
+            <p className="text-sm text-red-600 italic">No valid response</p>
+          )}
+        </div>
+
+        {/* OpenAI */}
+        <div className={`border rounded-lg p-4 ${result.openai_valid ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"}`}>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-emerald-700">🟢 GPT-4</h3>
+            <div className="flex items-center gap-2">
+              <span className={`text-xs px-2 py-1 rounded ${result.openai_valid ? "bg-green-200 text-green-800" : "bg-red-200 text-red-800"}`}>
+                {result.openai_valid ? "Valid" : "Invalid"}
+              </span>
+              <span className="text-xs text-gray-500">{result.openai_time.toFixed(2)}s</span>
+            </div>
+          </div>
+          {result.openai_answer ? (
+            <ExpandableText text={result.openai_answer} maxLength={300} />
+          ) : (
+            <p className="text-sm text-red-600 italic">No valid response</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
-  const [mode, setMode] = useState<"verify" | "battle">("verify");
+  const [mode, setMode] = useState<"verify" | "battle" | "dual">("verify");
   const [verifyResult, setVerifyResult] = useState<VerifyResponse | null>(null);
   const [battleResult, setBattleResult] = useState<BattleResponse | null>(null);
+  const [dualResult, setDualResult] = useState<DualResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (selectedMode: "verify" | "battle") => {
+  const handleSubmit = async (selectedMode: "verify" | "battle" | "dual") => {
     if (!query.trim()) return;
     setLoading(true);
     setError(null);
     setMode(selectedMode);
     setVerifyResult(null);
     setBattleResult(null);
+    setDualResult(null);
 
     try {
       if (selectedMode === "verify") {
         const res = await verifyQuery(query);
         setVerifyResult(res);
-      } else {
+      } else if (selectedMode === "battle") {
         const res = await battleQuery(query);
         setBattleResult(res);
+      } else {
+        const res = await dualQuery(query);
+        setDualResult(res);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unknown error");
@@ -214,6 +273,14 @@ export default function Home() {
             {loading && mode === "battle" ? <Loader2 className="w-5 h-5 animate-spin" /> : <Swords className="w-5 h-5" />}
             Battle
           </button>
+          <button
+            onClick={() => handleSubmit("dual")}
+            disabled={loading || !query.trim()}
+            className="px-5 py-3 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {loading && mode === "dual" ? <Loader2 className="w-5 h-5 animate-spin" /> : <span>🔀</span>}
+            Dual
+          </button>
         </div>
 
         {/* Error */}
@@ -225,6 +292,7 @@ export default function Home() {
 
         {/* Battle Result */}
         {battleResult && <BattleView result={battleResult} />}
+        {dualResult && <DualView result={dualResult} />}
 
         {/* Verify Result */}
         {verifyResult && (

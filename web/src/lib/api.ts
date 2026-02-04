@@ -56,3 +56,24 @@ export async function battleQuery(query: string, provider = "claude"): Promise<B
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 }
+
+export interface DualResponse {
+  query: string;
+  claude_answer: string | null;
+  claude_valid: boolean;
+  claude_time: number;
+  openai_answer: string | null;
+  openai_valid: boolean;
+  openai_time: number;
+  agreement: boolean;
+}
+
+export async function dualQuery(query: string): Promise<DualResponse> {
+  const res = await fetch(`${API_URL}/api/dual`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query }),
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
