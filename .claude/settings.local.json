@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(.txt$)",
+      "Bash(.v$)",
+      "Bash(.ml$ \")",
+      "Bash(python -m pytest:*)",
+      "Bash(python:*)",
+      "Bash(uv run pytest:*)",
+      "Bash(uv run python:*)",
+      "Bash(notepad:*)",
+      "Bash(test:*)",
+      "Bash(uv run:*)",
+      "Bash(tree:*)",
+      "Bash(findstr:*)",
+      "Bash(uv add:*)",
+      "WebFetch(domain:localhost)",
+      "Bash(curl:*)",
+      "Bash(npx create-next-app@latest web --typescript --tailwind --eslint --app --src-dir --no-import-alias)",
+      "Bash(where:*)",
+      "Bash(cmd /c \"where npm 2>nul & where npx 2>nul & where node 2>nul\")"
+    ]
+  }
+}
