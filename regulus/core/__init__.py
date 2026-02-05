@@ -43,6 +43,17 @@ from .engine import (
 
 from .optimizer import (
     TrisectionOptimizer, TrisectionState, TrisectChoice,
+    SocraticTrisection, SocraticTrisectionState, TrisectionResult,
+)
+
+from .domains import (
+    DOMAIN_ORDER, DOMAIN_DEFINITIONS,
+    CriterionResult, DomainCheckResult, ProbeRecord, DomainPassRecord,
+    get_domain_def, get_domain_name, get_domain_question,
+    get_domain_threshold, get_domain_criteria,
+    get_probe_for_criterion, get_failed_probes,
+    is_answer_domain, is_qualifier_domain,
+    compute_domain_weight, check_domain_passed,
 )
 
 __all__ = [
@@ -64,6 +75,16 @@ __all__ = [
     'compare_entities', 'find_max_entity',
     'assign_status', 'assign_all_statuses',
     'run_all_verifications', 'create_diagnostic',
-    # Optimizer
+    # Optimizer (legacy)
     'TrisectionOptimizer', 'TrisectionState', 'TrisectChoice',
+    # Socratic Trisection (v2)
+    'SocraticTrisection', 'SocraticTrisectionState', 'TrisectionResult',
+    # Domains (Socratic Pipeline v2)
+    'DOMAIN_ORDER', 'DOMAIN_DEFINITIONS',
+    'CriterionResult', 'DomainCheckResult', 'ProbeRecord', 'DomainPassRecord',
+    'get_domain_def', 'get_domain_name', 'get_domain_question',
+    'get_domain_threshold', 'get_domain_criteria',
+    'get_probe_for_criterion', 'get_failed_probes',
+    'is_answer_domain', 'is_qualifier_domain',
+    'compute_domain_weight', 'check_domain_passed',
 ]

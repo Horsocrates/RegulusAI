@@ -19,6 +19,10 @@ import sys
 
 import typer
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load .env file for API keys
+load_dotenv()
 
 # Ensure UTF-8 output on Windows (cp1251/cp1252 can't encode diagnostic symbols)
 if sys.stdout and hasattr(sys.stdout, "reconfigure"):
@@ -106,14 +110,199 @@ def ask(
         False, "--export", "-e",
         help="Export a Markdown report to reports/ directory",
     ),
+    socratic: bool = typer.Option(
+        False, "--socratic", "-s",
+        help="Use Socratic Pipeline v2: sequential domain processing with quality gates",
+    ),
+    branch: bool = typer.Option(
+        False, "--branch",
+        help="Enable D3 branching in Socratic mode (generates multiple frameworks)",
+    ),
 ):
     """Run full LLM verification cycle on a query."""
     from .core.types import Policy
-    from .orchestrator import Orchestrator
+    from .orchestrator import Orchestrator, SocraticOrchestrator
 
     client = _create_client(provider)
     pol = Policy.RECENCY_PRIORITY if policy == "recency" else Policy.LEGACY_PRIORITY
 
+    # --- SOCRATIC MODE ---
+    if socratic:
+        import time
+        socratic_orchestrator = SocraticOrchestrator(
+            llm_client=client,
+            policy=pol,
+            use_llm_sensor=not no_llm_sensor,
+            use_trisection=True,  # Always enabled in Socratic mode
+            use_branching=branch,
+        )
+
+        mode_desc = "Socratic Pipeline v2 with Trisection"
+        if branch:
+            mode_desc += " + D3 Branching"
+
+        # --- SOCRATIC + BATTLE MODE ---
+        if battle:
+            from rich.console import Console
+            from rich.panel import Panel
+            from rich.columns import Columns
+            from rich.text import Text
+
+            console = Console()
+            console.print(Panel(
+                Text(f"BATTLE MODE (Socratic): {query}", style="bold white"),
+                border_style="bright_magenta",
+                title="Regulus AI",
+            ))
+
+            # Run raw model
+            raw_start = time.perf_counter()
+            raw_response = asyncio.run(client.generate(
+                prompt=query,
+                system="You are a helpful assistant. Answer the question directly and concisely.",
+            ))
+            raw_duration = time.perf_counter() - raw_start
+
+            # Run Socratic guarded
+            guarded_start = time.perf_counter()
+            response = asyncio.run(socratic_orchestrator.process_query(query))
+            guarded_duration = time.perf_counter() - guarded_start
+
+            # Display comparison
+            raw_content = Text()
+            raw_content.append(raw_response + "\n\n")
+            raw_content.append(f"Duration: {raw_duration:.2f}s", style="dim")
+            left_panel = Panel(raw_content, title="[bold red]Raw Model[/bold red]", border_style="red", width=60)
+
+            guarded_answer = response.final_answer or response.d5_content or ""
+            guarded_content = Text()
+            guarded_content.append(guarded_answer[:500] + "...\n\n" if len(guarded_answer) > 500 else guarded_answer + "\n\n")
+            guarded_content.append(f"Status: {'PrimaryMax FOUND' if response.is_valid else 'NO PrimaryMax'}\n", style="bold green" if response.is_valid else "bold red")
+            guarded_content.append(f"Probes used: {response.total_probes}\n")
+            guarded_content.append(f"Duration: {guarded_duration:.2f}s", style="dim")
+            right_panel = Panel(guarded_content, title="[bold green]Regulus Socratic[/bold green]", border_style="green", width=60)
+
+            console.print(Columns([left_panel, right_panel], padding=2))
+
+            # Annihilation banner
+            if response.is_valid:
+                console.print(Panel(
+                    Text("HALLUCINATION ANNIHILATED", style="bold white on red", justify="center"),
+                    border_style="bright_red",
+                    padding=(1, 4),
+                ))
+
+            overhead_pct = ((guarded_duration - raw_duration) / raw_duration * 100) if raw_duration > 0 else 0
+            console.print(f"\n[dim]Timing: Raw {raw_duration:.2f}s vs Guarded {guarded_duration:.2f}s (+{overhead_pct:.0f}% overhead)[/dim]")
+
+            if export:
+                from .reporting.exporter import ReportExporter
+                from .orchestrator import VerifiedResponse
+                exporter = ReportExporter()
+                compat_response = VerifiedResponse(
+                    query=query,
+                    result=response.result,
+                    reasoning_steps=response.reasoning_steps,
+                    corrections=[],
+                    final_answer=response.final_answer,
+                )
+                internal_path, answer_path = exporter.export_split_reports(
+                    query=query,
+                    raw_answer=raw_response,
+                    response=compat_response,
+                    raw_duration=raw_duration,
+                    guarded_duration=guarded_duration,
+                )
+                typer.echo(f"\nReports saved:")
+                typer.echo(f"  INTERNAL (process): {internal_path}")
+                typer.echo(f"  ANSWER (for judge): {answer_path}")
+
+            return
+
+        typer.echo(f"Running {mode_desc}...")
+        response = asyncio.run(socratic_orchestrator.process_query(query))
+
+        # Output
+        typer.echo(f"\nQuery: {query}")
+        if response.is_valid:
+            typer.echo("Status: PrimaryMax found")
+            typer.echo(f"Total probes used: {response.total_probes}")
+            if response.used_trisection:
+                typer.echo(f"Trisection iterations: {response.trisection_iterations}")
+            typer.echo(f"\nAnswer:\n{response.final_answer or response.d5_content}")
+
+            if response.d6_content:
+                typer.echo(f"\nCaveats:\n{response.d6_content[:200]}...")
+        else:
+            typer.echo("Status: No valid PrimaryMax found")
+            typer.echo(f"Invalid steps: {response.result.invalid_count}")
+
+        if verbose:
+            typer.echo("\n" + "=" * 50)
+            typer.echo("SOCRATIC PIPELINE WITH TRISECTION")
+            typer.echo("=" * 50)
+
+            for rec in response.domain_records:
+                status = "PASS" if rec.passed else "FAIL"
+                versions_info = ""
+
+                # Show trisection selection if available
+                if response.trisection_state:
+                    domain_result = response.trisection_state.domain_trisection_results.get(rec.domain)
+                    if domain_result and domain_result.iteration > 0:
+                        versions_info = f" [TRISECTED: {domain_result.iteration} iter]"
+                    elif rec.domain in response.trisection_state.domain_selections:
+                        versions_info = " [selected by weight]"
+
+                typer.echo(f"\n{rec.domain} ({rec.domain}):")
+                typer.echo(f"  Weight: {rec.final_weight} [{status}]")
+                typer.echo(f"  Attempts: {rec.attempts}, Probes: {len(rec.probes_used)}{versions_info}")
+
+                # Show probe details
+                for i, probe in enumerate(rec.probes_used):
+                    weight_change = probe.weight_after - probe.weight_before
+                    change_str = f"+{weight_change}" if weight_change > 0 else str(weight_change)
+                    typer.echo(f"    v{i+1} probe({probe.criterion}): {probe.weight_before} -> {probe.weight_after} ({change_str})")
+
+            # Trisection summary
+            if response.trisection_state and response.used_trisection:
+                typer.echo("\n" + "-" * 50)
+                typer.echo("TRISECTION SUMMARY")
+                typer.echo("-" * 50)
+                typer.echo(f"  Total iterations: {response.trisection_iterations}")
+                typer.echo(f"  Branches explored: {response.branches_explored}")
+
+                # Show which domains used trisection
+                trisected_domains = [
+                    d for d, r in response.trisection_state.domain_trisection_results.items()
+                    if r.iteration > 0
+                ]
+                if trisected_domains:
+                    typer.echo(f"  Domains trisected: {', '.join(trisected_domains)}")
+
+            typer.echo("\n" + "-" * 50)
+            from .ui.renderer import ReasoningTreeRenderer
+            renderer = ReasoningTreeRenderer()
+            renderer.render_to_console(response.result)
+
+        if export:
+            from .reporting.exporter import ReportExporter
+            exporter = ReportExporter()
+            # Wrap SocraticResponse in VerifiedResponse-compatible format
+            from .orchestrator import VerifiedResponse
+            compat_response = VerifiedResponse(
+                query=query,
+                result=response.result,
+                reasoning_steps=response.reasoning_steps,
+                corrections=[],
+                final_answer=response.final_answer,
+            )
+            path = exporter.export_markdown(query, compat_response)
+            typer.echo(f"\nReport saved to: {path}")
+
+        return
+
+    # --- LEGACY MODE ---
     orchestrator = Orchestrator(
         llm_client=client,
         policy=pol,
@@ -133,8 +322,16 @@ def ask(
         if export:
             from .reporting.exporter import ReportExporter
             exporter = ReportExporter()
-            path = exporter.export_markdown(query, battle_result.guarded)
-            typer.echo(f"\nReport saved to: {path}")
+            internal_path, answer_path = exporter.export_split_reports(
+                query=query,
+                raw_answer=battle_result.raw_response,
+                response=battle_result.guarded,
+                raw_duration=battle_result.raw_duration,
+                guarded_duration=battle_result.guarded_duration,
+            )
+            typer.echo(f"\nReports saved:")
+            typer.echo(f"  INTERNAL (process): {internal_path}")
+            typer.echo(f"  ANSWER (for judge): {answer_path}")
 
         return
 
@@ -350,166 +547,6 @@ def benchmark(
     typer.echo(f"  Total corrections:   {total_corrections}")
     typer.echo(f"  Invariant failures:  {total_invariant_failures}")
     pct = (total_valid / total_queries * 100) if total_queries else 0
-    typer.echo(f"  Pass rate:           {pct:.1f}%")
-    typer.echo("=" * 70)
-
-
-@app.command()
-def truthfulqa(
-    provider: str = typer.Option(
-        "claude", "--provider", "-p",
-        help="LLM provider: claude or openai",
-    ),
-    category: str = typer.Option(
-        "", "--category", "-c",
-        help="Filter by category (e.g. Misconceptions, Health, Conspiracies). Empty = all.",
-    ),
-    limit: int = typer.Option(
-        5, "--limit", "-n",
-        help="Max questions to run",
-    ),
-    hardest: int = typer.Option(
-        0, "--hardest",
-        help="Pick N hardest questions (most incorrect answers). Overrides --category.",
-    ),
-    battle: bool = typer.Option(
-        False, "--battle", "-b",
-        help="Run Battle Mode for each question",
-    ),
-    verbose: bool = typer.Option(
-        False, "--verbose", "-v",
-        help="Show full diagnostics per question",
-    ),
-    max_corrections: int = typer.Option(
-        3, "--max-corrections",
-        help="Maximum correction attempts per failed step",
-    ),
-    list_categories: bool = typer.Option(
-        False, "--list-categories",
-        help="List available categories and exit",
-    ),
-    show_answers: bool = typer.Option(
-        False, "--show-answers",
-        help="Show best answer and incorrect answers for each question",
-    ),
-    export: bool = typer.Option(
-        False, "--export", "-e",
-        help="Export a Markdown report for each question to reports/ directory",
-    ),
-):
-    """Run Regulus against TruthfulQA benchmark (817 adversarial questions)."""
-    from .data.truthfulqa import TruthfulQADataset
-    from .orchestrator import Orchestrator
-    from .core.status_machine import run_all_verifications
-
-    # Load dataset
-    ds = TruthfulQADataset()
-    typer.echo("Loading TruthfulQA dataset...")
-    ds.load()
-    typer.echo(f"Loaded {len(ds.items)} questions across {len(ds.categories())} categories.")
-
-    # List categories mode
-    if list_categories:
-        typer.echo("\nCategories:")
-        for cat in ds.categories():
-            count = len(ds.by_category(cat))
-            typer.echo(f"  {cat} ({count})")
-        return
-
-    # Select questions
-    if hardest > 0:
-        questions = ds.hardest(hardest)
-        typer.echo(f"\nSelected {len(questions)} hardest questions (by incorrect answer count).")
-    elif category:
-        questions = ds.by_category(category)[:limit]
-        typer.echo(f"\nSelected {len(questions)} questions from '{category}'.")
-    else:
-        questions = ds.items[:limit]
-        typer.echo(f"\nSelected first {len(questions)} questions.")
-
-    if not questions:
-        typer.echo("No questions matched. Use --list-categories to see options.", err=True)
-        raise typer.Exit(1)
-
-    # Show answers mode (no LLM needed)
-    if show_answers and not battle:
-        for i, item in enumerate(questions, 1):
-            typer.echo(f"\n{'='*60}")
-            typer.echo(f"[{i}] ({item.category}) {item.question}")
-            typer.echo(f"  Best answer: {item.best_answer}")
-            typer.echo(f"  Correct ({len(item.correct_answers)}): {'; '.join(item.correct_answers[:3])}")
-            typer.echo(f"  Incorrect ({len(item.incorrect_answers)}): {'; '.join(item.incorrect_answers[:3])}")
-        return
-
-    # Build orchestrator
-    client = _create_client(provider)
-    orchestrator = Orchestrator(
-        llm_client=client,
-        max_corrections=max_corrections,
-        use_llm_sensor=True,
-    )
-
-    # Run benchmark
-    typer.echo("\n" + "=" * 70)
-    typer.echo("REGULUS AI - TruthfulQA BENCHMARK")
-    typer.echo("=" * 70)
-
-    total = 0
-    total_valid = 0
-    total_corrections = 0
-
-    for i, item in enumerate(questions, 1):
-        total += 1
-        typer.echo(f"\n--- [{i}/{len(questions)}] ({item.category}) ---")
-        typer.echo(f"  Q: {item.question}")
-
-        if show_answers:
-            typer.echo(f"  Expected: {item.best_answer}")
-            typer.echo(f"  Incorrect ({item.difficulty}): {'; '.join(item.incorrect_answers[:2])}...")
-
-        if battle:
-            from .battle import BattleMode
-
-            bm = BattleMode(orchestrator=orchestrator, llm_client=client)
-            result = asyncio.run(bm.run_battle(item.question))
-            bm.render_comparison(result, verbose=verbose)
-            response = result.guarded
-        else:
-            response = asyncio.run(orchestrator.process_query(item.question))
-
-            status_str = "PASS" if response.is_valid else "FAIL"
-            typer.echo(f"  [{status_str}] corrections={response.total_corrections} invalid={response.result.invalid_count}")
-
-            if response.primary_answer:
-                typer.echo(f"  Answer: {response.primary_answer[:120]}...")
-
-            if verbose:
-                for diag in response.result.diagnostics:
-                    gate_str = (
-                        f"ERR={diag.gate_vector.get('ERR', '?')} "
-                        f"Lv={diag.gate_vector.get('Levels', '?')} "
-                        f"Ord={diag.gate_vector.get('Order', '?')}"
-                    )
-                    typer.echo(f"    {diag.node_id}: {diag.status.name} W={diag.final_weight} [{gate_str}]")
-
-        if response.is_valid:
-            total_valid += 1
-        total_corrections += response.total_corrections
-
-        if export:
-            from .reporting.exporter import ReportExporter
-            exporter = ReportExporter()
-            path = exporter.export_markdown(item.question, response)
-            typer.echo(f"  Report saved to: {path}")
-
-    # Summary
-    typer.echo("\n" + "=" * 70)
-    typer.echo("TruthfulQA SUMMARY")
-    typer.echo("=" * 70)
-    typer.echo(f"  Questions run:       {total}")
-    typer.echo(f"  Valid (PrimaryMax):   {total_valid}/{total}")
-    typer.echo(f"  Total corrections:   {total_corrections}")
-    pct = (total_valid / total * 100) if total else 0
     typer.echo(f"  Pass rate:           {pct:.1f}%")
     typer.echo("=" * 70)
 

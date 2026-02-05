@@ -28,18 +28,30 @@ from .core import (
     compute_gate, compute_final_weight,
     assign_all_statuses, create_diagnostic,
     run_all_verifications,
-    # Optimizer
+    # Optimizer (legacy)
     TrisectionOptimizer, TrisectionState, TrisectChoice,
+    # Socratic Trisection (v2)
+    SocraticTrisection, SocraticTrisectionState, TrisectionResult,
 )
 
-from .orchestrator import Orchestrator, VerifiedResponse, CorrectionAttempt
+from .orchestrator import (
+    Orchestrator, VerifiedResponse, CorrectionAttempt,
+    SocraticOrchestrator, SocraticResponse,
+)
+
+from .core.domains import (
+    DOMAIN_ORDER, DomainPassRecord, ProbeRecord,
+)
 
 __all__ = [
     '__version__', '__author__',
     # Engine
     'LogicGuardEngine', 'verify_reasoning', 'verify_json', 'quick_check',
-    # Orchestrator
+    # Orchestrator (legacy)
     'Orchestrator', 'VerifiedResponse', 'CorrectionAttempt',
+    # Socratic Orchestrator (v2)
+    'SocraticOrchestrator', 'SocraticResponse',
+    'DOMAIN_ORDER', 'DomainPassRecord', 'ProbeRecord',
     # Types
     'Domain', 'Status', 'Policy',
     'GateSignals', 'RawScores', 'IntegrityGate',
@@ -47,6 +59,8 @@ __all__ = [
     # Core functions
     'compute_gate', 'compute_final_weight',
     'assign_all_statuses', 'create_diagnostic',
-    # Optimizer
+    # Optimizer (legacy)
     'TrisectionOptimizer', 'TrisectionState', 'TrisectChoice',
+    # Socratic Trisection (v2)
+    'SocraticTrisection', 'SocraticTrisectionState', 'TrisectionResult',
 ]
