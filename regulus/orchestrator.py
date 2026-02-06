@@ -861,12 +861,23 @@ class SocraticOrchestrator:
         factual_data_required = False
         source_context = ""
 
+        # Fast path: skip D3/D4 for simple STABLE facts
+        use_fast_path = False
+        fast_path_domains = ["D1", "D2", "D5", "D6"]
+
         # Process each domain sequentially
         for domain in DOMAIN_ORDER:
+            # Fast path: skip D3 and D4 for STABLE facts
+            if use_fast_path and domain in ("D3", "D4"):
+                logger.info("Fast path — skipping %s", domain)
+                continue
+
             domain_def = get_domain_def(domain)
             domain_name = domain_def.get("name", domain)
             domain_question = domain_def.get("question", "")
             max_probes = domain_def.get("max_probes", 2)
+            if use_fast_path:
+                max_probes = min(max_probes, 1)  # Fast path: max 1 probe per domain
 
             # Generate initial domain content
             content = await self._generate_domain(
@@ -896,6 +907,8 @@ class SocraticOrchestrator:
                 else:
                     logger.info("STABLE fact — model reliable, skipping search")
                     source_context = ""
+                    use_fast_path = True
+                    logger.info("STABLE fact — enabling fast path (D1→D2→D5→D6)")
 
             # Pass fact classification to downstream domains
             if domain == "D1" and factual_data_required:
@@ -974,7 +987,12 @@ class SocraticOrchestrator:
 
             version_nodes: list[Node] = []
             for v_idx, v_content in enumerate(version_contents):
-                signals = await self._extract_signals(v_content, parent_domain, domain_idx)
+                if use_fast_path:
+                    # Fast path: heuristic-only, no LLM sensor call
+                    signals = self.heuristic.extract_signals(v_content, parent_domain)
+                    signals["raw_scores"]["current_domain"] = domain_idx
+                else:
+                    signals = await self._extract_signals(v_content, parent_domain, domain_idx)
                 node = Node(
                     node_id=f"{domain}_v{v_idx}",
                     parent_id=reasoning_steps[-1]["domain"] if reasoning_steps else None,
@@ -1073,6 +1091,13 @@ class SocraticOrchestrator:
 
         # Get trisection state
         trisection_state = self.trisection.finalize() if self.trisection else None
+
+        logger.info(
+            "Pipeline complete: path=%s, domains=%d, answer=%s",
+            "fast" if use_fast_path else "full",
+            len(domain_records),
+            "yes" if final_answer else "no",
+        )
 
         return SocraticResponse(
             query=query,
