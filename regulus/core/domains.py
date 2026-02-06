@@ -375,8 +375,12 @@ DOMAIN_DEFINITIONS: Dict[str, dict] = {
             "conclusion_stated": (
                 "A clear, direct answer to the original question is stated. "
                 "The answer must satisfy D1's SUCCESS CRITERIA. "
-                "For REASONING tasks: show the derived answer — NEVER say 'cannot determine'. "
-                "For FACT tasks: state the confirmed fact."
+                "For REASONING tasks: state the derived answer — NEVER say 'cannot determine'. "
+                "For FACT tasks: state the confirmed fact.\n"
+                "HARD RULE: If TYPE is [REASONING], the following phrases are FORBIDDEN:\n"
+                "'cannot determine', 'cannot be determined', 'cannot provide',\n"
+                "'computationally impractical', 'unknown', 'unable to determine'.\n"
+                "These phrases will trigger automatic rejection and re-generation."
             ),
         },
         "threshold": 70,  # Higher — this IS the answer
@@ -417,6 +421,11 @@ DOMAIN_DEFINITIONS: Dict[str, dict] = {
         "criteria": {
             "limitations_noted": "Conditions where the answer might be wrong or incomplete",
             "no_dogmatism": "Alternative interpretations acknowledged",
+            "no_false_uncertainty": (
+                "For REASONING tasks: do NOT introduce uncertainty that wasn't in D5.\n"
+                "If D5 derived a concrete answer, D6 must NOT downgrade it to 'uncertain'.\n"
+                "Reflection means acknowledging limitations, NOT retracting the answer."
+            ),
         },
         "threshold": 50,  # Lower — this is supplementary
         "max_probes": 1,
@@ -428,6 +437,11 @@ DOMAIN_DEFINITIONS: Dict[str, dict] = {
             "no_dogmatism": (
                 "What alternative answers or interpretations exist? "
                 "Why might someone reasonably disagree?"
+            ),
+            "no_false_uncertainty": (
+                "Check: did D5 provide a concrete answer?\n"
+                "If yes: keep it. Reflect on limitations but do NOT change the answer.\n"
+                "If no: flag as error — D5 should have provided an answer for REASONING tasks."
             ),
         },
     },

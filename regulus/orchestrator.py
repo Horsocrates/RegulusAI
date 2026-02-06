@@ -1227,6 +1227,47 @@ class SocraticOrchestrator:
                 final_answer = await self._generate_final_answer(
                     query, reasoning_steps, confidence_level=conf_level
                 )
+
+                # Block refusals for REASONING tasks
+                if is_reasoning and final_answer:
+                    refusal_phrases = [
+                        "cannot be determined",
+                        "cannot determine",
+                        "cannot provide",
+                        "cannot reliably",
+                        "unable to determine",
+                        "unable to provide",
+                        "computationally impractical",
+                        "not enough information",
+                        "impossible to determine",
+                        "cannot be solved",
+                        "i cannot",
+                        "unknown",
+                    ]
+                    answer_lower = final_answer.lower()
+                    is_refusal = any(phrase in answer_lower for phrase in refusal_phrases)
+
+                    if is_refusal:
+                        logger.warning("REFUSAL BLOCKED for REASONING task — regenerating")
+                        # Force a direct answer by re-prompting with anti-refusal instruction
+                        forced_prompt = (
+                            f"Original question: {query}\n\n"
+                            f"Your reasoning chain:\n"
+                            + "\n".join(f"{s['domain']}: {s['content']}" for s in reasoning_steps)
+                            + "\n\n"
+                            "Your previous answer was a REFUSAL ('cannot determine'). "
+                            "This is a REASONING task — the answer ALWAYS exists.\n\n"
+                            "RULES:\n"
+                            "- You MUST provide a concrete answer (a value, letter, name, number)\n"
+                            "- If you're unsure between options, pick the MOST LIKELY one\n"
+                            "- 'I don't know' is NOT acceptable — make your best reasoned attempt\n"
+                            "- Look at your reasoning chain above — it likely contains the answer\n\n"
+                            "Provide ONLY the answer, no explanation."
+                        )
+                        final_answer = await self.llm.generate(prompt=forced_prompt)
+                        final_answer = final_answer.strip()
+                        logger.info("Forced answer: %s", final_answer[:100])
+
             except Exception as e:
                 logger.warning("Failed to generate final answer: %s", e)
 
