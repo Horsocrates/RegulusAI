@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Shield, Loader2, CheckCircle, XCircle, AlertTriangle, Swords, Clock } from "lucide-react";
+import Link from "next/link";
+import { Shield, Loader2, CheckCircle, XCircle, AlertTriangle, Swords, Clock, BarChart3, FlaskConical } from "lucide-react";
 import { verifyQuery, battleQuery, dualQuery, VerifyResponse, BattleResponse, DualResponse, Step } from "@/lib/api";
 
 const DOMAIN_NAMES: Record<string, string> = {
@@ -244,6 +245,22 @@ export default function Home() {
           <div>
             <h1 className="text-2xl font-bold">Regulus AI</h1>
             <p className="text-gray-500">Structural Guardrail for LLM Reasoning</p>
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <Link
+              href="/lab"
+              className="px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg text-sm font-medium flex items-center gap-2"
+            >
+              <FlaskConical className="w-4 h-4" />
+              Lab
+            </Link>
+            <Link
+              href="/benchmark"
+              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium flex items-center gap-2"
+            >
+              <BarChart3 className="w-4 h-4" />
+              Benchmark
+            </Link>
           </div>
         </div>
 

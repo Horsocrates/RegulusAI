@@ -5,7 +5,7 @@ Regulus AI - OpenAI LLM Client
 OpenAI API integration.
 """
 
-from .client import LLMClient
+from .client import LLMClient, LLMResponse
 
 
 class OpenAIClient(LLMClient):
@@ -17,6 +17,13 @@ class OpenAIClient(LLMClient):
         self.model = model
 
     async def generate(self, prompt: str, system: str | None = None) -> str:
+        response = await self._call_api(prompt, system)
+        return response.text
+
+    async def generate_with_usage(self, prompt: str, system: str | None = None) -> LLMResponse:
+        return await self._call_api(prompt, system)
+
+    async def _call_api(self, prompt: str, system: str | None = None) -> LLMResponse:
         messages = []
         if system:
             messages.append({"role": "system", "content": system})
@@ -27,4 +34,10 @@ class OpenAIClient(LLMClient):
             max_tokens=2048,
             messages=messages
         )
-        return response.choices[0].message.content or ""
+
+        usage = response.usage
+        return LLMResponse(
+            text=response.choices[0].message.content or "",
+            input_tokens=usage.prompt_tokens if usage else 0,
+            output_tokens=usage.completion_tokens if usage else 0,
+        )

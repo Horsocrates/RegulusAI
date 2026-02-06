@@ -14,7 +14,7 @@ Usage:
     print(result.summary())
 """
 
-__version__ = "0.1.0"
+__version__ = "1.0a"
 __author__ = "Horsocrates"
 
 from .core import (

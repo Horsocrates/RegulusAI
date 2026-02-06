@@ -799,8 +799,8 @@ class SocraticOrchestrator:
         self.trisection: SocraticTrisection | None = (
             SocraticTrisection(policy=policy) if use_trisection else None
         )
-        self._factual_data_required = False  # Flag from D1
-        self._source_context: str = ""  # Sources found for D2
+        # Note: factual_data_required and source_context are now local to process_query
+        # to avoid race conditions when processing multiple queries in parallel
 
     # ----------------------------------------------------------
     # Public API
@@ -822,9 +822,9 @@ class SocraticOrchestrator:
         accumulated_context: list[str] = []
         all_version_nodes: dict[str, list[Node]] = {}  # domain → all versions
 
-        # Reset source lookup flags
-        self._factual_data_required = False
-        self._source_context = ""
+        # LOCAL source lookup flags (not instance vars - avoids race condition in parallel)
+        factual_data_required = False
+        source_context = ""
 
         # Process each domain sequentially
         for domain in DOMAIN_ORDER:
@@ -851,15 +851,15 @@ class SocraticOrchestrator:
                 "TYPE: [FACT]" in content_upper or
                 "[FACT]" in content_upper
             ):
-                self._factual_data_required = True
+                factual_data_required = True
                 logger.info("D1 detected factual question - searching sources for D2")
                 # Proactively search for sources
-                self._source_context = await self._search_sources_for_query(query)
+                source_context = await self._search_sources_for_query(query)
 
             # D2: inject source context if factual data was required
-            if domain == "D2" and self._factual_data_required and self._source_context:
-                content = content + "\n\n" + self._source_context
-                logger.info("D2 enhanced with source context (%d chars)", len(self._source_context))
+            if domain == "D2" and factual_data_required and source_context:
+                content = content + "\n\n" + source_context
+                logger.info("D2 enhanced with source context (%d chars)", len(source_context))
 
             # Evaluate and probe, collecting ALL versions for trisection
             record = DomainPassRecord(domain=domain, attempts=1, content=content)
@@ -1004,10 +1004,10 @@ class SocraticOrchestrator:
             invalid_count=invalid_count,
         )
 
-        # Generate final answer if D5 passed
+        # Generate final answer if we have D5 content (always synthesize)
         final_answer = None
         d5_record = next((r for r in domain_records if r.domain == "D5"), None)
-        if d5_record and d5_record.passed:
+        if d5_record:
             try:
                 final_answer = await self._generate_final_answer(
                     query, reasoning_steps

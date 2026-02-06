@@ -77,3 +77,91 @@ export async function dualQuery(query: string): Promise<DualResponse> {
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 }
+
+export interface BenchmarkItem {
+  question: string;
+  expected: string;
+  answer: string | null;
+  synthesized?: boolean;
+  valid: boolean;
+  corrections: number;
+  time_seconds: number;
+}
+
+export interface BenchmarkResponse {
+  total: number;
+  valid_count: number;
+  valid_rate: number;
+  avg_corrections: number;
+  avg_time: number;
+  items: BenchmarkItem[];
+}
+
+export async function runBenchmark(n: number = 10, provider = "claude"): Promise<BenchmarkResponse> {
+  const res = await fetch(`${API_URL}/api/benchmark`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ n, provider }),
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+// Streaming benchmark types
+export interface BenchmarkProgress {
+  type: "progress";
+  index: number;
+  completed: number;
+  total: number;
+  valid_so_far: number;
+  item: BenchmarkItem;
+}
+
+export interface BenchmarkDone {
+  type: "done";
+  summary: {
+    total: number;
+    valid_count: number;
+    valid_rate: number;
+    avg_corrections: number;
+    avg_time: number;
+  };
+}
+
+export interface BenchmarkError {
+  type: "error";
+  message: string;
+}
+
+export type BenchmarkEvent = BenchmarkProgress | BenchmarkDone | BenchmarkError;
+
+export function streamBenchmark(
+  n: number = 10,
+  concurrency: number = 5,
+  provider: string = "claude",
+  onProgress: (event: BenchmarkEvent) => void,
+  onError: (error: Error) => void,
+): () => void {
+  const url = `${API_URL}/api/benchmark/stream?n=${n}&concurrency=${concurrency}&provider=${provider}`;
+  const eventSource = new EventSource(url);
+
+  eventSource.onmessage = (e) => {
+    try {
+      const data = JSON.parse(e.data) as BenchmarkEvent;
+      onProgress(data);
+      if (data.type === "done" || data.type === "error") {
+        eventSource.close();
+      }
+    } catch (err) {
+      onError(new Error(`Failed to parse SSE data: ${e.data}`));
+    }
+  };
+
+  eventSource.onerror = () => {
+    onError(new Error("SSE connection error"));
+    eventSource.close();
+  };
+
+  // Return cleanup function
+  return () => eventSource.close();
+}

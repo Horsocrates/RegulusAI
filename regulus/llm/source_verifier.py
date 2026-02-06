@@ -22,12 +22,63 @@ To enable Google Search, set GOOGLE_API_KEY and GOOGLE_CSE_ID in .env
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
-from dataclasses import dataclass, field
+import time
+from dataclasses import dataclass, field, asdict
+from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional
 from urllib.parse import quote_plus
+
+
+# ============================================================
+# Persistent File Cache
+# ============================================================
+
+CACHE_DIR = Path(__file__).parent.parent.parent / "data" / "source_cache"
+CACHE_TTL = 7 * 24 * 60 * 60  # 7 days in seconds
+
+
+def _get_cache_path(query: str) -> Path:
+    """Get cache file path for a query."""
+    query_hash = hashlib.md5(query.lower().strip().encode()).hexdigest()
+    return CACHE_DIR / f"{query_hash}.json"
+
+
+def _load_from_cache(query: str) -> Optional[dict]:
+    """Load cached result if exists and not expired."""
+    cache_path = _get_cache_path(query)
+    if not cache_path.exists():
+        return None
+
+    try:
+        with open(cache_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        # Check TTL
+        cached_time = data.get("_cached_at", 0)
+        if time.time() - cached_time > CACHE_TTL:
+            cache_path.unlink()  # Delete expired
+            return None
+
+        return data
+    except Exception:
+        return None
+
+
+def _save_to_cache(query: str, data: dict):
+    """Save result to cache."""
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    cache_path = _get_cache_path(query)
+
+    data["_cached_at"] = time.time()
+    try:
+        with open(cache_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass  # Cache write failures are not critical
 
 # Load .env before reading API keys
 from dotenv import load_dotenv
@@ -277,6 +328,7 @@ async def search_google(query: str, num_results: int = 5) -> List[SourceResult]:
 async def search_wikipedia(query: str) -> Optional[SourceResult]:
     """
     Direct Wikipedia API lookup for factual information.
+    Uses persistent file cache.
 
     Args:
         query: Topic to search
@@ -284,6 +336,21 @@ async def search_wikipedia(query: str) -> Optional[SourceResult]:
     Returns:
         SourceResult if found, None otherwise
     """
+    # Check cache first
+    cached = _load_from_cache(f"wiki:{query}")
+    if cached and "result" in cached:
+        r = cached["result"]
+        if r:
+            print(f"[SourceVerifier] Wiki cache hit for: {query[:50]}...")
+            return SourceResult(
+                source_name=r["source_name"],
+                source_url=r["source_url"],
+                content=r["content"],
+                relevance_score=r.get("relevance_score", 0.95),
+                is_authoritative=r.get("is_authoritative", True),
+            )
+        return None
+
     import httpx
 
     wiki_api = "https://en.wikipedia.org/api/rest_v1/page/summary/"
@@ -291,6 +358,7 @@ async def search_wikipedia(query: str) -> Optional[SourceResult]:
         "User-Agent": "RegulusAI/1.0 (https://github.com/regulus-ai; contact@regulus.ai) httpx/0.27"
     }
 
+    result = None
     try:
         async with httpx.AsyncClient(timeout=10.0, headers=headers) as client:
             # Try direct title match
@@ -299,7 +367,7 @@ async def search_wikipedia(query: str) -> Optional[SourceResult]:
 
             if response.status_code == 200:
                 data = response.json()
-                return SourceResult(
+                result = SourceResult(
                     source_name="Wikipedia",
                     source_url=data.get("content_urls", {}).get("desktop", {}).get("page", ""),
                     content=data.get("extract", ""),
@@ -309,7 +377,18 @@ async def search_wikipedia(query: str) -> Optional[SourceResult]:
     except Exception:
         pass
 
-    return None
+    # Cache the result (even if None, to avoid repeated failed lookups)
+    _save_to_cache(f"wiki:{query}", {
+        "result": {
+            "source_name": result.source_name,
+            "source_url": result.source_url,
+            "content": result.content,
+            "relevance_score": result.relevance_score,
+            "is_authoritative": result.is_authoritative,
+        } if result else None
+    })
+
+    return result
 
 
 # ============================================================
@@ -319,6 +398,7 @@ async def search_wikipedia(query: str) -> Optional[SourceResult]:
 async def search_all_sources(query: str, num_results: int = 5) -> List[SourceResult]:
     """
     Search all available sources, prioritizing by quality.
+    Uses persistent file cache to avoid repeated API calls.
 
     Priority order:
     1. SerpAPI (easiest setup, if API key set)
@@ -334,6 +414,21 @@ async def search_all_sources(query: str, num_results: int = 5) -> List[SourceRes
     Returns:
         Combined list of SourceResult objects, deduplicated
     """
+    # Check persistent cache first
+    cached = _load_from_cache(f"search:{query}")
+    if cached and "results" in cached:
+        print(f"[SourceVerifier] Cache hit for: {query[:50]}...")
+        return [
+            SourceResult(
+                source_name=r["source_name"],
+                source_url=r["source_url"],
+                content=r["content"],
+                relevance_score=r.get("relevance_score", 0.5),
+                is_authoritative=r.get("is_authoritative", False),
+            )
+            for r in cached["results"]
+        ]
+
     all_results: List[SourceResult] = []
     seen_urls: set = set()
 
@@ -375,7 +470,25 @@ async def search_all_sources(query: str, num_results: int = 5) -> List[SourceRes
                 all_results.append(r)
                 seen_urls.add(r.source_url)
 
-    return all_results[:num_results]
+    final_results = all_results[:num_results]
+
+    # Save to persistent cache
+    if final_results:
+        _save_to_cache(f"search:{query}", {
+            "results": [
+                {
+                    "source_name": r.source_name,
+                    "source_url": r.source_url,
+                    "content": r.content,
+                    "relevance_score": r.relevance_score,
+                    "is_authoritative": r.is_authoritative,
+                }
+                for r in final_results
+            ]
+        })
+        print(f"[SourceVerifier] Cached {len(final_results)} results for: {query[:50]}...")
+
+    return final_results
 
 
 def format_source_citation(result: SourceResult) -> str:

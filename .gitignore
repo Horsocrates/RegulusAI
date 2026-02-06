@@ -25,3 +25,10 @@ nul
 
 # uv
 .python-version
+
+# Data (cache, db, reports) - top level only
+/data/
+*.db
+
+# Archives
+*.zip
