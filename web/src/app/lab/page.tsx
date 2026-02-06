@@ -3,13 +3,13 @@
 import { useState } from "react";
 import {
   FlaskConical, Plus, Trash2, ArrowLeft, Loader2, CheckCircle,
-  Clock, PauseCircle, XCircle, ExternalLink, RotateCcw,
+  Clock, PauseCircle, XCircle, ExternalLink, RotateCcw, StopCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  getLabRuns, deleteLabRun, getRunStats,
+  getLabRuns, deleteLabRun, stopLabRun, getRunStats,
   type LabRun, type RunStatus, STATUS_CONFIG, formatCost, formatTime,
 } from "@/lib/lab-api";
 
@@ -36,8 +36,23 @@ function StatusBadge({ status }: { status: RunStatus }) {
 
 // === Active Run Card ===
 
-function ActiveRunCard({ run }: { run: LabRun }) {
+function ActiveRunCard({ run, onStop }: { run: LabRun; onStop: (id: number) => void }) {
   const router = useRouter();
+  const [stopping, setStopping] = useState(false);
+
+  const handleStop = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm(`Cancel run "${run.name}"?`)) return;
+    setStopping(true);
+    try {
+      await stopLabRun(run.id);
+      onStop(run.id);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setStopping(false);
+    }
+  };
 
   const { data: stats } = useQuery({
     queryKey: ["lab-run-stats", run.id],
@@ -62,7 +77,20 @@ function ActiveRunCard({ run }: { run: LabRun }) {
           <StatusBadge status={run.status as RunStatus} />
           <span className="text-white font-medium">Run #{run.id}: {run.name}</span>
         </div>
-        <span className="text-sm text-gray-400">{run.concurrency} agents</span>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-400">{run.concurrency} agents</span>
+          <button
+            onClick={handleStop}
+            disabled={stopping}
+            className="px-2.5 py-1 text-xs font-medium text-red-400 border border-red-400/30 rounded hover:bg-red-400/10 transition-colors flex items-center gap-1"
+          >
+            {stopping
+              ? <Loader2 className="w-3 h-3 animate-spin" />
+              : <StopCircle className="w-3 h-3" />
+            }
+            Cancel
+          </button>
+        </div>
       </div>
 
       {/* Progress bar */}
@@ -92,9 +120,24 @@ function ActiveRunCard({ run }: { run: LabRun }) {
 
 // === Run History Table ===
 
-function RunHistoryTable({ runs, onDelete }: { runs: LabRun[]; onDelete: (id: number) => void }) {
+function RunHistoryTable({ runs, onDelete, onStop }: { runs: LabRun[]; onDelete: (id: number) => void; onStop: (id: number) => void }) {
   const router = useRouter();
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [stoppingId, setStoppingId] = useState<number | null>(null);
+
+  const handleStop = async (e: React.MouseEvent, id: number, name: string) => {
+    e.stopPropagation();
+    if (!confirm(`Cancel run "${name}"?`)) return;
+    setStoppingId(id);
+    try {
+      await stopLabRun(id);
+      onStop(id);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setStoppingId(null);
+    }
+  };
 
   const handleDelete = async (e: React.MouseEvent, id: number, name: string) => {
     e.stopPropagation();
@@ -152,18 +195,34 @@ function RunHistoryTable({ runs, onDelete }: { runs: LabRun[]; onDelete: (id: nu
                   <StatusBadge status={run.status as RunStatus} />
                 </td>
                 <td className="px-4 py-3 text-right">
-                  {["completed", "failed", "stopped"].includes(run.status) && (
-                    <button
-                      onClick={(e) => handleDelete(e, run.id, run.name)}
-                      disabled={deletingId === run.id}
-                      className="p-1 text-gray-600 hover:text-red-400 hover:bg-red-400/10 rounded transition-colors"
-                    >
-                      {deletingId === run.id
-                        ? <Loader2 className="w-4 h-4 animate-spin" />
-                        : <Trash2 className="w-4 h-4" />
-                      }
-                    </button>
-                  )}
+                  <div className="flex items-center justify-end gap-1">
+                    {["running", "paused"].includes(run.status) && (
+                      <button
+                        onClick={(e) => handleStop(e, run.id, run.name)}
+                        disabled={stoppingId === run.id}
+                        className="p-1 text-gray-600 hover:text-red-400 hover:bg-red-400/10 rounded transition-colors"
+                        title="Cancel run"
+                      >
+                        {stoppingId === run.id
+                          ? <Loader2 className="w-4 h-4 animate-spin" />
+                          : <StopCircle className="w-4 h-4" />
+                        }
+                      </button>
+                    )}
+                    {["completed", "failed", "stopped"].includes(run.status) && (
+                      <button
+                        onClick={(e) => handleDelete(e, run.id, run.name)}
+                        disabled={deletingId === run.id}
+                        className="p-1 text-gray-600 hover:text-red-400 hover:bg-red-400/10 rounded transition-colors"
+                        title="Delete run"
+                      >
+                        {deletingId === run.id
+                          ? <Loader2 className="w-4 h-4 animate-spin" />
+                          : <Trash2 className="w-4 h-4" />
+                        }
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             );
@@ -193,6 +252,12 @@ export default function LabPage() {
   const handleDelete = (id: number) => {
     queryClient.setQueryData<LabRun[]>(["lab-runs"], (old) =>
       old ? old.filter((r) => r.id !== id) : []
+    );
+  };
+
+  const handleStop = (id: number) => {
+    queryClient.setQueryData<LabRun[]>(["lab-runs"], (old) =>
+      old ? old.map((r) => r.id === id ? { ...r, status: "stopped" as RunStatus } : r) : []
     );
   };
 
@@ -249,7 +314,7 @@ export default function LabPage() {
             </h2>
             <div className="space-y-3">
               {activeRuns.map((run) => (
-                <ActiveRunCard key={run.id} run={run} />
+                <ActiveRunCard key={run.id} run={run} onStop={handleStop} />
               ))}
             </div>
           </section>
@@ -261,7 +326,7 @@ export default function LabPage() {
             <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">
               All Runs
             </h2>
-            <RunHistoryTable runs={sortedRuns} onDelete={handleDelete} />
+            <RunHistoryTable runs={sortedRuns} onDelete={handleDelete} onStop={handleStop} />
           </section>
         )}
       </div>

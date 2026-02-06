@@ -25,7 +25,7 @@ interface WizardState {
   retryFromRunId: number | null;
   concurrency: number;
   stepMode: "continuous" | "stepped";
-  questionsPerStep: number;
+  questionsPerAgent: number;
   provider: "claude" | "openai";
   modelVersion: string;
   name: string;
@@ -41,7 +41,7 @@ const INITIAL_STATE: WizardState = {
   retryFromRunId: null,
   concurrency: 5,
   stepMode: "continuous",
-  questionsPerStep: 10,
+  questionsPerAgent: 10,
   provider: "claude",
   modelVersion: "v1.0a",
   name: "",
@@ -53,6 +53,26 @@ const COST_PER_Q: Record<string, number> = {
 };
 
 const TIME_PER_Q = 105; // seconds per question (average)
+
+// Fallback datasets when API is unavailable
+const FALLBACK_DATASETS: Dataset[] = [
+  {
+    id: "simpleqa",
+    name: "SimpleQA",
+    description: "Factual question answering benchmark by OpenAI",
+    total_questions: 4326,
+    categories: [],
+    type: "factual",
+  },
+  {
+    id: "bbeh",
+    name: "BBEH (Big-Bench Extra Hard)",
+    description: "Complex reasoning benchmark by Google DeepMind",
+    total_questions: 460,
+    categories: [],
+    type: "reasoning",
+  },
+];
 
 // === Step Indicator ===
 
@@ -90,40 +110,41 @@ function DatasetSelector({ datasets, selected, onSelect }: {
   selected: string | null;
   onSelect: (ds: Dataset) => void;
 }) {
+  const selectedDs = datasets.find((ds) => ds.id === selected);
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <h2 className="text-xl font-bold text-white mb-1">Select Dataset</h2>
       <p className="text-gray-500 mb-4">Choose a benchmark for testing:</p>
-      <div className="space-y-3">
+
+      <select
+        value={selected || ""}
+        onChange={(e) => {
+          const ds = datasets.find((d) => d.id === e.target.value);
+          if (ds) onSelect(ds);
+        }}
+        className="w-full px-4 py-3 bg-[#12121a] border border-[#1e1e2e] rounded-lg text-white text-sm focus:border-green-400 focus:outline-none appearance-none cursor-pointer"
+      >
+        <option value="" disabled>Select a dataset...</option>
         {datasets.map((ds) => (
-          <button
-            key={ds.id}
-            onClick={() => onSelect(ds)}
-            className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
-              selected === ds.id
-                ? "border-green-400 bg-green-400/5"
-                : "border-[#1e1e2e] bg-[#12121a] hover:border-green-400/30"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                selected === ds.id ? "border-green-400" : "border-gray-600"
-              }`}>
-                {selected === ds.id && <div className="w-2 h-2 rounded-full bg-green-400" />}
-              </div>
-              <div className="flex-1">
-                <div className="font-medium text-white">{ds.name}</div>
-                <div className="text-sm text-gray-500">
-                  {ds.total_questions.toLocaleString()} questions · {ds.type}
-                </div>
-              </div>
-            </div>
-            {ds.description && (
-              <p className="text-sm text-gray-500 mt-2 ml-7">{ds.description}</p>
-            )}
-          </button>
+          <option key={ds.id} value={ds.id}>
+            {ds.name} — {ds.total_questions.toLocaleString()} questions
+          </option>
         ))}
-      </div>
+      </select>
+
+      {/* Info card for selected dataset */}
+      {selectedDs && (
+        <div className="p-4 bg-[#12121a] border border-green-400/30 rounded-lg">
+          <div className="flex items-center gap-2 mb-1">
+            <Database className="w-4 h-4 text-green-400" />
+            <span className="font-medium text-white">{selectedDs.name}</span>
+            <span className="text-xs px-2 py-0.5 bg-[#1a1a2e] rounded text-gray-400">{selectedDs.type}</span>
+          </div>
+          <p className="text-sm text-gray-400 mb-2">{selectedDs.description}</p>
+          <p className="text-sm text-gray-500">{selectedDs.total_questions.toLocaleString()} questions available</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -247,7 +268,16 @@ function ExecutionConfig({ state, onChange }: {
 
   const numSteps = state.stepMode === "continuous"
     ? 1
-    : Math.max(1, Math.ceil(state.totalQuestions / state.questionsPerStep));
+    : Math.max(1, Math.ceil(state.totalQuestions / (state.questionsPerAgent * state.concurrency)));
+
+  const timeEstimate = (state.totalQuestions * TIME_PER_Q) / Math.max(1, state.concurrency);
+  const formatEta = (secs: number) => {
+    if (secs < 60) return `~${Math.round(secs)}s`;
+    if (secs < 3600) return `~${Math.round(secs / 60)}min`;
+    const h = Math.floor(secs / 3600);
+    const m = Math.round((secs % 3600) / 60);
+    return `~${h}h ${m}m`;
+  };
 
   return (
     <div className="space-y-6">
@@ -286,7 +316,7 @@ function ExecutionConfig({ state, onChange }: {
             />
             <div>
               <div className="text-white text-sm font-medium">Continuous</div>
-              <div className="text-gray-500 text-xs">Run all questions without pausing</div>
+              <div className="text-gray-500 text-xs">Run all questions in 1 step without pausing</div>
             </div>
           </label>
           <label className="flex items-start gap-3 p-3 rounded-lg bg-[#12121a] border border-[#1e1e2e] cursor-pointer hover:border-green-400/30">
@@ -301,16 +331,15 @@ function ExecutionConfig({ state, onChange }: {
               <div className="text-gray-500 text-xs mb-2">Pause after each batch for review</div>
               {state.stepMode === "stepped" && (
                 <div className="flex items-center gap-2">
-                  <span className="text-gray-500 text-xs">Questions per step:</span>
+                  <span className="text-gray-500 text-xs">Questions per agent:</span>
                   <input
                     type="number"
                     min={1}
                     max={state.totalQuestions}
-                    value={state.questionsPerStep}
-                    onChange={(e) => onChange({ questionsPerStep: Math.max(1, Number(e.target.value) || 1) })}
+                    value={state.questionsPerAgent}
+                    onChange={(e) => onChange({ questionsPerAgent: Math.max(1, Number(e.target.value) || 1) })}
                     className="w-20 px-2 py-1 bg-[#1a1a2e] border border-[#1e1e2e] rounded text-white text-sm focus:border-green-400 focus:outline-none"
                   />
-                  <span className="text-gray-600 text-xs">= {numSteps} steps</span>
                 </div>
               )}
             </div>
@@ -356,6 +385,38 @@ function ExecutionConfig({ state, onChange }: {
           className="w-full px-3 py-2 bg-[#1a1a2e] border border-[#1e1e2e] rounded-lg text-white text-sm focus:border-green-400 focus:outline-none"
         />
       </div>
+
+      {/* Summary */}
+      <div className="bg-[#12121a] border border-[#1e1e2e] rounded-lg p-4 space-y-2">
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-500">Questions</span>
+          <span className="text-white">{state.totalQuestions}</span>
+        </div>
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-500">Agents</span>
+          <span className="text-white">{state.concurrency} parallel</span>
+        </div>
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-500">Total steps</span>
+          <span className="text-green-400 font-medium">{numSteps}</span>
+        </div>
+        {state.stepMode === "stepped" && (
+          <>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">Questions per agent</span>
+              <span className="text-white">{state.questionsPerAgent}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">Questions per step</span>
+              <span className="text-white">{state.questionsPerAgent * state.concurrency}</span>
+            </div>
+          </>
+        )}
+        <div className="flex justify-between text-sm border-t border-[#1e1e2e] pt-2">
+          <span className="text-gray-500">Est. time</span>
+          <span className="text-green-400 font-medium">{formatEta(timeEstimate)}</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -369,7 +430,7 @@ function ReviewPanel({ state, onNameChange, submitting }: {
 }) {
   const numSteps = state.stepMode === "continuous"
     ? 1
-    : Math.max(1, Math.ceil(state.totalQuestions / state.questionsPerStep));
+    : Math.max(1, Math.ceil(state.totalQuestions / (state.questionsPerAgent * state.concurrency)));
 
   const costEstimate = state.totalQuestions * (COST_PER_Q[state.provider] || 0.024);
   const timeEstimate = (state.totalQuestions * TIME_PER_Q) / Math.max(1, state.concurrency);
@@ -391,7 +452,7 @@ function ReviewPanel({ state, onNameChange, submitting }: {
         <Row label="Questions" value={state.totalQuestions.toLocaleString()} />
         {state.category && <Row label="Category" value={state.category} />}
         <Row label="Agents" value={`${state.concurrency} parallel`} />
-        <Row label="Steps" value={state.stepMode === "continuous" ? "1 (continuous)" : `${numSteps} (pause every ${state.questionsPerStep})`} />
+        <Row label="Steps" value={state.stepMode === "continuous" ? "1 (continuous)" : `${numSteps} (${state.questionsPerAgent * state.concurrency} questions/step = ${state.questionsPerAgent}/agent × ${state.concurrency} agents)`} />
         <Row label="Provider" value={state.provider === "claude" ? "Claude" : "OpenAI"} />
         {state.modelVersion && <Row label="Version" value={state.modelVersion} />}
         {state.retryFromRunId && <Row label="Retry from" value={`Run #${state.retryFromRunId}`} />}
@@ -450,12 +511,12 @@ export default function CreateTestPage() {
     setState((s) => ({ ...s, ...patch }));
   };
 
-  // Fetch datasets
+  // Fetch datasets (with fallback)
   const { data: datasetsData, isLoading: loadingDatasets } = useQuery({
     queryKey: ["lab-datasets"],
     queryFn: getDatasets,
   });
-  const datasets = datasetsData?.datasets ?? [];
+  const datasets = datasetsData?.datasets?.length ? datasetsData.datasets : FALLBACK_DATASETS;
 
   // Fetch completed runs for retry picker
   const { data: runsData } = useQuery({
@@ -500,7 +561,7 @@ export default function CreateTestPage() {
     try {
       const numSteps = state.stepMode === "continuous"
         ? 1
-        : Math.max(1, Math.ceil(state.totalQuestions / state.questionsPerStep));
+        : Math.max(1, Math.ceil(state.totalQuestions / (state.questionsPerAgent * state.concurrency)));
 
       const req: CreateRunRequest = {
         name: state.name.trim(),
