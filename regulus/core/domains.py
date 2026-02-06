@@ -83,7 +83,15 @@ DOMAIN_DEFINITIONS: Dict[str, dict] = {
             "no_hallucination": "No fabricated objects, people, laws, or facts",
             "factual_claim_tagged": (
                 "If TYPE is [FACT], tag as [FACTUAL DATA REQUIRED: UNCONFIRMED] "
-                "and list specific facts needing verification"
+                "and classify the fact subtype:\n"
+                "[SUBTYPE: STATISTIC] — numbers, production data, percentages\n"
+                "[SUBTYPE: RANKING] — most/least/first/last comparisons\n"
+                "[SUBTYPE: QUANTITY] — how many/how much\n"
+                "[SUBTYPE: CURRENT_STATE] — who/what is currently...\n"
+                "[SUBTYPE: DATE] — when did, what year\n"
+                "[SUBTYPE: NAME] — who is, birth name, real name\n"
+                "[SUBTYPE: DEFINITION] — what is, meaning of\n"
+                "Then list specific facts needing verification."
             ),
         },
         "threshold": 60,
@@ -122,8 +130,18 @@ DOMAIN_DEFINITIONS: Dict[str, dict] = {
             "factual_claim_tagged": (
                 "If TYPE is [FACT], explicitly state:\n"
                 "[FACTUAL DATA REQUIRED: UNCONFIRMED]\n"
-                "- Fact 1: <specific claim needing verification>\n"
-                "- Fact 2: <specific claim needing verification>\n"
+                "[SUBTYPE: STATISTIC/RANKING/QUANTITY/CURRENT_STATE/DATE/NAME/DEFINITION]\n"
+                "Choose the subtype that best matches:\n"
+                "- STATISTIC: numbers, production, percentages, rates\n"
+                "- RANKING: most/least/first/last/top/biggest\n"
+                "- QUANTITY: how many, how much, count\n"
+                "- CURRENT_STATE: who is currently, what is now\n"
+                "- DATE: when did, what year\n"
+                "- NAME: who is, birth name, real name\n"
+                "- DEFINITION: what is, meaning of\n\n"
+                "Then list specific facts needing verification:\n"
+                "- Fact 1: <claim>\n"
+                "- Fact 2: <claim>\n"
                 "If TYPE is not [FACT], state: [NO FACTUAL VERIFICATION NEEDED]"
             ),
         },

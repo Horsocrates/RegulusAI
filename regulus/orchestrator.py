@@ -883,16 +883,24 @@ class SocraticOrchestrator:
             ):
                 factual_data_required = True
 
-                # Quick confidence check: does the model already know this?
-                factual_confidence = await self._assess_factual_confidence(query, content)
-                logger.info("D1 factual confidence: %d/100", factual_confidence)
+                # Classify fact subtype from D1 content and query
+                fact_subtype = self._classify_fact_subtype(query, content)
+                logger.info("D1 detected factual question — subtype: %s", fact_subtype)
 
-                if factual_confidence < 80:
-                    logger.info("Confidence < 80 — searching external sources for D2")
+                if fact_subtype in ("statistic", "ranking", "quantity", "current_state"):
+                    # Statistics, rankings, quantities, current holders —
+                    # Model is unreliable on these. ALWAYS search.
+                    logger.info("Subtype %s — forcing source search", fact_subtype)
                     source_context = await self._search_sources_for_query(query)
-                else:
-                    logger.info("Confidence >= 80 — skipping source search, model knows this")
+                elif fact_subtype in ("date", "definition"):
+                    # Dates and definitions — model usually knows these.
+                    # Skip search, let D2-D5 reasoning handle it.
+                    logger.info("Subtype %s — skipping search, model reliable", fact_subtype)
                     source_context = ""
+                else:
+                    # "name", "event", "unknown" — search to be safe
+                    logger.info("Subtype %s — searching for safety", fact_subtype)
+                    source_context = await self._search_sources_for_query(query)
 
             # D2: inject source context if factual data was required
             if domain == "D2" and factual_data_required and source_context:
@@ -1133,39 +1141,113 @@ class SocraticOrchestrator:
     # Proactive source lookup for factual questions
     # ----------------------------------------------------------
 
-    async def _assess_factual_confidence(self, query: str, d1_content: str) -> int:
+    def _classify_fact_subtype(self, query: str, d1_content: str) -> str:
         """
-        Quick LLM check: how confident is the model about this factual claim?
+        Classify what KIND of factual data is needed — no LLM call, pure heuristics.
 
-        Returns confidence 0-100. If >= 80, skip external source search.
-        Only called when D1 tags [FACTUAL DATA REQUIRED].
+        Returns one of:
+        - "statistic"     — numbers, percentages, amounts, production data
+        - "ranking"       — most/least/first/last/top/biggest/smallest
+        - "quantity"      — how many, how much, population, revenue
+        - "current_state" — who is the current..., what is the current...
+        - "date"          — when did, what year, what date
+        - "name"          — who is, what is the name of, birth name
+        - "definition"    — what is, what does X mean
+        - "event"         — what happened, did X happen
+        - "unknown"       — can't classify
 
-        This saves expensive API calls for facts the model already knows well
-        (e.g. "birth name of Peso Pluma" — Claude knows this).
+        Heuristic-only: fast, deterministic, no API cost.
         """
-        prompt = f"""A question requires factual verification:
+        q = query.lower().strip()
+        content_lower = d1_content.lower()
 
-Question: {query}
+        # RANKING indicators — ALWAYS unreliable
+        ranking_keywords = [
+            "most", "least", "largest", "smallest", "biggest",
+            "highest", "lowest", "top", "best", "worst",
+            "first", "last", "oldest", "newest", "youngest",
+            "leading", "primary", "dominant", "major",
+            "number one", "#1", "ranks", "ranking",
+        ]
+        if any(kw in q for kw in ranking_keywords):
+            return "ranking"
 
-D1 Analysis: {d1_content[:500]}
+        # STATISTIC indicators — ALWAYS unreliable
+        statistic_keywords = [
+            "how much", "how many", "percentage", "percent",
+            "production", "produces", "output", "volume",
+            "revenue", "gdp", "population", "rate",
+            "average", "median", "total", "annual",
+            "per capita", "growth", "decline", "increase",
+            "statistics", "data", "figures", "numbers",
+        ]
+        if any(kw in q for kw in statistic_keywords):
+            return "statistic"
 
-Rate your confidence (0-100) that you can answer this question correctly
-from your training data alone, WITHOUT external source lookup.
+        # QUANTITY — close to statistic
+        quantity_keywords = [
+            "how many", "how much", "count", "number of",
+            "amount", "quantity", "size of", "length of",
+            "weight of", "height of", "distance",
+        ]
+        if any(kw in q for kw in quantity_keywords):
+            return "quantity"
 
-Consider:
-- Is this a well-known fact? (celebrity names, historical dates, geography → high)
-- Is this obscure or recent? (niche statistics, events after 2024 → low)
-- Could your training data be wrong? (frequently confused facts → lower)
+        # CURRENT STATE — changes over time, unreliable
+        current_keywords = [
+            "current", "currently", "now", "today",
+            "who is the", "what is the current",
+            "as of", "present", "latest", "recent",
+            "still", "anymore",
+        ]
+        if any(kw in q for kw in current_keywords):
+            return "current_state"
 
-Respond with ONLY a number 0-100, nothing else."""
+        # DATE — model usually reliable
+        date_keywords = [
+            "when did", "when was", "what year",
+            "what date", "born in", "died in",
+            "founded in", "established in",
+            "which year", "which century",
+        ]
+        if any(kw in q for kw in date_keywords):
+            return "date"
 
-        try:
-            response = await self.llm.generate(prompt)
-            # Parse number from response
-            score = int(''.join(c for c in response.strip() if c.isdigit())[:3])
-            return max(0, min(100, score))
-        except Exception:
-            return 50  # Default: uncertain, do the search
+        # DEFINITION — model reliable
+        definition_keywords = [
+            "what is a ", "what is an ", "what does",
+            "define ", "definition of", "meaning of",
+            "what are ", "explain what",
+        ]
+        if any(kw in q for kw in definition_keywords):
+            return "definition"
+
+        # NAME — sometimes reliable, sometimes not
+        name_keywords = [
+            "birth name", "real name", "full name",
+            "maiden name", "original name", "stage name",
+            "who wrote", "who created", "who invented",
+            "who discovered", "who founded", "who directed",
+            "named after", "what is the name",
+        ]
+        if any(kw in q for kw in name_keywords):
+            return "name"
+
+        # EVENT
+        event_keywords = [
+            "what happened", "did it", "has it",
+            "was there", "were there",
+        ]
+        if any(kw in q for kw in event_keywords):
+            return "event"
+
+        # Check D1 content for additional signals
+        if any(kw in content_lower for kw in ["statistic", "ranking", "data needed", "numbers"]):
+            return "statistic"
+        if any(kw in content_lower for kw in ["current holder", "current state", "may have changed"]):
+            return "current_state"
+
+        return "unknown"
 
     async def _search_sources_for_query(self, query: str) -> str:
         """
