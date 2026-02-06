@@ -1316,6 +1316,80 @@ async def lab_compare_runs(run_id: int, source_run_id: int):
     }
 
 
+def _classify_failure(failure_reason: str | None, result) -> str:
+    """Classify a failure by pattern for error aggregation."""
+    if not failure_reason:
+        if not result.valid:
+            return "INVALID_REASONING"
+        if result.correct is False:
+            return "INCORRECT_ANSWER"
+        return "UNKNOWN"
+
+    reason_lower = failure_reason.lower()
+
+    if "d1" in reason_lower or "recognition" in reason_lower:
+        return "D1_RECOGNITION_ERROR"
+    elif "d2" in reason_lower or "clarification" in reason_lower:
+        return "D2_CLARIFICATION_ERROR"
+    elif "d3" in reason_lower or "framework" in reason_lower:
+        return "D3_FRAMEWORK_ERROR"
+    elif "d4" in reason_lower or "comparison" in reason_lower:
+        return "D4_COMPARISON_ERROR"
+    elif "d5" in reason_lower or "inference" in reason_lower:
+        return "D5_INFERENCE_ERROR"
+    elif "d6" in reason_lower or "reflection" in reason_lower:
+        return "D6_REFLECTION_ERROR"
+    elif "source" in reason_lower or "search" in reason_lower or "verif" in reason_lower:
+        return "SOURCE_VERIFICATION_FAILED"
+    elif "timeout" in reason_lower or "timed out" in reason_lower:
+        return "TIMEOUT"
+    elif "contradict" in reason_lower:
+        return "SELF_CONTRADICTION"
+    elif "hallucin" in reason_lower:
+        return "HALLUCINATION"
+    elif "error:" in reason_lower:
+        return "RUNTIME_ERROR"
+
+    return "OTHER: " + failure_reason[:50]
+
+
+@app.get("/api/lab/runs/{run_id}/error-patterns")
+async def lab_error_patterns(run_id: int):
+    """Group failed results by error type for analysis."""
+    db = get_lab_db()
+    failed_results = db.get_run_results_filtered(run_id, passed=False)
+
+    if not failed_results:
+        return {"patterns": [], "total_failed": 0}
+
+    pattern_map: dict[str, list] = {}
+
+    for r in failed_results:
+        pattern = _classify_failure(r.failure_reason, r)
+        if pattern not in pattern_map:
+            pattern_map[pattern] = []
+        pattern_map[pattern].append({
+            "result_id": r.id,
+            "question": r.question[:100],
+            "failure_reason": r.failure_reason,
+            "time_seconds": r.time_seconds,
+        })
+
+    patterns = []
+    for pattern_type, items in sorted(pattern_map.items(), key=lambda x: -len(x[1])):
+        patterns.append({
+            "type": pattern_type,
+            "count": len(items),
+            "percentage": round(len(items) / len(failed_results) * 100, 1),
+            "questions": items,
+        })
+
+    return {
+        "patterns": patterns,
+        "total_failed": len(failed_results),
+    }
+
+
 @app.get("/api/lab/reports")
 async def lab_list_reports():
     """List all generated reports."""
