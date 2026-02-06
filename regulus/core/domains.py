@@ -149,7 +149,11 @@ DOMAIN_DEFINITIONS: Dict[str, dict] = {
                 "  RISK: Order of operations, sign errors\n\n"
                 "Example for logic puzzle: APPROACH: constraint satisfaction\n"
                 "  STEPS: 1) List all constraints 2) Eliminate impossibilities 3) Find unique solution\n"
-                "  RISK: Missing a constraint, contradictory assumptions"
+                "  RISK: Missing a constraint, contradictory assumptions\n\n"
+                "Example for boolean/nested expression: APPROACH: inside-out evaluation\n"
+                "  STEPS: 1) Find innermost parentheses 2) Evaluate 3) Replace with result 4) Repeat\n"
+                "  RISK: Losing track of nesting level, flipping not/and/or\n"
+                "  NOTE: This is MECHANICAL, not complex. 10 nesting levels = 10 simple steps."
             ),
             "no_hallucination": (
                 "Verify: does this object/concept/entity actually exist as described? "
@@ -252,7 +256,10 @@ DOMAIN_DEFINITIONS: Dict[str, dict] = {
                 "Use the APPROACH identified in D1 as the framework.\n"
                 "If D1 said APPROACH: state tracking → apply state tracking.\n"
                 "If D1 said APPROACH: constraint satisfaction → apply constraint elimination.\n"
-                "Name the framework explicitly."
+                "If D1 said APPROACH: inside-out evaluation → evaluate innermost first, work outward.\n"
+                "Name the framework explicitly.\n"
+                "IMPORTANT: Nested expressions (boolean, math, brackets) are NOT 'too complex'. "
+                "They are mechanical — each nesting level is one simple step."
             ),
             "no_category_error": "No type mismatches or category errors in comparisons",
             "connections_valid": "Logical/causal connections between elements are justified",
@@ -281,6 +288,17 @@ DOMAIN_DEFINITIONS: Dict[str, dict] = {
             "no_contradiction": "No internal contradictions in the reasoning chain",
             "process_complete": "No missing steps — all necessary reasoning is present",
             "steps_justified": "Each reasoning step is supported, no unsupported leaps",
+            "calculation_shown": (
+                "If applicable, explicit calculation with steps shown. Each step traceable.\n"
+                "For nested expressions: evaluate ONE level per step, show intermediate result.\n"
+                "Example: not(True and not(False or True))\n"
+                "  Step 1: (False or True) = True\n"
+                "  Step 2: not(True) = False\n"
+                "  Step 3: (True and False) = False\n"
+                "  Step 4: not(False) = True\n"
+                "  Answer: True\n"
+                "NEVER skip steps. NEVER say 'too complex'. One level at a time."
+            ),
         },
         "threshold": 60,
         "max_probes": 2,
@@ -296,6 +314,17 @@ DOMAIN_DEFINITIONS: Dict[str, dict] = {
             "steps_justified": (
                 "For each reasoning step, what is the justification? "
                 "Identify any unsupported logical leaps."
+            ),
+            "calculation_shown": (
+                "Show your work: each step with intermediate results.\n"
+                "For nested expressions (boolean, math, brackets):\n"
+                "1. Find the INNERMOST parentheses\n"
+                "2. Evaluate ONLY that sub-expression\n"
+                "3. Replace it with the result\n"
+                "4. Write out the FULL expression with the replacement\n"
+                "5. Repeat until no parentheses remain\n\n"
+                "You MUST show the full expression after each reduction.\n"
+                "This is mechanical — do NOT skip ahead or estimate."
             ),
         },
     },
@@ -346,7 +375,9 @@ DOMAIN_DEFINITIONS: Dict[str, dict] = {
                 "- If facts were CONFIRMED or CONFIRMED BY KNOWLEDGE, state them directly.\n"
                 "- NEVER say 'cannot determine' — if you can reason through it, do it.\n"
                 "- NEVER say 'computationally impractical' — break it into steps.\n"
-                "- No hedging, no meta-commentary."
+                "- No hedging, no meta-commentary.\n"
+                "- For boolean/nested evaluation: state the final computed value.\n"
+                "  If you evaluated step by step in D4, the answer IS the final reduction."
             ),
         },
     },
