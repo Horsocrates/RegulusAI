@@ -875,8 +875,6 @@ class SocraticOrchestrator:
             )
 
             # D1 check: detect if factual data is required
-            # Check for both old format [FACTUAL DATA REQUIRED] and new [FACTUAL DATA REQUIRED: UNCONFIRMED]
-            # Also check for TYPE: [FACT]
             content_upper = content.upper()
             if domain == "D1" and (
                 "[FACTUAL DATA REQUIRED" in content_upper or
@@ -884,9 +882,17 @@ class SocraticOrchestrator:
                 "[FACT]" in content_upper
             ):
                 factual_data_required = True
-                logger.info("D1 detected factual question - searching sources for D2")
-                # Proactively search for sources
-                source_context = await self._search_sources_for_query(query)
+
+                # Quick confidence check: does the model already know this?
+                factual_confidence = await self._assess_factual_confidence(query, content)
+                logger.info("D1 factual confidence: %d/100", factual_confidence)
+
+                if factual_confidence < 80:
+                    logger.info("Confidence < 80 — searching external sources for D2")
+                    source_context = await self._search_sources_for_query(query)
+                else:
+                    logger.info("Confidence >= 80 — skipping source search, model knows this")
+                    source_context = ""
 
             # D2: inject source context if factual data was required
             if domain == "D2" and factual_data_required and source_context:
@@ -1126,6 +1132,40 @@ class SocraticOrchestrator:
     # ----------------------------------------------------------
     # Proactive source lookup for factual questions
     # ----------------------------------------------------------
+
+    async def _assess_factual_confidence(self, query: str, d1_content: str) -> int:
+        """
+        Quick LLM check: how confident is the model about this factual claim?
+
+        Returns confidence 0-100. If >= 80, skip external source search.
+        Only called when D1 tags [FACTUAL DATA REQUIRED].
+
+        This saves expensive API calls for facts the model already knows well
+        (e.g. "birth name of Peso Pluma" — Claude knows this).
+        """
+        prompt = f"""A question requires factual verification:
+
+Question: {query}
+
+D1 Analysis: {d1_content[:500]}
+
+Rate your confidence (0-100) that you can answer this question correctly
+from your training data alone, WITHOUT external source lookup.
+
+Consider:
+- Is this a well-known fact? (celebrity names, historical dates, geography → high)
+- Is this obscure or recent? (niche statistics, events after 2024 → low)
+- Could your training data be wrong? (frequently confused facts → lower)
+
+Respond with ONLY a number 0-100, nothing else."""
+
+        try:
+            response = await self.llm.generate(prompt)
+            # Parse number from response
+            score = int(''.join(c for c in response.strip() if c.isdigit())[:3])
+            return max(0, min(100, score))
+        except Exception:
+            return 50  # Default: uncertain, do the search
 
     async def _search_sources_for_query(self, query: str) -> str:
         """
