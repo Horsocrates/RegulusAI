@@ -60,7 +60,7 @@ class CostEstimate:
 
 def get_pricing(provider: str, model: Optional[str] = None) -> dict:
     """Get pricing for a provider/model."""
-    provider_pricing = PRICING.get(provider, PRICING["claude"])
+    provider_pricing = PRICING.get(provider, PRICING["openai"])
     if model and model in provider_pricing:
         return provider_pricing[model]
     return provider_pricing["default"]

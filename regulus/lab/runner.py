@@ -108,7 +108,7 @@ class LabRunner:
         total_questions: int,
         num_steps: int,
         dataset: str = "simpleqa",
-        provider: str = "claude",
+        provider: str = "openai",
         concurrency: int = 5,
         source_run_id: Optional[int] = None,
         model_version: str = "",
