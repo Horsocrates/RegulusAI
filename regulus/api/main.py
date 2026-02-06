@@ -215,7 +215,7 @@ async def verify(request: VerifyRequest):
             client = OpenAIClient(api_key=api_key)
 
         orch = SocraticOrchestrator(llm_client=client)
-        result = await with_timeout(orch.process_query(request.query), timeout_seconds=120)
+        result = await with_timeout(orch.process_query(request.query), timeout_seconds=240)
 
         # Convert domain_records to steps
         steps = []
@@ -271,7 +271,7 @@ async def battle(request: VerifyRequest):
         # 2. Guarded response via SocraticOrchestrator
         guarded_start = time.time()
         orch = SocraticOrchestrator(llm_client=client)
-        result = await with_timeout(orch.process_query(request.query), timeout_seconds=120)
+        result = await with_timeout(orch.process_query(request.query), timeout_seconds=240)
         guarded_time = time.time() - guarded_start
 
         # 3. Get guarded answer (prefer final_answer, fallback to d5_content)
@@ -323,7 +323,7 @@ async def dual(request: VerifyRequest):
                 client = OpenAIClient(api_key=api_key)
 
             orch = SocraticOrchestrator(llm_client=client)
-            result = await with_timeout(orch.process_query(request.query), timeout_seconds=120)
+            result = await with_timeout(orch.process_query(request.query), timeout_seconds=240)
 
             # Prefer final_answer, fallback to d5_content
             answer = result.final_answer or result.d5_content
