@@ -995,6 +995,64 @@ class SocraticOrchestrator:
                     "NEVER answer from memory — ALWAYS derive from state transitions."
                 )
 
+            # D1 check: detect structurally unsolvable tasks
+            if domain == "D1":
+                q_lower = query.lower()
+
+                # SVG/visual tasks — model cannot render shapes mentally
+                svg_keywords = ["svg", "shape", "draw", "visual", "render",
+                               "image", "picture", "diagram", "pixel"]
+                if any(kw in q_lower for kw in svg_keywords) or "<svg" in query:
+                    accumulated_context.append(
+                        "[TASK LIMITATION: VISUAL]\n"
+                        "This task requires visual/spatial reasoning on rendered shapes.\n"
+                        "LLM limitation: cannot mentally render SVG/images.\n"
+                        "APPROACH: Parse SVG coordinates mathematically if possible.\n"
+                        "Extract x,y positions, widths, heights — compute spatial relations numerically.\n"
+                        "Do NOT guess — if you cannot compute it, state low confidence."
+                    )
+                    logger.info("D1: visual/SVG task detected — mathematical parsing mode")
+
+                # Caption contest — subjective, no single right answer
+                caption_keywords = ["caption contest", "funniest", "which caption",
+                                   "most humorous", "best joke"]
+                if any(kw in q_lower for kw in caption_keywords):
+                    accumulated_context.append(
+                        "[TASK LIMITATION: SUBJECTIVE]\n"
+                        "This is a subjective task (humor/preference). No single correct answer.\n"
+                        "APPROACH: Analyze each option systematically using humor framework.\n"
+                        "Pick the option with strongest comedic structure, but confidence = medium max."
+                    )
+                    logger.info("D1: subjective/caption task — capped confidence")
+
+                # Morphology/linguistics — pattern extraction from examples
+                morph_keywords = ["morphology", "morpheme", "translate", "numeral",
+                                 "pluralize", "conjugat", "inflect", "suffix", "prefix",
+                                 "xinka", "mansi", "swahili"]
+                if any(kw in q_lower for kw in morph_keywords):
+                    is_reasoning = True  # Force reasoning mode — no fact-checking
+                    accumulated_context.append(
+                        "[TASK TYPE: PATTERN EXTRACTION]\n"
+                        "This is a linguistic pattern task. All information is in the prompt.\n"
+                        "Do NOT search for external sources. Do NOT say 'cannot verify'.\n"
+                        "APPROACH: Extract pattern from examples -> apply to new input.\n"
+                        "Treat this as a PURE REASONING task, like a math puzzle."
+                    )
+                    logger.info("D1: morphology/linguistics — pattern extraction mode")
+
+                # Chained math — cascade risk
+                chain_keywords = ["let x be the answer", "let a be", "let b be",
+                                 "using the answer from", "the result of q1"]
+                if any(kw in q_lower for kw in chain_keywords):
+                    accumulated_context.append(
+                        "[TASK WARNING: CHAINED COMPUTATION]\n"
+                        "This task has dependent sub-questions. Error in step 1 cascades.\n"
+                        "APPROACH: Solve each sub-question INDEPENDENTLY first.\n"
+                        "After each step, VERIFY the intermediate result before proceeding.\n"
+                        "Show full state after each sub-question."
+                    )
+                    logger.info("D1: chained computation — cascade risk flagged")
+
             # D2: inject source context if factual data was required
             if domain == "D2" and factual_data_required and source_context:
                 content = content + "\n\n" + source_context
