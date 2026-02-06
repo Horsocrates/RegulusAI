@@ -63,6 +63,7 @@ from .llm.source_verifier import (
     GOOGLE_API_KEY,
 )
 from .prompts.correction import get_fix_prompt
+from .core.humor import detect_sarcasm_heuristic, SARCASM_ANALYSIS_PROMPT
 
 logger = logging.getLogger(__name__)
 
@@ -957,10 +958,44 @@ class SocraticOrchestrator:
                     "If the problem is solvable, solve it. Show your work.]"
                 )
 
+            # D1 check: detect humor/sarcasm task
+            if domain == "D1" and any(kw in content.lower() for kw in [
+                "sarcas", "sarcasm", "irony", "ironic", "tone",
+                "sentiment", "humor", "humour", "satiric", "mocking",
+                "rhetorical"
+            ]):
+                # Quick heuristic pre-scan
+                heuristic_result = detect_sarcasm_heuristic(query)
+                logger.info(
+                    "Humor module: heuristic score=%.2f, sarcastic=%s",
+                    heuristic_result.score, heuristic_result.is_sarcastic
+                )
+                accumulated_context.append(
+                    f"[HUMOR MODULE PRE-SCAN]\n"
+                    f"Heuristic score: {heuristic_result.score}\n"
+                    f"Markers: {heuristic_result.markers_evidence}\n"
+                    f"Preliminary: {heuristic_result.explanation}\n"
+                    f"[USE 5-MARKER FRAMEWORK for full analysis in D3-D4]"
+                )
+
             # D2: inject source context if factual data was required
             if domain == "D2" and factual_data_required and source_context:
                 content = content + "\n\n" + source_context
                 logger.info("D2 enhanced with source context (%d chars)", len(source_context))
+
+            # D3: inject sarcasm framework if humor task
+            if domain == "D3" and "[HUMOR MODULE PRE-SCAN]" in "\n".join(accumulated_context):
+                content = content + (
+                    "\n\n[SARCASM ANALYSIS FRAMEWORK]\n"
+                    "Apply the 5-marker framework:\n"
+                    "M1 Polarity inversion (weight 0.30): Positive words in negative context?\n"
+                    "M2 Hyperbole (weight 0.20): Disproportionate exaggeration?\n"
+                    "M3 Incongruity (weight 0.25): Contradicts facts/common sense?\n"
+                    "M4 Pragmatic markers (weight 0.10): oh really, sure, wow, totally?\n"
+                    "M5 Sincerity violation (weight 0.15): Can speaker genuinely believe this?\n"
+                    "Score each marker, then compute weighted sum."
+                )
+                logger.info("D3 enhanced with sarcasm analysis framework")
 
             # Evaluate and probe, collecting ALL versions for trisection
             record = DomainPassRecord(domain=domain, attempts=1, content=content)

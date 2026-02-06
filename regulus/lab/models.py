@@ -42,6 +42,7 @@ class Result:
     time_seconds: float = 0.0
     input_tokens: int = 0
     output_tokens: int = 0
+    reasoning_json: str = ""
     created_at: str = ""
 
     def to_dict(self) -> dict:
@@ -55,6 +56,13 @@ class Result:
     def is_passed(self) -> bool:
         """Result passes if it is valid and judged correct."""
         return self.valid and self.correct is True
+
+    @property
+    def reasoning_chain(self) -> list[dict]:
+        """Parse reasoning_json into list of domain dicts."""
+        if not self.reasoning_json:
+            return []
+        return json.loads(self.reasoning_json)
 
 
 @dataclass
@@ -254,6 +262,10 @@ class LabDB:
             pass
         try:
             conn.execute("ALTER TABLE runs ADD COLUMN model_version TEXT DEFAULT ''")
+        except:
+            pass
+        try:
+            conn.execute("ALTER TABLE results ADD COLUMN reasoning_json TEXT DEFAULT ''")
         except:
             pass
         try:
@@ -531,6 +543,7 @@ class LabDB:
             time_seconds=row["time_seconds"],
             input_tokens=row["input_tokens"] if "input_tokens" in keys else 0,
             output_tokens=row["output_tokens"] if "output_tokens" in keys else 0,
+            reasoning_json=row["reasoning_json"] if "reasoning_json" in keys else "",
             created_at=row["created_at"],
         )
 
@@ -543,8 +556,9 @@ class LabDB:
         cursor.execute("""
             INSERT INTO results (step_id, question, expected, answer, valid, correct,
                                  informative, judge_reason, failure_reason, corrections,
-                                 time_seconds, input_tokens, output_tokens, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                 time_seconds, input_tokens, output_tokens,
+                                 reasoning_json, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             step_id,
             result.question,
@@ -559,6 +573,7 @@ class LabDB:
             result.time_seconds,
             result.input_tokens,
             result.output_tokens,
+            result.reasoning_json,
             now,
         ))
 

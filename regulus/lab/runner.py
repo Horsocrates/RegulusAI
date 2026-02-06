@@ -1,6 +1,7 @@
 """Lab runner for stepped benchmark execution."""
 
 import asyncio
+import json
 import os
 import time
 import traceback
@@ -336,6 +337,25 @@ class LabRunner:
                                 },
                             ))
 
+                    # Serialize full domain reasoning chain
+                    reasoning_chain = []
+                    for rec in getattr(output, 'domain_records', []):
+                        entry = {
+                            "domain": rec.domain,
+                            "weight": rec.final_weight,
+                            "passed": rec.passed,
+                            "attempts": rec.attempts,
+                            "content": rec.content,
+                            "probes": [
+                                {"criterion": p.criterion,
+                                 "weight_before": p.weight_before,
+                                 "weight_after": p.weight_after}
+                                for p in rec.probes_used
+                            ],
+                        }
+                        reasoning_chain.append(entry)
+                    reasoning_json = json.dumps(reasoning_chain, ensure_ascii=False)
+
                     # Estimate tokens
                     input_tokens = estimate_tokens_from_text(item.problem) + 2000
                     output_tokens = estimate_tokens_from_text(output.final_answer or "") + 3000
@@ -345,7 +365,7 @@ class LabRunner:
                     for rstep in getattr(output, 'reasoning_steps', []):
                         reasoning_steps.append({
                             "domain": rstep.get("domain", ""),
-                            "content": rstep.get("content", "")[:500],
+                            "content": rstep.get("content", ""),
                         })
 
                     # Determine failure reason
@@ -369,6 +389,7 @@ class LabRunner:
                         time_seconds=elapsed,
                         input_tokens=input_tokens,
                         output_tokens=output_tokens,
+                        reasoning_json=reasoning_json,
                     )
                     result._reasoning_steps = reasoning_steps
                     result._agent_id = agent_id
