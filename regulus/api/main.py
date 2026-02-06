@@ -1132,6 +1132,78 @@ async def lab_export_run(run_id: int):
     }
 
 
+@app.get("/api/lab/datasets")
+async def lab_list_datasets():
+    """List available benchmark datasets with metadata."""
+    datasets = []
+
+    # SimpleQA
+    try:
+        from regulus.data.simpleqa import (
+            total_count as simpleqa_total,
+            get_categories as simpleqa_categories,
+        )
+        datasets.append({
+            "id": "simpleqa",
+            "name": "SimpleQA",
+            "description": "Factual question answering benchmark by OpenAI",
+            "total_questions": simpleqa_total(),
+            "categories": simpleqa_categories(),
+            "type": "factual",
+        })
+    except Exception:
+        pass
+
+    # BBEH
+    try:
+        from regulus.data.bbeh import (
+            total_count as bbeh_total,
+            get_categories as bbeh_categories,
+        )
+        datasets.append({
+            "id": "bbeh",
+            "name": "BBEH (Big-Bench Extra Hard)",
+            "description": "Complex reasoning benchmark by Google DeepMind",
+            "total_questions": bbeh_total(),
+            "categories": bbeh_categories(),
+            "type": "reasoning",
+        })
+    except Exception:
+        pass
+
+    return {"datasets": datasets}
+
+
+@app.get("/api/lab/datasets/{dataset_id}/sample")
+async def lab_dataset_sample(
+    dataset_id: str,
+    n: int = Query(default=5, ge=1, le=50),
+    category: str | None = Query(default=None),
+):
+    """Get sample questions from a dataset (for preview in wizard)."""
+    import random as _random
+
+    if dataset_id == "simpleqa":
+        items = load_simpleqa(n=None, topic_filter=category)
+        rng = _random.Random(42)
+        sample = rng.sample(items, min(n, len(items)))
+        return [
+            {"id": i, "question": item.problem, "expected": item.answer, "category": item.topic}
+            for i, item in enumerate(sample)
+        ]
+    elif dataset_id == "bbeh":
+        from regulus.data.bbeh import load_dataset as load_bbeh_ds
+        items = load_bbeh_ds(n=None)
+        rng = _random.Random(42)
+        sample = rng.sample(items, min(n, len(items)))
+        return [
+            {"id": i, "question": item.problem[:300], "expected": item.answer, "category": "reasoning"}
+            for i, item in enumerate(sample)
+        ]
+    else:
+        raise HTTPException(status_code=404, detail=f"Dataset '{dataset_id}' not found")
+
+
 @app.get("/api/lab/runs/{run_id}/results/passed")
 async def lab_get_passed_results(run_id: int):
     """Get all passed results for a run."""

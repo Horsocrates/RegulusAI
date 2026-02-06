@@ -144,6 +144,16 @@ def load_dataset(
     return items
 
 
+def total_count() -> int:
+    """Return total number of questions in dataset."""
+    return len(load_dataset())
+
+
+def get_categories() -> list[str]:
+    """Return list of task categories (BBEH is a single combined mini set)."""
+    return ["reasoning"]
+
+
 if __name__ == "__main__":
     # Test loading
     items = load_dataset(n=5)

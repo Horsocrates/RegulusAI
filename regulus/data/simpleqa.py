@@ -83,3 +83,13 @@ def get_topics() -> dict[str, int]:
         t = item.topic or "Unknown"
         topics[t] = topics.get(t, 0) + 1
     return dict(sorted(topics.items(), key=lambda x: -x[1]))
+
+
+def total_count() -> int:
+    """Return total number of questions in dataset."""
+    return len(load_dataset())
+
+
+def get_categories() -> list[str]:
+    """Return sorted list of unique topics."""
+    return sorted(get_topics().keys())
