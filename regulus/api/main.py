@@ -58,6 +58,7 @@ class VerifyResponse(BaseModel):
     violations: list[str]
     steps: list[StepModel]
     branches_explored: int = 1
+    confidence_level: str = ""
     time_seconds: float
     version: str = "1.0a"
 
@@ -73,6 +74,7 @@ class BattleResponse(BaseModel):
     guarded_valid: bool
     guarded_corrections: int
     guarded_violations: list[str]
+    guarded_confidence: str = ""
     guarded_time: float
     comparison: str  # "MATCH", "CORRECTED", "BLOCKED"
 
@@ -80,9 +82,11 @@ class DualResponse(BaseModel):
     query: str
     claude_answer: str | None
     claude_valid: bool
+    claude_confidence: str = ""
     claude_time: float
     openai_answer: str | None
     openai_valid: bool
+    openai_confidence: str = ""
     openai_time: float
     agreement: bool  # Согласны ли модели
 
@@ -243,6 +247,7 @@ async def verify(request: VerifyRequest):
             violations=violations,
             steps=steps,
             branches_explored=len(result.domain_records),
+            confidence_level=result.confidence_level,
             time_seconds=time.time() - start_time,
             version="1.0a",
         )
@@ -301,6 +306,7 @@ async def battle(request: VerifyRequest):
             guarded_valid=result.is_valid,
             guarded_corrections=result.total_probes,
             guarded_violations=violations,
+            guarded_confidence=result.confidence_level,
             guarded_time=guarded_time,
             comparison=comparison,
         )
@@ -334,12 +340,14 @@ async def dual(request: VerifyRequest):
             return {
                 "answer": answer,
                 "valid": valid,
+                "confidence": result.confidence_level,
                 "time": time.time() - start
             }
         except Exception as e:
             return {
                 "answer": f"Error: {str(e)}",
                 "valid": False,
+                "confidence": "",
                 "time": time.time() - start
             }
 
@@ -353,9 +361,11 @@ async def dual(request: VerifyRequest):
         query=request.query,
         claude_answer=claude_result["answer"],
         claude_valid=claude_result["valid"],
+        claude_confidence=claude_result.get("confidence", ""),
         claude_time=claude_result["time"],
         openai_answer=openai_result["answer"],
         openai_valid=openai_result["valid"],
+        openai_confidence=openai_result.get("confidence", ""),
         openai_time=openai_result["time"],
         agreement=claude_result["valid"] == openai_result["valid"]
     )

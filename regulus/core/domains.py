@@ -382,3 +382,69 @@ def check_domain_passed(domain: str, weight: int) -> bool:
     """Check if domain weight meets threshold."""
     threshold = get_domain_threshold(domain)
     return weight >= threshold
+
+
+# ============================================================
+# Confidence Level System
+# ============================================================
+
+CONFIDENCE_LEVELS = {
+    "unconfirmed": {"min": 0, "max": 49, "label": "unconfirmed"},
+    "low": {"min": 50, "max": 60, "label": "low confidence"},
+    "medium": {"min": 61, "max": 70, "label": "medium confidence"},
+    "high": {"min": 71, "max": 85, "label": "high confidence"},
+    "very_high": {"min": 86, "max": 100, "label": "very high confidence"},
+}
+
+
+def compute_confidence_score(domain_records: list) -> int:
+    """
+    Compute overall confidence score (0-100) from domain records.
+
+    Based purely on RESULTS (final domain weights), not process.
+
+    Formula:
+    - D5 (Inference) weight × 40% — this IS the answer
+    - D1-D4 average weight × 40% — reasoning chain quality
+    - D6 (Reflection) weight × 20% — self-awareness
+
+    If pipeline was interrupted (domain not passed), returns 0.
+    """
+    if not domain_records:
+        return 0
+
+    # If any domain failed to pass, pipeline should have stopped
+    # This means we have no valid result
+    for rec in domain_records:
+        if not rec.passed:
+            return 0
+
+    weights = {rec.domain: rec.final_weight for rec in domain_records}
+
+    # D5 weight (40%)
+    d5_score = weights.get("D5", 0) * 0.40
+
+    # D1-D4 average (40%)
+    d1_d4 = [weights.get(d, 0) for d in ["D1", "D2", "D3", "D4"]]
+    d1_d4_avg = sum(d1_d4) / len(d1_d4) if d1_d4 else 0
+    reasoning_score = d1_d4_avg * 0.40
+
+    # D6 weight (20%)
+    d6_score = weights.get("D6", 0) * 0.20
+
+    final = max(0, min(100, int(d5_score + reasoning_score + d6_score)))
+    return final
+
+
+def get_confidence_level(score: int) -> str:
+    """Map numeric score to confidence level label."""
+    if score < 50:
+        return "unconfirmed"
+    elif score <= 60:
+        return "low confidence"
+    elif score <= 70:
+        return "medium confidence"
+    elif score <= 85:
+        return "high confidence"
+    else:
+        return "very high confidence"

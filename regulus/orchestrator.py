@@ -46,6 +46,7 @@ from .core.domains import (
     get_domain_def, get_domain_name, get_domain_question,
     get_domain_threshold, get_domain_criteria,
     is_answer_domain, is_qualifier_domain,
+    compute_confidence_score, get_confidence_level,
 )
 from .llm.client import LLMClient
 from .llm.sensor import HeuristicSignalExtractor, LLMSignalExtractor
@@ -133,13 +134,24 @@ Here is your verified reasoning chain:
 {verified_chain}
 
 Original question: {question}
+Confidence level: {confidence_level}
 
 Now provide a clear, direct, natural-language answer to the question.
 - Be concise and informative
 - Include key facts from your analysis
 - Do NOT use Element/Role/Rule format
 - Do NOT include meta-commentary about your reasoning process
-- Answer as if you're directly responding to a person
+- Do NOT hedge or say "I cannot verify" if you found the answer in your reasoning
+- If confidence is "unconfirmed", state clearly that the answer could not be verified
+- Otherwise, state the answer directly and confidently
+- At the very end, on a new line, add confidence indicator
+
+Format for the last line:
+- If unconfirmed: "⚠️ This answer could not be verified through reliable sources."
+- If low confidence: "Confidence: low"
+- If medium confidence: "Confidence: medium"
+- If high confidence: "Confidence: high"
+- If very high confidence: "Confidence: very high"
 """
 
 
@@ -646,6 +658,7 @@ SOCRATIC_FINAL_ANSWER_PROMPT = """\
 You have completed a thorough analysis of a question. Now synthesize a clean final answer.
 
 QUESTION: {question}
+Confidence level: {confidence_level}
 
 YOUR REASONING (internal analysis):
 {full_chain}
@@ -664,8 +677,17 @@ DO NOT:
 - Include domain labels like [D1], [D5]
 - Add meta-commentary about the reasoning process
 - Use academic/technical structure headers
+- Hedge or say "I cannot verify" if you found the answer in your reasoning
 
-Write as if you're a knowledgeable person directly answering someone's question.
+If confidence is "unconfirmed", state clearly that the answer could not be verified.
+Otherwise, state the answer directly and confidently.
+
+At the very end, on a new line, add confidence indicator:
+- If unconfirmed: "⚠️ This answer could not be verified through reliable sources."
+- If low confidence: "Confidence: low"
+- If medium confidence: "Confidence: medium"
+- If high confidence: "Confidence: high"
+- If very high confidence: "Confidence: very high"
 
 FINAL ANSWER:"""
 
@@ -745,6 +767,16 @@ class SocraticResponse:
             if step.get("domain") == "D6":
                 return step.get("content")
         return None
+
+    @property
+    def confidence_score(self) -> int:
+        """Compute confidence score (0-100) from domain records."""
+        return compute_confidence_score(self.domain_records)
+
+    @property
+    def confidence_level(self) -> str:
+        """Human-readable confidence level."""
+        return get_confidence_level(self.confidence_score)
 
 
 # ============================================================
@@ -1009,8 +1041,10 @@ class SocraticOrchestrator:
         d5_record = next((r for r in domain_records if r.domain == "D5"), None)
         if d5_record:
             try:
+                conf_score = compute_confidence_score(domain_records)
+                conf_level = get_confidence_level(conf_score)
                 final_answer = await self._generate_final_answer(
-                    query, reasoning_steps
+                    query, reasoning_steps, confidence_level=conf_level
                 )
             except Exception as e:
                 logger.warning("Failed to generate final answer: %s", e)
@@ -1069,6 +1103,7 @@ class SocraticOrchestrator:
         self,
         query: str,
         steps: list[dict[str, str]],
+        confidence_level: str = "medium confidence",
     ) -> str:
         """Generate clean final answer from verified chain."""
         chain_parts = []
@@ -1082,6 +1117,7 @@ class SocraticOrchestrator:
         prompt = SOCRATIC_FINAL_ANSWER_PROMPT.format(
             question=query,
             full_chain=full_chain,
+            confidence_level=confidence_level,
         )
 
         response = await self.llm.generate(prompt=prompt)
