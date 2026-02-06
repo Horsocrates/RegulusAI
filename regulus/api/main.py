@@ -1390,6 +1390,69 @@ async def lab_error_patterns(run_id: int):
     }
 
 
+# ============================================================================
+# Archive & Leaderboard Endpoints
+# ============================================================================
+
+from regulus.lab.archive import ArchiveManager
+
+_archive_manager = None
+
+def get_archive_manager() -> ArchiveManager:
+    global _archive_manager
+    if _archive_manager is None:
+        _archive_manager = ArchiveManager()
+    return _archive_manager
+
+
+@app.post("/api/lab/runs/{run_id}/archive")
+async def lab_archive_run(run_id: int):
+    """Archive a completed run to filesystem."""
+    db = get_lab_db()
+    archive = get_archive_manager()
+    try:
+        result = archive.archive_run(db, run_id)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/lab/archive/{dataset}")
+async def lab_list_archives(dataset: str):
+    """List all archives for a dataset."""
+    archive = get_archive_manager()
+    return {"dataset": dataset, "archives": archive.list_archives(dataset)}
+
+
+@app.get("/api/lab/archive/{dataset}/{folder}/{filename}")
+async def lab_get_archive_file(dataset: str, folder: str, filename: str):
+    """Download a file from archive."""
+    from fastapi.responses import FileResponse
+    archive = get_archive_manager()
+    path = archive.get_archive_file(dataset, folder, filename)
+    if not path:
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(path)
+
+
+@app.get("/api/lab/leaderboard/{dataset}")
+async def lab_get_leaderboard(dataset: str):
+    """Get leaderboard for a dataset."""
+    archive = get_archive_manager()
+    return archive.get_leaderboard(dataset)
+
+
+@app.post("/api/lab/leaderboard/{dataset}/refresh")
+async def lab_refresh_leaderboard(dataset: str):
+    """Rebuild leaderboard from all archives."""
+    archive = get_archive_manager()
+    return archive.refresh_leaderboard(dataset)
+
+
+# ============================================================================
+# Reports Endpoints
+# ============================================================================
+
 @app.get("/api/lab/reports")
 async def lab_list_reports():
     """List all generated reports."""
