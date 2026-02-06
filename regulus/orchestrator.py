@@ -48,6 +48,7 @@ from .core.domains import (
     get_domain_threshold, get_domain_criteria,
     is_answer_domain, is_qualifier_domain,
     compute_confidence_score, get_confidence_level,
+    compute_confidence,
 )
 from .llm.client import LLMClient
 from .llm.sensor import HeuristicSignalExtractor, LLMSignalExtractor
@@ -156,7 +157,7 @@ CRITICAL RULES:
 
 Format for the last line:
 - If unconfirmed: "⚠️ This answer could not be verified through reliable sources."
-- Otherwise add: "Confidence: [low/medium/high/very high]"
+- Otherwise add: "Confidence: {confidence_level}"
 """
 
 
@@ -687,12 +688,10 @@ DO NOT:
 If confidence is "unconfirmed", state clearly that the answer could not be verified.
 Otherwise, state the answer directly and confidently.
 
-At the very end, on a new line, add confidence indicator:
-- If unconfirmed: "⚠️ This answer could not be verified through reliable sources."
-- If low confidence: "Confidence: low"
-- If medium confidence: "Confidence: medium"
-- If high confidence: "Confidence: high"
-- If very high confidence: "Confidence: very high"
+At the very end, on a new line, add the confidence indicator.
+The confidence level has been computed for you: {confidence_level}
+- If unconfirmed/very low: "⚠️ This answer could not be verified through reliable sources."
+- Otherwise: "Confidence: {confidence_level}"
 
 FINAL ANSWER:"""
 
@@ -713,6 +712,8 @@ class SocraticResponse:
     trisection_state: SocraticTrisectionState | None = None
     branches_explored: int = 1
     branch_weights: dict[int, float] | None = None
+    # Computed confidence (replaces self-report)
+    confidence: dict | None = None
 
     @property
     def is_valid(self) -> bool:
@@ -1217,15 +1218,26 @@ class SocraticOrchestrator:
             invalid_count=invalid_count,
         )
 
+        # Compute confidence from pipeline signals
+        version_counts = {d: len(nodes) for d, nodes in all_version_nodes.items()}
+        confidence = compute_confidence(
+            domain_records=domain_records,
+            version_counts=version_counts,
+            is_reasoning=is_reasoning,
+        )
+        confidence_level = confidence["level"]
+        logger.info(
+            "Confidence: %d/100 (%s) — signals: %s",
+            confidence["score"], confidence_level, confidence["signals"],
+        )
+
         # Generate final answer if we have D5 content (always synthesize)
         final_answer = None
         d5_record = next((r for r in domain_records if r.domain == "D5"), None)
         if d5_record:
             try:
-                conf_score = compute_confidence_score(domain_records)
-                conf_level = get_confidence_level(conf_score)
                 final_answer = await self._generate_final_answer(
-                    query, reasoning_steps, confidence_level=conf_level
+                    query, reasoning_steps, confidence_level=confidence_level
                 )
 
                 # Block refusals for REASONING tasks
@@ -1289,6 +1301,7 @@ class SocraticOrchestrator:
             final_answer=final_answer,
             trisection_state=trisection_state,
             branches_explored=trisection_state.branches_explored if trisection_state else 1,
+            confidence=confidence,
         )
 
     # ----------------------------------------------------------

@@ -451,6 +451,94 @@ DOMAIN_ORDER = ["D1", "D2", "D3", "D4", "D5", "D6"]
 
 
 # ============================================================
+# Computed Confidence
+# ============================================================
+
+def compute_confidence(
+    domain_records: list,
+    version_counts: dict,
+    is_reasoning: bool = False,
+) -> dict:
+    """
+    Compute confidence from PIPELINE SIGNALS, not self-report.
+
+    Signals:
+      1. First-attempt ratio: how many domains passed without probes (0.0-1.0)
+      2. Version agreement: did trisection versions agree? (0.0-1.0)
+      3. D5 weight: inference domain quality (0-100 -> 0.0-1.0)
+      4. No-refusal: final answer doesn't contain refusal phrases (0 or 1)
+
+    Returns dict with score (0-100), level (str), signals (dict).
+    """
+    # Signal 1: First-attempt ratio
+    # Domains that passed on first eval (0 probes) = model was confident AND correct
+    if domain_records:
+        first_attempt_passes = sum(
+            1 for r in domain_records if len(r.probes_used) == 0 and r.passed
+        )
+        first_attempt_ratio = first_attempt_passes / len(domain_records)
+    else:
+        first_attempt_ratio = 0.0
+
+    # Signal 2: Version agreement
+    # If trisection had 3 versions and all weighted similarly = high agreement
+    # If versions diverged wildly = low agreement
+    total_versions = sum(version_counts.get(d, 1) for d in version_counts)
+    total_domains = len(version_counts) if version_counts else 1
+    avg_versions = total_versions / total_domains if total_domains > 0 else 1
+    # Fewer versions needed = higher agreement (1 version = perfect, 4+ = disagreement)
+    version_agreement = max(0.0, min(1.0, 2.0 - avg_versions))
+
+    # Signal 3: D5 (Inference) weight
+    d5_weight = 0
+    for r in domain_records:
+        if r.domain == "D5":
+            d5_weight = r.final_weight
+            break
+    d5_signal = d5_weight / 100.0
+
+    # Signal 4: Total probes (fewer = better)
+    total_probes = sum(len(r.probes_used) for r in domain_records)
+    # 0 probes = 1.0, 6+ probes = 0.0
+    probe_penalty = max(0.0, 1.0 - (total_probes / 6.0))
+
+    # Weighted combination
+    score = (
+        first_attempt_ratio * 35
+        + version_agreement * 25
+        + d5_signal * 25
+        + probe_penalty * 15
+    )
+
+    # Clamp to 0-100
+    score = max(0, min(100, round(score)))
+
+    # Level
+    if score >= 80:
+        level = "very high"
+    elif score >= 65:
+        level = "high"
+    elif score >= 45:
+        level = "medium"
+    elif score >= 25:
+        level = "low"
+    else:
+        level = "very low"
+
+    return {
+        "score": score,
+        "level": level,
+        "signals": {
+            "first_attempt_ratio": round(first_attempt_ratio, 2),
+            "version_agreement": round(version_agreement, 2),
+            "d5_weight": d5_weight,
+            "total_probes": total_probes,
+            "probe_penalty": round(probe_penalty, 2),
+        },
+    }
+
+
+# ============================================================
 # Domain Access Functions
 # ============================================================
 
