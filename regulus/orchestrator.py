@@ -142,11 +142,10 @@ Now provide a clear, direct, natural-language answer to the question.
 CRITICAL RULES:
 - If your reasoning chain contains the answer, STATE IT DIRECTLY
 - Do NOT say "I cannot verify" or "I was unable to confirm" if you found information in your reasoning
+- Do NOT say "cannot determine" or "computationally impractical" for reasoning tasks
 - Do NOT hedge with "some sources suggest" if your reasoning chain established the fact
 - If the fact was classified as STABLE, your training knowledge IS the verification
-- Do NOT make unsupported inferences about dates/deaths to contradict your direct knowledge
-  (e.g., if you know "X won the 1877 tournament", don't infer death dates to contradict this)
-- Direct knowledge always beats constructed inferences
+- For logic puzzles and reasoning tasks: if you worked through the logic, state the answer
 - Be concise and informative
 - Include key facts from your analysis
 - Do NOT use Element/Role/Rule format
@@ -873,6 +872,8 @@ class SocraticOrchestrator:
         use_fast_path = False
         fast_path_domains = ["D1", "D2", "D5", "D6"]
 
+        is_reasoning = False  # True when TYPE is [REASONING], [QUESTION], [COMMAND]
+
         # Process each domain sequentially
         for domain in DOMAIN_ORDER:
             # Fast path: skip D3 and D4 for STABLE facts
@@ -902,8 +903,18 @@ class SocraticOrchestrator:
                 context=accumulated_context,
             )
 
-            # D1 check: detect if factual data is required
+            # D1 check: detect reasoning vs factual
             content_upper = content.upper()
+            if domain == "D1":
+                if any(tag in content_upper for tag in [
+                    "TYPE: [REASONING]", "[REASONING]",
+                    "TYPE: [QUESTION]", "TYPE: [COMMAND]",
+                    "TYPE: [OPINION]",
+                ]):
+                    is_reasoning = True
+                    logger.info("D1 detected REASONING type — disabling fact verification")
+
+            # D1 check: detect if factual data is required
             if domain == "D1" and (
                 "[FACTUAL DATA REQUIRED" in content_upper or
                 "TYPE: [FACT]" in content_upper or
@@ -936,6 +947,15 @@ class SocraticOrchestrator:
                         "Do NOT say 'cannot verify' or 'unable to confirm'. "
                         "State the answer directly from your knowledge.]"
                     )
+
+            # For REASONING tasks: tell downstream domains to reason, not verify
+            if domain == "D1" and is_reasoning:
+                accumulated_context.append(
+                    "[TASK TYPE: REASONING — This requires logical analysis, not fact verification. "
+                    "Do NOT mark anything as [UNCONFIRMED]. Do NOT search for sources. "
+                    "Do NOT say 'cannot determine' — work through the logic step by step. "
+                    "If the problem is solvable, solve it. Show your work.]"
+                )
 
             # D2: inject source context if factual data was required
             if domain == "D2" and factual_data_required and source_context:

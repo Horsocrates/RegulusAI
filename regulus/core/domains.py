@@ -148,9 +148,12 @@ DOMAIN_DEFINITIONS: Dict[str, dict] = {
             "boundaries_set": "Scope of the question is clearly delimited",
             "no_equivocation": "No term is used in multiple senses without distinction",
             "certainty_check": (
-                "Certainty level assessed: if understanding < 90%, "
-                "clarifying questions MUST be listed. Format: [CERTAINTY: X%] "
-                "If < 90%: [CLARIFICATION NEEDED: question1, question2...]"
+                "Certainty level assessed.\n"
+                "For FACT tasks: if understanding < 90%, list clarifying questions. "
+                "Format: [CERTAINTY: X%]\n"
+                "For REASONING tasks: assess whether you have enough information to solve "
+                "the problem. If all data is in the prompt, [CERTAINTY: 100%] — proceed to solve. "
+                "Do NOT lower certainty because the problem is 'complex'."
             ),
             "fact_status": (
                 "If D1 tagged [FACTUAL DATA REQUIRED: UNCONFIRMED], update status:\n"
@@ -187,12 +190,12 @@ DOMAIN_DEFINITIONS: Dict[str, dict] = {
                 "List each term and its single precise meaning here."
             ),
             "certainty_check": (
-                "Assess your certainty level (0-100%) that you fully understand:\n"
-                "- What is being asked\n"
-                "- All terms and their meanings\n"
-                "- The scope and boundaries\n"
-                "If certainty < 90%, list specific clarifying questions needed.\n"
-                "Format: [CERTAINTY: X%] [CLARIFICATIONS: q1, q2, ...]"
+                "Assess certainty:\n"
+                "- For FACT tasks: How sure are you about the terms and scope? (0-100%)\n"
+                "- For REASONING tasks: Do you have all the information needed to solve this?\n"
+                "  If the problem statement contains all necessary data, your certainty is 100%.\n"
+                "  Complexity does NOT reduce certainty — only missing information does.\n"
+                "Format: [CERTAINTY: X%]"
             ),
             "fact_status": (
                 "For each fact tagged as UNCONFIRMED in D1:\n"
@@ -260,21 +263,31 @@ DOMAIN_DEFINITIONS: Dict[str, dict] = {
         "name": "Inference",
         "question": "What follows from this?",
         "criteria": {
-            "follows_from_evidence": "Conclusion follows strictly from evidence in D1-D4",
+            "follows_from_evidence": (
+                "Conclusion follows from the analysis in previous domains. "
+                "For REASONING tasks: the conclusion must follow from logical steps, "
+                "not external evidence. Completing a logical derivation IS sufficient evidence."
+            ),
             "no_logical_jump": "No gap between evidence and conclusion",
             "no_unsupported_inference": (
                 "Do NOT make inferences about dates, deaths, or events unless explicitly verified. "
                 "If you know a fact directly, state it without constructing additional logic chains."
             ),
-            "conclusion_stated": "A clear, direct answer to the original question is stated",
+            "conclusion_stated": (
+                "A clear, direct answer to the original question is stated. "
+                "For REASONING tasks: state the computed/derived answer. "
+                "NEVER say 'cannot determine' or 'computationally impractical' if the "
+                "problem is solvable with logical reasoning. Work through it."
+            ),
         },
         "threshold": 70,  # Higher — this IS the answer
         "max_probes": 3,  # More attempts allowed — this matters most
         "is_answer": True,
         "probes": {
             "follows_from_evidence": (
-                "Does your conclusion follow strictly from the evidence gathered? "
-                "What specific evidence supports it?"
+                "Does your conclusion follow from the analysis performed? "
+                "For REASONING tasks: logical derivation IS evidence. "
+                "What specific reasoning steps support your conclusion?"
             ),
             "no_logical_jump": (
                 "Is there any gap between your evidence and your conclusion? "
@@ -287,11 +300,13 @@ DOMAIN_DEFINITIONS: Dict[str, dict] = {
                 "contradict your knowledge. Direct knowledge beats constructed inferences."
             ),
             "conclusion_stated": (
-                "State your conclusion as a clear, direct, one-paragraph answer "
+                "State your conclusion as a clear, direct answer "
                 "to the original question.\n"
-                "- If facts were CONFIRMED or CONFIRMED BY KNOWLEDGE, state them as established.\n"
-                "- Do NOT say 'cannot verify' or 'unable to confirm' for confirmed facts.\n"
-                "- No hedging, no meta-commentary, no apologies."
+                "- If this is a REASONING task, show the logical steps and give the answer.\n"
+                "- If facts were CONFIRMED or CONFIRMED BY KNOWLEDGE, state them directly.\n"
+                "- NEVER say 'cannot determine' — if you can reason through it, do it.\n"
+                "- NEVER say 'computationally impractical' — break it into steps.\n"
+                "- No hedging, no meta-commentary."
             ),
         },
     },

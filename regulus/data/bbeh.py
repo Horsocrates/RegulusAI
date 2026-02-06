@@ -114,7 +114,7 @@ def load_bbeh_mini(n: Optional[int] = None, seed: int = 42) -> List[BBEHItem]:
 def load_dataset(
     n: Optional[int] = None,
     seed: int = 42,
-    exclude_tables: bool = True
+    exclude_tables: bool = False
 ) -> List[BBEHItem]:
     """
     Unified interface matching simpleqa.load_dataset().
