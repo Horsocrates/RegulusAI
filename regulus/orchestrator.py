@@ -64,6 +64,7 @@ from .llm.source_verifier import (
 )
 from .prompts.correction import get_fix_prompt
 from .core.humor import detect_sarcasm_heuristic, SARCASM_ANALYSIS_PROMPT
+from .core.gamerules import is_game_question, GAME_SYSTEM_TABLE_PROMPT
 
 logger = logging.getLogger(__name__)
 
@@ -978,6 +979,20 @@ class SocraticOrchestrator:
                     f"[USE 5-MARKER FRAMEWORK for full analysis in D3-D4]"
                 )
 
+            # D1 check: detect game/sport rules task
+            if domain == "D1" and is_game_question(query, content):
+                logger.info("Game rules module: detected game/sport question")
+                accumulated_context.append(
+                    "[GAME RULES MODULE]\n"
+                    "This is a game/sport rules question. Use ERR system table approach:\n"
+                    "1. IDENTIFY the game system\n"
+                    "2. BUILD system table: Element -> Role -> Rule(s)\n"
+                    "3. MATCH the event in the question to specific rules\n"
+                    "4. APPLY rules step by step to derive the answer\n"
+                    "5. CONCLUDE from derivation, not from memory\n"
+                    "NEVER answer from memory — ALWAYS derive from rules."
+                )
+
             # D2: inject source context if factual data was required
             if domain == "D2" and factual_data_required and source_context:
                 content = content + "\n\n" + source_context
@@ -996,6 +1011,33 @@ class SocraticOrchestrator:
                     "Score each marker, then compute weighted sum."
                 )
                 logger.info("D3 enhanced with sarcasm analysis framework")
+
+            # D3: inject game rules framework if game task
+            if domain == "D3" and "[GAME RULES MODULE]" in "\n".join(accumulated_context):
+                content = content + (
+                    "\n\n[GAME RULES SYSTEM TABLE]\n"
+                    "Build the ERR system table for this game:\n"
+                    "For each relevant game element:\n"
+                    "ELEMENT: <name>\n"
+                    "  ROLE: <function in the game>\n"
+                    "  RULE: <specific rule governing this element>\n\n"
+                    "Include: game object, player roles, relevant mechanics, scoring/penalties.\n"
+                    "Then MATCH the event in the question to specific rules from your table."
+                )
+                logger.info("D3 enhanced with game rules system table")
+
+            # D4: force step-by-step rule application for game tasks
+            if domain == "D4" and "[GAME RULES MODULE]" in "\n".join(accumulated_context):
+                content = content + (
+                    "\n\n[RULE APPLICATION]\n"
+                    "Apply rules from D3 system table to the specific situation:\n"
+                    "For each matched rule:\n"
+                    "  State: <current game state>\n"
+                    "  Apply: <rule name + text>\n"
+                    "  Result: <new state after rule applied>\n"
+                    "Show EVERY step. The answer must be DERIVED, not recalled."
+                )
+                logger.info("D4 enhanced with game rules step-by-step derivation")
 
             # Evaluate and probe, collecting ALL versions for trisection
             record = DomainPassRecord(domain=domain, attempts=1, content=content)
