@@ -143,6 +143,9 @@ CRITICAL RULES:
 - Do NOT say "I cannot verify" or "I was unable to confirm" if you found information in your reasoning
 - Do NOT hedge with "some sources suggest" if your reasoning chain established the fact
 - If the fact was classified as STABLE, your training knowledge IS the verification
+- Do NOT make unsupported inferences about dates/deaths to contradict your direct knowledge
+  (e.g., if you know "X won the 1877 tournament", don't infer death dates to contradict this)
+- Direct knowledge always beats constructed inferences
 - Be concise and informative
 - Include key facts from your analysis
 - Do NOT use Element/Role/Rule format

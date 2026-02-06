@@ -262,6 +262,10 @@ DOMAIN_DEFINITIONS: Dict[str, dict] = {
         "criteria": {
             "follows_from_evidence": "Conclusion follows strictly from evidence in D1-D4",
             "no_logical_jump": "No gap between evidence and conclusion",
+            "no_unsupported_inference": (
+                "Do NOT make inferences about dates, deaths, or events unless explicitly verified. "
+                "If you know a fact directly, state it without constructing additional logic chains."
+            ),
             "conclusion_stated": "A clear, direct answer to the original question is stated",
         },
         "threshold": 70,  # Higher — this IS the answer
@@ -275,6 +279,12 @@ DOMAIN_DEFINITIONS: Dict[str, dict] = {
             "no_logical_jump": (
                 "Is there any gap between your evidence and your conclusion? "
                 "What bridges that gap?"
+            ),
+            "no_unsupported_inference": (
+                "Check: Are you making inferences about dates, deaths, or events that you "
+                "haven't verified? If you know the direct answer (e.g., 'X won the tournament'), "
+                "state it WITHOUT inferring additional facts (e.g., death dates) that might "
+                "contradict your knowledge. Direct knowledge beats constructed inferences."
             ),
             "conclusion_stated": (
                 "State your conclusion as a clear, direct, one-paragraph answer "
