@@ -1450,6 +1450,57 @@ async def lab_refresh_leaderboard(dataset: str):
 
 
 # ============================================================================
+# Run Stats Endpoint
+# ============================================================================
+
+@app.get("/api/lab/runs/{run_id}/stats")
+async def lab_run_stats(run_id: int):
+    """Aggregated statistics for a run (polled by UI or triggered on SSE events)."""
+    db = get_lab_db()
+    run = db.get_run(run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    results = db.get_all_results(run_id)
+
+    total = len(results)
+    passed = sum(1 for r in results if r.is_passed)
+    failed = sum(1 for r in results if not r.is_passed)
+    fixed = sum(1 for r in results if r.retry_status == "fixed")
+
+    total_time = sum(r.time_seconds for r in results)
+    total_input = sum(r.input_tokens for r in results)
+    total_output = sum(r.output_tokens for r in results)
+
+    accuracy = round(passed / total * 100, 1) if total > 0 else 0
+    avg_time = round(total_time / total, 1) if total > 0 else 0
+
+    # Cost estimate (Claude Sonnet pricing)
+    cost = round((total_input * 3.0 + total_output * 15.0) / 1_000_000, 2)
+
+    # ETA
+    remaining = run.total_questions - total
+    eta_seconds = round(remaining * avg_time) if avg_time > 0 else 0
+
+    return {
+        "run_id": run_id,
+        "status": run.status.value,
+        "total_questions": run.total_questions,
+        "completed": total,
+        "passed": passed,
+        "failed": failed,
+        "fixed": fixed,
+        "accuracy": accuracy,
+        "avg_time_seconds": avg_time,
+        "total_time_seconds": round(total_time, 1),
+        "cost_usd": cost,
+        "tokens": {"input": total_input, "output": total_output},
+        "eta_seconds": eta_seconds,
+        "progress_pct": round(total / run.total_questions * 100, 1) if run.total_questions > 0 else 0,
+    }
+
+
+# ============================================================================
 # Reports Endpoints
 # ============================================================================
 
