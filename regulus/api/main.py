@@ -41,7 +41,7 @@ from regulus.lab.costs import estimate_run_cost, calculate_cost, estimate_remain
 
 class VerifyRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=10000)
-    provider: str = Field(default="claude", pattern="^(claude|openai)$")
+    provider: str = Field(default="openai", pattern="^(claude|openai)$")
 
 class StepModel(BaseModel):
     domain: str
@@ -93,7 +93,7 @@ class DualResponse(BaseModel):
 
 class BenchmarkRequest(BaseModel):
     n: int = Field(default=10, ge=1, le=100, description="Number of questions")
-    provider: str = Field(default="claude", pattern="^(claude|openai)$")
+    provider: str = Field(default="openai", pattern="^(claude|openai)$")
     topic: str | None = Field(default=None, description="Filter by topic")
 
 class BenchmarkItem(BaseModel):
@@ -435,7 +435,7 @@ async def simpleqa_topics():
 async def benchmark_stream(
     n: int = Query(default=10, ge=1, le=5000, description="Number of questions"),
     concurrency: int = Query(default=5, ge=1, le=20, description="Parallel workers"),
-    provider: str = Query(default="claude", pattern="^(claude|openai)$"),
+    provider: str = Query(default="openai", pattern="^(claude|openai)$"),
     with_judge: bool = Query(default=True, description="Run judge evaluation"),
 ):
     """
@@ -648,7 +648,7 @@ class LabCreateRequest(BaseModel):
     total_questions: int = Field(..., ge=1, le=5000)
     num_steps: int = Field(..., ge=1, le=5000)
     dataset: str = Field(default="simpleqa")
-    provider: str = Field(default="claude", pattern="^(claude|openai)$")
+    provider: str = Field(default="openai", pattern="^(claude|openai)$")
     concurrency: int = Field(default=5, ge=1, le=20)
 
 
