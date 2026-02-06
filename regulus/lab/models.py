@@ -46,7 +46,9 @@ class Result:
     created_at: str = ""
 
     def to_dict(self) -> dict:
-        return asdict(self)
+        d = asdict(self)
+        d.pop("reasoning_json", None)
+        return d
 
     @property
     def total_tokens(self) -> int:

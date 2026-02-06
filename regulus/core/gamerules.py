@@ -15,10 +15,12 @@ from dataclasses import dataclass, field
 
 @dataclass
 class GameElement:
-    """Single element in a game system."""
-    element: str       # What is it
-    role: str          # What function does it serve
-    rules: list[str]   # Constraints / behavior rules
+    """Single element in a game system (ERRS)."""
+    element: str              # What is it
+    role: str                 # What function does it serve
+    rules: list[str]          # Constraints / behavior rules
+    possible_states: list[str] # ALL possible states this element can be in
+    current_state: str = ""    # Current state based on question context
 
 
 @dataclass
@@ -76,40 +78,61 @@ CONTEXT: "{context}"
 STEP 1 — IDENTIFY THE GAME SYSTEM:
 What game/sport is this about? Name it explicitly.
 
-STEP 2 — BUILD THE SYSTEM TABLE:
-List every relevant ELEMENT of this game that relates to the question.
-For each element, state its ROLE and RULES.
+STEP 2 — BUILD THE ERRS TABLE (Element-Role-Rules-Status):
+List every relevant ELEMENT. For each, state Role, Rules, and ALL POSSIBLE STATES.
+Then determine CURRENT STATE from the question context.
 
 Format:
 ELEMENT: <name>
   ROLE: <function in the game>
-  RULE: <specific rule that governs this element>
-  RULE: <additional rule if any>
+  RULE: <specific rule governing this element>
+  POSSIBLE STATES: [state1, state2, state3, ...]
+  CURRENT STATE: <which state based on question> — REASON: <why>
+
+CRITICAL: The POSSIBLE STATES list must be COMPLETE.
+Missing a possible state = missing a rule = wrong answer.
+
+Example for football:
+ELEMENT: Ball
+  ROLE: Object of play
+  RULE: Must cross line of scrimmage for first down
+  POSSIBLE STATES: [live, dead, in_flight, out_of_bounds, fumbled, held_by_carrier]
+  CURRENT STATE: in_flight — REASON: "pass was thrown"
+
+ELEMENT: Clock
+  ROLE: Time tracking
+  RULE: Stops on incomplete pass, out of bounds (last 2 min), timeout
+  POSSIBLE STATES: [running, stopped]
+  CURRENT STATE: running — REASON: no stoppage event yet
 
 Include at minimum:
-- The game object (ball, puck, piece, card)
-- The relevant player positions/roles
-- The specific game mechanic mentioned in the question
-- The scoring/penalty system relevant to the question
+- The game object (ball/puck/piece) + its current state
+- Player/team status (active/fouled/penalized/eliminated)
+- Game clock/turn state (running/stopped/overtime)
+- Score state if relevant (bonus/match point/game point)
+- The specific mechanic in the question + its current state
 
-STEP 3 — MATCH EVENT:
-What specific EVENT does the question describe?
-Which RULES from your table apply to this event?
-Format:
+STEP 3 — STATE TRANSITIONS:
+What EVENT does the question describe?
+For each element, determine how the event CHANGES its state:
+
 EVENT: <description>
-MATCHED RULES: <list which rules apply and why>
+TRANSITIONS:
+  <element>: <old_state> → <new_state> (because: <rule>)
+  <element>: <old_state> → <new_state> (because: <rule>)
+  <element>: <stays same> (because: <rule does not apply>)
 
-STEP 4 — APPLY RULES (derive answer):
-Starting from the game state described, apply each matched rule in order.
-Show each step:
-  State: <current state>
-  Apply rule: <which rule>
-  Result: <new state>
+STEP 4 — CHAIN TRANSITIONS:
+Some transitions trigger OTHER transitions. Follow the chain:
+
+  Transition 1: Ball: in_flight → dead (incomplete pass rule)
+  Triggers → Clock: running → stopped (dead ball stops clock rule)
+  Triggers → Down: 2nd → 3rd (failed attempt rule)
+  No more triggers → chain complete.
 
 STEP 5 — CONCLUSION:
-State the answer derived from rule application.
-The answer MUST follow from the rules — do NOT recall from memory.
-If rules conflict, state both interpretations.
+After all transitions resolve, read the FINAL STATE of all elements.
+The answer = the final state description.
 """
 
 GAME_RULES_VERIFICATION_PROMPT = """Verify this game rule derivation:

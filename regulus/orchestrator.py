@@ -983,14 +983,15 @@ class SocraticOrchestrator:
             if domain == "D1" and is_game_question(query, content):
                 logger.info("Game rules module: detected game/sport question")
                 accumulated_context.append(
-                    "[GAME RULES MODULE]\n"
-                    "This is a game/sport rules question. Use ERR system table approach:\n"
+                    "[GAME RULES MODULE — ERRS]\n"
+                    "This is a game/sport rules question. Use ERRS system table:\n"
                     "1. IDENTIFY the game system\n"
-                    "2. BUILD system table: Element -> Role -> Rule(s)\n"
-                    "3. MATCH the event in the question to specific rules\n"
-                    "4. APPLY rules step by step to derive the answer\n"
-                    "5. CONCLUDE from derivation, not from memory\n"
-                    "NEVER answer from memory — ALWAYS derive from rules."
+                    "2. BUILD ERRS table: Element -> Role -> Rules -> POSSIBLE STATES -> CURRENT STATE\n"
+                    "   CRITICAL: List ALL possible states for each element. Missing state = wrong answer.\n"
+                    "3. Determine STATE TRANSITIONS caused by the event in the question\n"
+                    "4. Follow CHAIN TRANSITIONS (one change triggers another)\n"
+                    "5. Read FINAL STATE of all elements -> that's the answer\n"
+                    "NEVER answer from memory — ALWAYS derive from state transitions."
                 )
 
             # D2: inject source context if factual data was required
@@ -1013,31 +1014,42 @@ class SocraticOrchestrator:
                 logger.info("D3 enhanced with sarcasm analysis framework")
 
             # D3: inject game rules framework if game task
-            if domain == "D3" and "[GAME RULES MODULE]" in "\n".join(accumulated_context):
+            if domain == "D3" and "[GAME RULES MODULE" in "\n".join(accumulated_context):
                 content = content + (
-                    "\n\n[GAME RULES SYSTEM TABLE]\n"
-                    "Build the ERR system table for this game:\n"
+                    "\n\n[ERRS SYSTEM TABLE]\n"
+                    "Build the ERRS table for this game:\n"
                     "For each relevant game element:\n"
                     "ELEMENT: <name>\n"
-                    "  ROLE: <function in the game>\n"
-                    "  RULE: <specific rule governing this element>\n\n"
-                    "Include: game object, player roles, relevant mechanics, scoring/penalties.\n"
-                    "Then MATCH the event in the question to specific rules from your table."
+                    "  ROLE: <function>\n"
+                    "  RULE: <governing rule>\n"
+                    "  POSSIBLE STATES: [state1, state2, ...] — list ALL, missing = error\n"
+                    "  CURRENT STATE: <state> — REASON: <from question context>\n\n"
+                    "Then identify STATE TRANSITIONS from the event:\n"
+                    "  element: old_state -> new_state (rule: ...)\n"
+                    "Then follow CHAIN TRANSITIONS until no more triggers."
                 )
-                logger.info("D3 enhanced with game rules system table")
+                logger.info("D3 enhanced with ERRS system table")
 
             # D4: force step-by-step rule application for game tasks
-            if domain == "D4" and "[GAME RULES MODULE]" in "\n".join(accumulated_context):
+            if domain == "D4" and "[GAME RULES MODULE" in "\n".join(accumulated_context):
                 content = content + (
-                    "\n\n[RULE APPLICATION]\n"
-                    "Apply rules from D3 system table to the specific situation:\n"
-                    "For each matched rule:\n"
-                    "  State: <current game state>\n"
-                    "  Apply: <rule name + text>\n"
-                    "  Result: <new state after rule applied>\n"
-                    "Show EVERY step. The answer must be DERIVED, not recalled."
+                    "\n\n[STATE TRANSITION CHAIN]\n"
+                    "From D3's ERRS table, execute all transitions:\n\n"
+                    "INITIAL STATE:\n"
+                    "  <element>: <current_state>\n"
+                    "  <element>: <current_state>\n\n"
+                    "EVENT: <what happened>\n\n"
+                    "TRANSITION 1: <element>: <old> -> <new> (rule: <which rule>)\n"
+                    "  Triggers? -> [yes: TRANSITION 2 / no: stop]\n"
+                    "TRANSITION 2: <element>: <old> -> <new> (rule: <triggered by T1>)\n"
+                    "  Triggers? -> [yes: TRANSITION 3 / no: stop]\n"
+                    "...continue until no more triggers...\n\n"
+                    "FINAL STATE:\n"
+                    "  <element>: <final_state>\n"
+                    "  <element>: <final_state>\n\n"
+                    "ANSWER = description of final state."
                 )
-                logger.info("D4 enhanced with game rules step-by-step derivation")
+                logger.info("D4 enhanced with state transition chain")
 
             # Evaluate and probe, collecting ALL versions for trisection
             record = DomainPassRecord(domain=domain, attempts=1, content=content)
