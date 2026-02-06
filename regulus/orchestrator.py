@@ -887,20 +887,12 @@ class SocraticOrchestrator:
                 fact_subtype = self._classify_fact_subtype(query, content)
                 logger.info("D1 detected factual question — subtype: %s", fact_subtype)
 
-                if fact_subtype in ("statistic", "ranking", "quantity", "current_state"):
-                    # Statistics, rankings, quantities, current holders —
-                    # Model is unreliable on these. ALWAYS search.
-                    logger.info("Subtype %s — forcing source search", fact_subtype)
+                if fact_subtype == "volatile":
+                    logger.info("VOLATILE fact — forcing source search")
                     source_context = await self._search_sources_for_query(query)
-                elif fact_subtype in ("date", "definition"):
-                    # Dates and definitions — model usually knows these.
-                    # Skip search, let D2-D5 reasoning handle it.
-                    logger.info("Subtype %s — skipping search, model reliable", fact_subtype)
-                    source_context = ""
                 else:
-                    # "name", "event", "unknown" — search to be safe
-                    logger.info("Subtype %s — searching for safety", fact_subtype)
-                    source_context = await self._search_sources_for_query(query)
+                    logger.info("STABLE fact — model reliable, skipping search")
+                    source_context = ""
 
             # D2: inject source context if factual data was required
             if domain == "D2" and factual_data_required and source_context:
@@ -1143,111 +1135,62 @@ class SocraticOrchestrator:
 
     def _classify_fact_subtype(self, query: str, d1_content: str) -> str:
         """
-        Classify what KIND of factual data is needed — no LLM call, pure heuristics.
+        Classify factual data as STABLE or VOLATILE — no LLM call.
 
-        Returns one of:
-        - "statistic"     — numbers, percentages, amounts, production data
-        - "ranking"       — most/least/first/last/top/biggest/smallest
-        - "quantity"      — how many, how much, population, revenue
-        - "current_state" — who is the current..., what is the current...
-        - "date"          — when did, what year, what date
-        - "name"          — who is, what is the name of, birth name
-        - "definition"    — what is, what does X mean
-        - "event"         — what happened, did X happen
-        - "unknown"       — can't classify
+        STABLE — established facts the model reliably knows:
+          Definitions, geography, history, science, language,
+          well-known people, completed events, physical constants.
+          → Skip source search.
 
-        Heuristic-only: fast, deterministic, no API cost.
+        VOLATILE — facts that change, require data, or involve comparison:
+          Statistics, rankings, quantities, current holders,
+          prices, populations, production data, recent events.
+          → Always search.
+
+        Principle: "Can this fact change tomorrow?"
+        If yes → VOLATILE. If no → STABLE.
         """
         q = query.lower().strip()
-        content_lower = d1_content.lower()
 
-        # RANKING indicators — ALWAYS unreliable
-        ranking_keywords = [
+        # ── VOLATILE indicators (search required) ──────────────
+        volatile_keywords = [
+            # Rankings & comparisons
             "most", "least", "largest", "smallest", "biggest",
             "highest", "lowest", "top", "best", "worst",
             "first", "last", "oldest", "newest", "youngest",
-            "leading", "primary", "dominant", "major",
-            "number one", "#1", "ranks", "ranking",
-        ]
-        if any(kw in q for kw in ranking_keywords):
-            return "ranking"
-
-        # STATISTIC indicators — ALWAYS unreliable
-        statistic_keywords = [
+            "leading", "dominant", "#1", "ranks", "ranking",
+            # Statistics & quantities
             "how much", "how many", "percentage", "percent",
             "production", "produces", "output", "volume",
             "revenue", "gdp", "population", "rate",
             "average", "median", "total", "annual",
-            "per capita", "growth", "decline", "increase",
-            "statistics", "data", "figures", "numbers",
+            "per capita", "growth", "decline", "statistics",
+            "count", "number of", "amount", "quantity",
+            # Current state (changes over time)
+            "current", "currently", "right now", "today",
+            "as of", "latest", "recent", "still", "anymore",
+            "who is the president", "who is the ceo",
+            "who is the prime minister", "who leads",
+            # Prices & markets
+            "price", "cost", "worth", "salary", "market",
+            "stock", "exchange rate",
         ]
-        if any(kw in q for kw in statistic_keywords):
-            return "statistic"
+        if any(kw in q for kw in volatile_keywords):
+            return "volatile"
 
-        # QUANTITY — close to statistic
-        quantity_keywords = [
-            "how many", "how much", "count", "number of",
-            "amount", "quantity", "size of", "length of",
-            "weight of", "height of", "distance",
-        ]
-        if any(kw in q for kw in quantity_keywords):
-            return "quantity"
+        # ── Pattern-based VOLATILE detection ───────────────────
+        # "which/what STATE produces..." → ranking/statistic
+        import re
+        if re.search(r'which (state|country|city|region) .*(produc|lead|export|import|grow)', q):
+            return "volatile"
+        # "how (adjective) is..." → measurement
+        if re.search(r'how (tall|long|far|deep|wide|heavy|old|fast|big|large|small)', q):
+            return "volatile"
 
-        # CURRENT STATE — changes over time, unreliable
-        current_keywords = [
-            "current", "currently", "now", "today",
-            "who is the", "what is the current",
-            "as of", "present", "latest", "recent",
-            "still", "anymore",
-        ]
-        if any(kw in q for kw in current_keywords):
-            return "current_state"
-
-        # DATE — model usually reliable
-        date_keywords = [
-            "when did", "when was", "what year",
-            "what date", "born in", "died in",
-            "founded in", "established in",
-            "which year", "which century",
-        ]
-        if any(kw in q for kw in date_keywords):
-            return "date"
-
-        # DEFINITION — model reliable
-        definition_keywords = [
-            "what is a ", "what is an ", "what does",
-            "define ", "definition of", "meaning of",
-            "what are ", "explain what",
-        ]
-        if any(kw in q for kw in definition_keywords):
-            return "definition"
-
-        # NAME — sometimes reliable, sometimes not
-        name_keywords = [
-            "birth name", "real name", "full name",
-            "maiden name", "original name", "stage name",
-            "who wrote", "who created", "who invented",
-            "who discovered", "who founded", "who directed",
-            "named after", "what is the name",
-        ]
-        if any(kw in q for kw in name_keywords):
-            return "name"
-
-        # EVENT
-        event_keywords = [
-            "what happened", "did it", "has it",
-            "was there", "were there",
-        ]
-        if any(kw in q for kw in event_keywords):
-            return "event"
-
-        # Check D1 content for additional signals
-        if any(kw in content_lower for kw in ["statistic", "ranking", "data needed", "numbers"]):
-            return "statistic"
-        if any(kw in content_lower for kw in ["current holder", "current state", "may have changed"]):
-            return "current_state"
-
-        return "unknown"
+        # ── STABLE: everything else ────────────────────────────
+        # Definitions, geography, history, science, names, dates,
+        # completed events, language, culture — model knows these.
+        return "stable"
 
     async def _search_sources_for_query(self, query: str) -> str:
         """
