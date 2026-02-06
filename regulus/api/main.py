@@ -31,6 +31,7 @@ logger = logging.getLogger("regulus.api")
 from regulus.orchestrator import SocraticOrchestrator
 from regulus.llm.claude import ClaudeClient
 from regulus.llm.openai import OpenAIClient
+from regulus.llm.hybrid import HybridClient
 from regulus.data.simpleqa import load_dataset as load_simpleqa, get_topics
 from regulus.lab import LabDB, LabRunner, ReportGenerator, RunStatus, StepStatus
 from regulus.lab.costs import estimate_run_cost, calculate_cost, estimate_remaining_cost
@@ -217,7 +218,7 @@ async def verify(request: VerifyRequest):
             client = ClaudeClient(api_key=api_key)
         else:
             api_key = os.environ.get("OPENAI_API_KEY", "")
-            client = OpenAIClient(api_key=api_key)
+            client = HybridClient(api_key=api_key)
 
         orch = SocraticOrchestrator(llm_client=client)
         result = await with_timeout(orch.process_query(request.query), timeout_seconds=240)
@@ -267,7 +268,7 @@ async def battle(request: VerifyRequest):
             client = ClaudeClient(api_key=api_key)
         else:
             api_key = os.environ.get("OPENAI_API_KEY", "")
-            client = OpenAIClient(api_key=api_key)
+            client = HybridClient(api_key=api_key)
 
         # 1. Raw LLM response
         raw_start = time.time()
@@ -327,7 +328,7 @@ async def dual(request: VerifyRequest):
                 client = ClaudeClient(api_key=api_key)
             else:
                 api_key = os.environ.get("OPENAI_API_KEY", "")
-                client = OpenAIClient(api_key=api_key)
+                client = HybridClient(api_key=api_key)
 
             orch = SocraticOrchestrator(llm_client=client)
             result = await with_timeout(orch.process_query(request.query), timeout_seconds=240)
@@ -381,7 +382,7 @@ async def benchmark(request: BenchmarkRequest):
         client = ClaudeClient(api_key=api_key)
     else:
         api_key = os.environ.get("OPENAI_API_KEY", "")
-        client = OpenAIClient(api_key=api_key)
+        client = HybridClient(api_key=api_key)
 
     results = []
     for item in items:
@@ -460,7 +461,7 @@ async def benchmark_stream(
         client = ClaudeClient(api_key=api_key)
     else:
         api_key = os.environ.get("OPENAI_API_KEY", "")
-        client = OpenAIClient(api_key=api_key)
+        client = HybridClient(api_key=api_key)
 
     async def generate():
         semaphore = asyncio.Semaphore(concurrency)

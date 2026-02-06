@@ -19,6 +19,7 @@ from regulus.orchestrator import SocraticOrchestrator
 from regulus.judge import CrossJudge
 from regulus.llm.claude import ClaudeClient
 from regulus.llm.openai import OpenAIClient
+from regulus.llm.hybrid import HybridClient
 
 
 def estimate_tokens_from_text(text: str) -> int:
@@ -212,7 +213,7 @@ class LabRunner:
         else:
             api_key = os.environ.get("OPENAI_API_KEY", "")
             print(f"[Runner] Using OpenAI, API key: {'SET' if api_key else 'MISSING!'}")
-            llm_client = OpenAIClient(api_key=api_key)
+            llm_client = HybridClient(api_key=api_key)
 
         # Initialize components
         print(f"[Runner] Initializing components...")

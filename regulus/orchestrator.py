@@ -884,6 +884,10 @@ class SocraticOrchestrator:
                 logger.info("Fast path — skipping %s", domain)
                 continue
 
+            # Set current domain for HybridClient routing
+            if hasattr(self.llm, 'current_domain'):
+                self.llm.current_domain = domain
+
             domain_def = get_domain_def(domain)
             domain_name = domain_def.get("name", domain)
             domain_question = domain_def.get("question", "")
@@ -1294,6 +1298,10 @@ class SocraticOrchestrator:
         d5_record = next((r for r in domain_records if r.domain == "D5"), None)
         if d5_record:
             try:
+                # Set domain to "final" for HybridClient (uses heavy model)
+                if hasattr(self.llm, 'current_domain'):
+                    self.llm.current_domain = "final"
+
                 final_answer = await self._generate_final_answer(
                     query, reasoning_steps, confidence_level=confidence_level
                 )
