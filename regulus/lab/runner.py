@@ -67,6 +67,33 @@ class StepProgress:
     event_data: Optional[dict] = None
 
 
+def compute_retry_statuses(db: LabDB, retry_run_id: int):
+    """
+    Compare results of a retry run with its source run.
+    Sets retry_status on each result:
+    - "fixed": source=fail, retry=pass
+    - "still_failed": source=fail, retry=fail
+    """
+    retry_run = db.get_run(retry_run_id)
+    if not retry_run or not retry_run.source_run_id:
+        return
+
+    source_results = db.get_all_results(retry_run.source_run_id)
+    retry_results = db.get_all_results(retry_run_id)
+
+    source_map = {r.question: r for r in source_results}
+
+    for r in retry_results:
+        source = source_map.get(r.question)
+        if not source:
+            continue
+
+        if not source.is_passed and r.is_passed:
+            db.update_result_retry_status(r.id, "fixed")
+        elif not source.is_passed and not r.is_passed:
+            db.update_result_retry_status(r.id, "still_failed")
+
+
 class LabRunner:
     """Runs stepped benchmark tests with persistence."""
 
@@ -82,6 +109,8 @@ class LabRunner:
         dataset: str = "simpleqa",
         provider: str = "claude",
         concurrency: int = 5,
+        source_run_id: Optional[int] = None,
+        model_version: str = "",
     ) -> Run:
         """Create a new run."""
         return self.db.create_run(
@@ -91,6 +120,8 @@ class LabRunner:
             dataset=dataset,
             provider=provider,
             concurrency=concurrency,
+            source_run_id=source_run_id,
+            model_version=model_version,
         )
 
     def get_run(self, run_id: int) -> Optional[Run]:
@@ -420,6 +451,9 @@ class LabRunner:
 
             if all_complete:
                 self.db.update_run_status(run_id, RunStatus.COMPLETED)
+                # Compute retry statuses if this is a retry run
+                if updated_run.source_run_id:
+                    compute_retry_statuses(self.db, run_id)
             else:
                 self.db.update_run_status(run_id, RunStatus.PAUSED)
 

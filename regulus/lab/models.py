@@ -37,6 +37,7 @@ class Result:
     informative: Optional[bool] = None
     judge_reason: Optional[str] = None
     failure_reason: Optional[str] = None
+    retry_status: Optional[str] = None  # "fixed" | "still_failed" | "regression" | None
     corrections: int = 0
     time_seconds: float = 0.0
     input_tokens: int = 0
@@ -103,6 +104,7 @@ class Run:
     input_tokens: int = 0
     output_tokens: int = 0
     source_run_id: Optional[int] = None
+    model_version: str = ""
     created_at: str = ""
     updated_at: str = ""
     steps: list[Step] = field(default_factory=list)
@@ -253,6 +255,14 @@ class LabDB:
             conn.execute("ALTER TABLE runs ADD COLUMN source_run_id INTEGER")
         except:
             pass
+        try:
+            conn.execute("ALTER TABLE results ADD COLUMN retry_status TEXT")
+        except:
+            pass
+        try:
+            conn.execute("ALTER TABLE runs ADD COLUMN model_version TEXT DEFAULT ''")
+        except:
+            pass
         conn.commit()
         conn.close()
 
@@ -265,6 +275,7 @@ class LabDB:
         provider: str = "claude",
         concurrency: int = 5,
         source_run_id: Optional[int] = None,
+        model_version: str = "",
     ) -> Run:
         """Create a new run with steps."""
         # Cap num_steps at total_questions (1 question per step max)
@@ -277,10 +288,11 @@ class LabDB:
         # Create run
         cursor.execute("""
             INSERT INTO runs (name, dataset, provider, total_questions, num_steps,
-                              concurrency, status, current_step, source_run_id, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
+                              concurrency, status, current_step, source_run_id,
+                              model_version, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)
         """, (name, dataset, provider, total_questions, num_steps, concurrency,
-              RunStatus.CREATED.value, source_run_id, now, now))
+              RunStatus.CREATED.value, source_run_id, model_version, now, now))
         run_id = cursor.lastrowid
 
         # Calculate questions per step
@@ -330,6 +342,7 @@ class LabDB:
             input_tokens=row["input_tokens"] if "input_tokens" in row.keys() else 0,
             output_tokens=row["output_tokens"] if "output_tokens" in row.keys() else 0,
             source_run_id=row["source_run_id"] if "source_run_id" in row.keys() else None,
+            model_version=row["model_version"] if "model_version" in row.keys() else "",
             created_at=row["created_at"],
             updated_at=row["updated_at"],
         )
@@ -397,6 +410,7 @@ class LabDB:
                 input_tokens=row["input_tokens"] if "input_tokens" in keys else 0,
                 output_tokens=row["output_tokens"] if "output_tokens" in keys else 0,
                 source_run_id=row["source_run_id"] if "source_run_id" in keys else None,
+                model_version=row["model_version"] if "model_version" in keys else "",
                 created_at=row["created_at"],
                 updated_at=row["updated_at"],
             ))
@@ -500,6 +514,7 @@ class LabDB:
             informative=bool(row["informative"]) if row["informative"] is not None else None,
             judge_reason=row["judge_reason"],
             failure_reason=row["failure_reason"] if "failure_reason" in keys else None,
+            retry_status=row["retry_status"] if "retry_status" in keys else None,
             corrections=row["corrections"],
             time_seconds=row["time_seconds"],
             input_tokens=row["input_tokens"] if "input_tokens" in keys else 0,
@@ -551,6 +566,16 @@ class LabDB:
         results = [self._row_to_result(row) for row in cursor.fetchall()]
         conn.close()
         return results
+
+    def update_result_retry_status(self, result_id: int, retry_status: str):
+        """Update retry_status for a result."""
+        conn = self._get_conn()
+        conn.execute(
+            "UPDATE results SET retry_status = ? WHERE id = ?",
+            (retry_status, result_id)
+        )
+        conn.commit()
+        conn.close()
 
     def get_all_results(self, run_id: int) -> list[Result]:
         """Get all results for a run across all steps."""

@@ -1132,6 +1132,118 @@ async def lab_export_run(run_id: int):
     }
 
 
+@app.get("/api/lab/runs/{run_id}/results/passed")
+async def lab_get_passed_results(run_id: int):
+    """Get all passed results for a run."""
+    db = get_lab_db()
+    results = db.get_run_results_filtered(run_id, passed=True)
+    return [r.to_dict() for r in results]
+
+
+@app.get("/api/lab/runs/{run_id}/results/failed")
+async def lab_get_failed_results(run_id: int):
+    """Get all failed results for a run."""
+    db = get_lab_db()
+    results = db.get_run_results_filtered(run_id, passed=False)
+    return [r.to_dict() for r in results]
+
+
+class RetryRunRequest(BaseModel):
+    name: str | None = None
+    num_steps: int = Field(default=1, ge=1, le=100)
+    provider: str | None = None
+    concurrency: int = Field(default=5, ge=1, le=20)
+    model_version: str = ""
+
+
+@app.post("/api/lab/runs/{run_id}/retry-failed")
+async def lab_retry_failed(run_id: int, request: RetryRunRequest):
+    """Create a new run from failed results of an existing run."""
+    db = get_lab_db()
+    run = db.get_run(run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
+
+    failed = db.get_run_results_filtered(run_id, passed=False)
+    if not failed:
+        raise HTTPException(status_code=400, detail="No failed results to retry")
+
+    runner = get_lab_runner()
+    new_run = runner.create_run(
+        name=request.name or f"Retry of run #{run_id}",
+        total_questions=len(failed),
+        num_steps=request.num_steps,
+        dataset=run.dataset,
+        provider=request.provider or run.provider,
+        concurrency=request.concurrency,
+        source_run_id=run_id,
+        model_version=request.model_version or run.model_version or "",
+    )
+
+    return run_to_summary(new_run)
+
+
+@app.get("/api/lab/runs/{run_id}/comparison/{source_run_id}")
+async def lab_compare_runs(run_id: int, source_run_id: int):
+    """
+    Compare two runs by common questions.
+    Returns fixed, still_failed, and regressions.
+    """
+    db = get_lab_db()
+
+    current_results = db.get_all_results(run_id)
+    source_results = db.get_all_results(source_run_id)
+
+    if not current_results:
+        raise HTTPException(status_code=404, detail=f"No results for run {run_id}")
+    if not source_results:
+        raise HTTPException(status_code=404, detail=f"No results for run {source_run_id}")
+
+    source_map = {r.question: r for r in source_results}
+    current_map = {r.question: r for r in current_results}
+
+    common_questions = set(source_map.keys()) & set(current_map.keys())
+
+    fixed = []
+    still_failed = []
+    regressions = []
+
+    for q in common_questions:
+        s = source_map[q]
+        c = current_map[q]
+
+        item = {
+            "question": q,
+            "source_answer": s.answer,
+            "current_answer": c.answer,
+            "source_passed": s.is_passed,
+            "current_passed": c.is_passed,
+            "source_failure_reason": s.failure_reason,
+            "current_failure_reason": c.failure_reason,
+        }
+
+        if not s.is_passed and c.is_passed:
+            fixed.append(item)
+        elif not s.is_passed and not c.is_passed:
+            still_failed.append(item)
+        elif s.is_passed and not c.is_passed:
+            regressions.append(item)
+
+    return {
+        "run_id": run_id,
+        "source_run_id": source_run_id,
+        "fixed": fixed,
+        "still_failed": still_failed,
+        "regressions": regressions,
+        "summary": {
+            "total_compared": len(common_questions),
+            "fixed_count": len(fixed),
+            "still_failed_count": len(still_failed),
+            "regression_count": len(regressions),
+        }
+    }
+
+
 @app.get("/api/lab/reports")
 async def lab_list_reports():
     """List all generated reports."""
