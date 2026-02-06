@@ -36,6 +36,7 @@ class Result:
     correct: Optional[bool] = None
     informative: Optional[bool] = None
     judge_reason: Optional[str] = None
+    failure_reason: Optional[str] = None
     corrections: int = 0
     time_seconds: float = 0.0
     input_tokens: int = 0
@@ -48,6 +49,11 @@ class Result:
     @property
     def total_tokens(self) -> int:
         return self.input_tokens + self.output_tokens
+
+    @property
+    def is_passed(self) -> bool:
+        """Result passes if it is valid and judged correct."""
+        return self.valid and self.correct is True
 
 
 @dataclass
@@ -96,6 +102,7 @@ class Run:
     total_time: float = 0.0
     input_tokens: int = 0
     output_tokens: int = 0
+    source_run_id: Optional[int] = None
     created_at: str = ""
     updated_at: str = ""
     steps: list[Step] = field(default_factory=list)
@@ -238,6 +245,14 @@ class LabDB:
             conn.execute("ALTER TABLE results ADD COLUMN output_tokens INTEGER NOT NULL DEFAULT 0")
         except:
             pass
+        try:
+            conn.execute("ALTER TABLE results ADD COLUMN failure_reason TEXT")
+        except:
+            pass
+        try:
+            conn.execute("ALTER TABLE runs ADD COLUMN source_run_id INTEGER")
+        except:
+            pass
         conn.commit()
         conn.close()
 
@@ -249,6 +264,7 @@ class LabDB:
         dataset: str = "simpleqa",
         provider: str = "claude",
         concurrency: int = 5,
+        source_run_id: Optional[int] = None,
     ) -> Run:
         """Create a new run with steps."""
         # Cap num_steps at total_questions (1 question per step max)
@@ -261,10 +277,10 @@ class LabDB:
         # Create run
         cursor.execute("""
             INSERT INTO runs (name, dataset, provider, total_questions, num_steps,
-                              concurrency, status, current_step, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+                              concurrency, status, current_step, source_run_id, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
         """, (name, dataset, provider, total_questions, num_steps, concurrency,
-              RunStatus.CREATED.value, now, now))
+              RunStatus.CREATED.value, source_run_id, now, now))
         run_id = cursor.lastrowid
 
         # Calculate questions per step
@@ -313,6 +329,7 @@ class LabDB:
             total_time=row["total_time"],
             input_tokens=row["input_tokens"] if "input_tokens" in row.keys() else 0,
             output_tokens=row["output_tokens"] if "output_tokens" in row.keys() else 0,
+            source_run_id=row["source_run_id"] if "source_run_id" in row.keys() else None,
             created_at=row["created_at"],
             updated_at=row["updated_at"],
         )
@@ -345,22 +362,7 @@ class LabDB:
                 (step.id,)
             )
             for res_row in cursor.fetchall():
-                step.results.append(Result(
-                    id=res_row["id"],
-                    step_id=res_row["step_id"],
-                    question=res_row["question"],
-                    expected=res_row["expected"],
-                    answer=res_row["answer"],
-                    valid=bool(res_row["valid"]),
-                    correct=bool(res_row["correct"]) if res_row["correct"] is not None else None,
-                    informative=bool(res_row["informative"]) if res_row["informative"] is not None else None,
-                    judge_reason=res_row["judge_reason"],
-                    corrections=res_row["corrections"],
-                    time_seconds=res_row["time_seconds"],
-                    input_tokens=res_row["input_tokens"] if "input_tokens" in res_row.keys() else 0,
-                    output_tokens=res_row["output_tokens"] if "output_tokens" in res_row.keys() else 0,
-                    created_at=res_row["created_at"],
-                ))
+                step.results.append(self._row_to_result(res_row))
 
             run.steps.append(step)
 
@@ -378,6 +380,7 @@ class LabDB:
         )
         runs = []
         for row in cursor.fetchall():
+            keys = row.keys()
             runs.append(Run(
                 id=row["id"],
                 name=row["name"],
@@ -391,8 +394,9 @@ class LabDB:
                 valid_count=row["valid_count"],
                 correct_count=row["correct_count"],
                 total_time=row["total_time"],
-                input_tokens=row["input_tokens"] if "input_tokens" in row.keys() else 0,
-                output_tokens=row["output_tokens"] if "output_tokens" in row.keys() else 0,
+                input_tokens=row["input_tokens"] if "input_tokens" in keys else 0,
+                output_tokens=row["output_tokens"] if "output_tokens" in keys else 0,
+                source_run_id=row["source_run_id"] if "source_run_id" in keys else None,
                 created_at=row["created_at"],
                 updated_at=row["updated_at"],
             ))
@@ -482,6 +486,27 @@ class LabDB:
         conn.commit()
         conn.close()
 
+    def _row_to_result(self, row) -> Result:
+        """Convert a database row to a Result object."""
+        keys = row.keys()
+        return Result(
+            id=row["id"],
+            step_id=row["step_id"],
+            question=row["question"],
+            expected=row["expected"],
+            answer=row["answer"],
+            valid=bool(row["valid"]),
+            correct=bool(row["correct"]) if row["correct"] is not None else None,
+            informative=bool(row["informative"]) if row["informative"] is not None else None,
+            judge_reason=row["judge_reason"],
+            failure_reason=row["failure_reason"] if "failure_reason" in keys else None,
+            corrections=row["corrections"],
+            time_seconds=row["time_seconds"],
+            input_tokens=row["input_tokens"] if "input_tokens" in keys else 0,
+            output_tokens=row["output_tokens"] if "output_tokens" in keys else 0,
+            created_at=row["created_at"],
+        )
+
     def add_result(self, step_id: int, result: Result) -> int:
         """Add a result to a step."""
         conn = self._get_conn()
@@ -490,9 +515,9 @@ class LabDB:
 
         cursor.execute("""
             INSERT INTO results (step_id, question, expected, answer, valid, correct,
-                                 informative, judge_reason, corrections, time_seconds,
-                                 input_tokens, output_tokens, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                 informative, judge_reason, failure_reason, corrections,
+                                 time_seconds, input_tokens, output_tokens, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             step_id,
             result.question,
@@ -502,6 +527,7 @@ class LabDB:
             int(result.correct) if result.correct is not None else None,
             int(result.informative) if result.informative is not None else None,
             result.judge_reason,
+            result.failure_reason,
             result.corrections,
             result.time_seconds,
             result.input_tokens,
@@ -522,25 +548,30 @@ class LabDB:
             "SELECT * FROM results WHERE step_id = ? ORDER BY id",
             (step_id,)
         )
-        results = []
-        for row in cursor.fetchall():
-            results.append(Result(
-                id=row["id"],
-                step_id=row["step_id"],
-                question=row["question"],
-                expected=row["expected"],
-                answer=row["answer"],
-                valid=bool(row["valid"]),
-                correct=bool(row["correct"]) if row["correct"] is not None else None,
-                informative=bool(row["informative"]) if row["informative"] is not None else None,
-                judge_reason=row["judge_reason"],
-                corrections=row["corrections"],
-                time_seconds=row["time_seconds"],
-                input_tokens=row["input_tokens"],
-                output_tokens=row["output_tokens"],
-            ))
+        results = [self._row_to_result(row) for row in cursor.fetchall()]
         conn.close()
         return results
+
+    def get_all_results(self, run_id: int) -> list[Result]:
+        """Get all results for a run across all steps."""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT r.* FROM results r
+            JOIN steps s ON r.step_id = s.id
+            WHERE s.run_id = ?
+            ORDER BY r.id
+        """, (run_id,))
+        results = [self._row_to_result(row) for row in cursor.fetchall()]
+        conn.close()
+        return results
+
+    def get_run_results_filtered(self, run_id: int, passed: Optional[bool] = None) -> list[Result]:
+        """Get results for a run, optionally filtered by pass/fail status."""
+        all_results = self.get_all_results(run_id)
+        if passed is None:
+            return all_results
+        return [r for r in all_results if r.is_passed == passed]
 
     def delete_run(self, run_id: int):
         """Delete a run and all its data."""
@@ -659,22 +690,7 @@ class LabDB:
             (step_id,)
         )
         for res_row in cursor.fetchall():
-            step.results.append(Result(
-                id=res_row["id"],
-                step_id=res_row["step_id"],
-                question=res_row["question"],
-                expected=res_row["expected"],
-                answer=res_row["answer"],
-                valid=bool(res_row["valid"]),
-                correct=bool(res_row["correct"]) if res_row["correct"] is not None else None,
-                informative=bool(res_row["informative"]) if res_row["informative"] is not None else None,
-                judge_reason=res_row["judge_reason"],
-                corrections=res_row["corrections"],
-                time_seconds=res_row["time_seconds"],
-                input_tokens=res_row["input_tokens"] if "input_tokens" in res_row.keys() else 0,
-                output_tokens=res_row["output_tokens"] if "output_tokens" in res_row.keys() else 0,
-                created_at=res_row["created_at"],
-            ))
+            step.results.append(self._row_to_result(res_row))
 
         conn.close()
         return step

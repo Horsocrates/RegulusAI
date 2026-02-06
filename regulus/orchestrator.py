@@ -22,8 +22,9 @@ from __future__ import annotations
 import json
 import logging
 import re
+import time
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Callable
 
 from .core.types import (
     Domain, Status, Policy, Node, GateSignals, RawScores,
@@ -819,6 +820,9 @@ class SocraticOrchestrator:
         use_llm_sensor: bool = True,
         use_trisection: bool = True,
         use_branching: bool = False,
+        on_domain_start: Callable | None = None,
+        on_domain_complete: Callable | None = None,
+        on_correction: Callable | None = None,
     ):
         self.llm = llm_client
         self.policy = policy
@@ -834,6 +838,10 @@ class SocraticOrchestrator:
         self.trisection: SocraticTrisection | None = (
             SocraticTrisection(policy=policy) if use_trisection else None
         )
+        # Lab callbacks for streaming domain events
+        self._on_domain_start = on_domain_start
+        self._on_domain_complete = on_domain_complete
+        self._on_correction = on_correction
         # Note: factual_data_required and source_context are now local to process_query
         # to avoid race conditions when processing multiple queries in parallel
 
@@ -878,6 +886,12 @@ class SocraticOrchestrator:
             max_probes = domain_def.get("max_probes", 2)
             if use_fast_path:
                 max_probes = min(max_probes, 1)  # Fast path: max 1 probe per domain
+
+            _domain_start_time = time.time()
+
+            # Notify domain start
+            if self._on_domain_start:
+                self._on_domain_start(domain, domain_name)
 
             # Generate initial domain content
             content = await self._generate_domain(
@@ -975,6 +989,15 @@ class SocraticOrchestrator:
                     current_content = strengthened
                     version_contents.append(strengthened)
 
+                    # Notify correction
+                    if self._on_correction and probe_list:
+                        failed_names = [c[0] for c in check_result.failed_criteria[:1]]
+                        self._on_correction(
+                            domain, record.attempts,
+                            f"GATE_{domain}",
+                            "; ".join(failed_names),
+                        )
+
                     if not probe_list:
                         break
 
@@ -1036,6 +1059,15 @@ class SocraticOrchestrator:
             # Update probe weight_after values
             for probe_rec in record.probes_used:
                 probe_rec.weight_after = record.final_weight
+
+            # Notify domain complete
+            if self._on_domain_complete:
+                _domain_elapsed_ms = int((time.time() - _domain_start_time) * 1000)
+                self._on_domain_complete(domain, {
+                    "gate": 1 if record.passed else 0,
+                    "content_summary": (selected_content[:200] if selected_content else ""),
+                    "time_ms": _domain_elapsed_ms,
+                })
 
             domain_records.append(record)
             reasoning_steps.append({"domain": domain, "content": selected_content})

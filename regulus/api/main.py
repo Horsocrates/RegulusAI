@@ -17,6 +17,7 @@ import json
 import asyncio
 import logging
 import traceback
+from datetime import datetime
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -705,6 +706,7 @@ class LabResultItem(BaseModel):
     correct: bool | None
     informative: bool | None
     judge_reason: str | None
+    failure_reason: str | None = None
     corrections: int
     time_seconds: float
 
@@ -919,6 +921,7 @@ async def lab_get_step_results(run_id: int, step_number: int):
             correct=r.correct,
             informative=r.informative,
             judge_reason=r.judge_reason,
+            failure_reason=r.failure_reason,
             corrections=r.corrections,
             time_seconds=r.time_seconds,
         )
@@ -1055,6 +1058,14 @@ async def lab_stream_step(
         try:
             async for progress in runner.stream_step(run_id, step_number):
                 logger.debug(f"Progress: type={progress.type}, step={progress.step_number}")
+
+                # Domain-level events use named SSE event types
+                if progress.type in ("domain_start", "domain_complete", "correction", "judge_result"):
+                    event_data = progress.event_data or {}
+                    event_data["timestamp"] = datetime.utcnow().isoformat() + "Z"
+                    yield f"event: {progress.type}\ndata: {json.dumps(event_data)}\n\n"
+                    continue
+
                 event_data = {
                     "type": progress.type,
                     "step_number": progress.step_number,

@@ -6,7 +6,7 @@ import time
 import traceback
 from datetime import datetime
 from typing import AsyncGenerator, Callable, Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from regulus.lab.models import (
     LabDB, Run, Step, Result, RunStatus, StepStatus
@@ -38,9 +38,20 @@ class ReasoningEvent:
 
 
 @dataclass
+class DomainEvent:
+    """Domain-level event for SSE streaming."""
+    type: str  # "domain_start", "domain_complete", "correction", "judge_result"
+    agent_id: int = 0
+    question_index: int = 0
+    domain: str = ""
+    data: dict = field(default_factory=dict)
+
+
+@dataclass
 class StepProgress:
     """Progress update during step execution."""
-    type: str  # "start", "progress", "complete", "error", "reasoning", "phase"
+    type: str  # "start", "progress", "complete", "error", "reasoning", "phase",
+               # "domain_start", "domain_complete", "correction", "judge_result"
     step_number: int
     question_index: int = 0
     total_in_step: int = 0
@@ -52,6 +63,8 @@ class StepProgress:
     content: str = ""
     question: str = ""
     phase: str = ""  # "reasoning", "synthesizing", "judging"
+    # For domain events
+    event_data: Optional[dict] = None
 
 
 class LabRunner:
@@ -170,8 +183,7 @@ class LabRunner:
             llm_client = OpenAIClient(api_key=api_key)
 
         # Initialize components
-        print(f"[Runner] Initializing SocraticOrchestrator...")
-        orchestrator = SocraticOrchestrator(llm_client=llm_client)
+        print(f"[Runner] Initializing components...")
         judge = CrossJudge()
         print(f"[Runner] Components initialized, processing {len(step_items)} questions...")
 
@@ -190,10 +202,71 @@ class LabRunner:
                     return None
 
                 start_time = time.time()
+                agent_id = idx + 1  # 1-based agent IDs
                 print(f"[Runner] Processing question {idx}: {item.problem[:50]}...")
+
                 try:
+                    # Create orchestrator callbacks for domain events
+                    def _on_domain_start(domain: str, domain_name: str):
+                        if on_progress:
+                            on_progress(StepProgress(
+                                type="domain_start",
+                                step_number=step.step_number,
+                                question_index=idx,
+                                agent_id=agent_id,
+                                domain=domain,
+                                event_data={
+                                    "question_index": idx,
+                                    "agent_id": agent_id,
+                                    "domain": domain,
+                                    "domain_name": domain_name,
+                                },
+                            ))
+
+                    def _on_domain_complete(domain: str, result_dict: dict):
+                        if on_progress:
+                            on_progress(StepProgress(
+                                type="domain_complete",
+                                step_number=step.step_number,
+                                question_index=idx,
+                                agent_id=agent_id,
+                                domain=domain,
+                                event_data={
+                                    "question_index": idx,
+                                    "agent_id": agent_id,
+                                    "domain": domain,
+                                    **result_dict,
+                                },
+                            ))
+
+                    def _on_correction(domain: str, attempt: int, violation: str, fix_summary: str):
+                        if on_progress:
+                            on_progress(StepProgress(
+                                type="correction",
+                                step_number=step.step_number,
+                                question_index=idx,
+                                agent_id=agent_id,
+                                domain=domain,
+                                event_data={
+                                    "question_index": idx,
+                                    "agent_id": agent_id,
+                                    "domain": domain,
+                                    "attempt": attempt,
+                                    "violation": violation,
+                                    "fix_prompt_summary": fix_summary,
+                                },
+                            ))
+
+                    # Create per-question orchestrator with callbacks
+                    q_orchestrator = SocraticOrchestrator(
+                        llm_client=llm_client,
+                        on_domain_start=_on_domain_start,
+                        on_domain_complete=_on_domain_complete,
+                        on_correction=_on_correction,
+                    )
+
                     # Run orchestrator
-                    output = await orchestrator.process_query(item.problem)
+                    output = await q_orchestrator.process_query(item.problem)
                     elapsed = time.time() - start_time
                     print(f"[Runner] Question {idx} completed in {elapsed:.1f}s, valid={output.is_valid}")
 
@@ -207,8 +280,6 @@ class LabRunner:
                             answer=output.final_answer,
                             answer_provider=prov,
                         )
-                        # Correct = truthful AND informative
-                        # (must not lie AND must actually answer the question)
                         is_truthful = eval_result.get("truthful", False)
                         is_informative = eval_result.get("informative", False)
                         judge_result = type("JudgeResult", (), {
@@ -217,35 +288,59 @@ class LabRunner:
                             "reason": eval_result.get("truth_reason", ""),
                         })()
 
-                    # Estimate tokens: input = question + system prompts (~2K), output = reasoning + answer
-                    # Socratic pipeline: 6 domains * ~500 tokens each = ~3K output
+                        # Emit judge_result event
+                        if on_progress:
+                            on_progress(StepProgress(
+                                type="judge_result",
+                                step_number=step.step_number,
+                                question_index=idx,
+                                agent_id=agent_id,
+                                event_data={
+                                    "question_index": idx,
+                                    "agent_id": agent_id,
+                                    "truthful": 1 if is_truthful else 0,
+                                    "informative": 1 if is_informative else 0,
+                                    "correct": is_truthful and is_informative,
+                                    "judge_reason": eval_result.get("truth_reason", ""),
+                                },
+                            ))
+
+                    # Estimate tokens
                     input_tokens = estimate_tokens_from_text(item.problem) + 2000
                     output_tokens = estimate_tokens_from_text(output.final_answer or "") + 3000
 
                     # Extract reasoning steps for display
                     reasoning_steps = []
-                    for step in getattr(output, 'reasoning_steps', []):
+                    for rstep in getattr(output, 'reasoning_steps', []):
                         reasoning_steps.append({
-                            "domain": step.get("domain", ""),
-                            "content": step.get("content", "")[:500],
+                            "domain": rstep.get("domain", ""),
+                            "content": rstep.get("content", "")[:500],
                         })
+
+                    # Determine failure reason
+                    failure_reason = None
+                    is_correct = judge_result.correct if judge_result else None
+                    if not output.is_valid:
+                        failure_reason = "INVALID_REASONING"
+                    elif judge_result and not judge_result.correct:
+                        failure_reason = judge_result.reason or "INCORRECT_ANSWER"
 
                     result = Result(
                         question=item.problem,
                         expected=item.answer,
                         answer=output.final_answer,
                         valid=output.is_valid,
-                        correct=judge_result.correct if judge_result else None,
+                        correct=is_correct,
                         informative=judge_result.informative if judge_result else None,
                         judge_reason=judge_result.reason if judge_result else None,
+                        failure_reason=failure_reason,
                         corrections=output.total_corrections,
                         time_seconds=elapsed,
                         input_tokens=input_tokens,
                         output_tokens=output_tokens,
                     )
-                    # Attach reasoning for streaming (not persisted)
                     result._reasoning_steps = reasoning_steps
-                    result._agent_id = idx
+                    result._agent_id = agent_id
                 except Exception as e:
                     elapsed = time.time() - start_time
                     print(f"[Runner] ERROR processing question {idx}: {e}")
@@ -257,12 +352,13 @@ class LabRunner:
                         valid=False,
                         correct=False,
                         judge_reason=f"Error: {str(e)}",
+                        failure_reason=f"ERROR: {str(e)}",
                         time_seconds=elapsed,
                         input_tokens=500,
                         output_tokens=100,
                     )
                     result._reasoning_steps = []
-                    result._agent_id = idx
+                    result._agent_id = agent_id
 
                 return result
 
