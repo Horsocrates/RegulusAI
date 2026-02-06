@@ -64,7 +64,7 @@ function ActiveRunCard({ run, onStop }: { run: LabRun; onStop: (id: number) => v
   const completed = stats?.completed ?? run.completed_questions;
   const total = run.total_questions;
   const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
-  const passed = stats?.passed ?? run.valid_count;
+  const passed = stats?.passed ?? run.correct_count;
   const failed = stats?.failed ?? (completed - passed);
 
   return (
@@ -170,7 +170,7 @@ function RunHistoryTable({ runs, onDelete, onStop }: { runs: LabRun[]; onDelete:
         </thead>
         <tbody>
           {runs.map((run) => {
-            const failCount = run.completed_questions - run.valid_count;
+            const failCount = run.completed_questions - run.correct_count;
             return (
               <tr
                 key={run.id}
@@ -189,7 +189,7 @@ function RunHistoryTable({ runs, onDelete, onStop }: { runs: LabRun[]; onDelete:
                 </td>
                 <td className="px-4 py-3 text-gray-400 text-sm capitalize">{run.dataset}</td>
                 <td className="px-4 py-3 text-right text-gray-300 text-sm">{run.total_questions}</td>
-                <td className="px-4 py-3 text-right text-green-400 text-sm">{run.valid_count}</td>
+                <td className="px-4 py-3 text-right text-green-400 text-sm">{run.correct_count}</td>
                 <td className="px-4 py-3 text-right text-red-400 text-sm">{Math.max(0, failCount)}</td>
                 <td className="px-4 py-3">
                   <StatusBadge status={run.status as RunStatus} />

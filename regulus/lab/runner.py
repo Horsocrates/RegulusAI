@@ -464,9 +464,16 @@ class LabRunner:
         total_time = sum(s.total_time for s in updated_run.steps)
         total_input_tokens = sum(s.input_tokens for s in updated_run.steps)
         total_output_tokens = sum(s.output_tokens for s in updated_run.steps)
+        # Count completed questions from finished steps
+        total_completed = sum(
+            s.questions_end - s.questions_start
+            for s in updated_run.steps
+            if s.status in (StepStatus.COMPLETED, StepStatus.FAILED)
+        )
         self.db.update_run_stats(
             run_id, total_valid, total_correct, total_time,
-            total_input_tokens, total_output_tokens
+            total_input_tokens, total_output_tokens,
+            completed_questions=total_completed,
         )
 
         if on_progress:

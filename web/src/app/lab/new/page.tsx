@@ -168,46 +168,53 @@ function ScopeConfig({ state, onChange, maxQuestions, categories, completedRuns 
       {/* Question count */}
       <div>
         <label className="block text-sm font-medium text-gray-400 mb-2">Questions</label>
-        <div className="flex flex-wrap gap-2">
-          {PRESETS.map((n) => (
+        {state.retryFromRunId !== null ? (
+          <div className="px-4 py-3 bg-[#12121a] border border-[#1e1e2e] rounded-lg">
+            <span className="text-white font-medium">{state.totalQuestions}</span>
+            <span className="text-gray-500 ml-2">failed questions from Run #{state.retryFromRunId}</span>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {PRESETS.map((n) => (
+              <button
+                key={n}
+                onClick={() => { setCustomMode(false); onChange({ totalQuestions: n }); }}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  !customMode && state.totalQuestions === n
+                    ? "bg-green-500 text-white"
+                    : "bg-[#1a1a2e] text-gray-300 hover:bg-[#252540]"
+                }`}
+              >
+                {n === 1 ? "1 (test)" : n}
+              </button>
+            ))}
             <button
-              key={n}
-              onClick={() => { setCustomMode(false); onChange({ totalQuestions: n }); }}
+              onClick={() => { setCustomMode(false); onChange({ totalQuestions: maxQuestions }); }}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                !customMode && state.totalQuestions === n
+                !customMode && state.totalQuestions === maxQuestions
                   ? "bg-green-500 text-white"
                   : "bg-[#1a1a2e] text-gray-300 hover:bg-[#252540]"
               }`}
             >
-              {n === 1 ? "1 (test)" : n}
+              Full ({maxQuestions.toLocaleString()})
             </button>
-          ))}
-          <button
-            onClick={() => { setCustomMode(false); onChange({ totalQuestions: maxQuestions }); }}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              !customMode && state.totalQuestions === maxQuestions
-                ? "bg-green-500 text-white"
-                : "bg-[#1a1a2e] text-gray-300 hover:bg-[#252540]"
-            }`}
-          >
-            Full ({maxQuestions.toLocaleString()})
-          </button>
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              min={1}
-              max={maxQuestions}
-              placeholder="Custom"
-              value={customMode ? state.totalQuestions : ""}
-              onChange={(e) => {
-                setCustomMode(true);
-                onChange({ totalQuestions: Math.min(Number(e.target.value) || 1, maxQuestions) });
-              }}
-              onFocus={() => setCustomMode(true)}
-              className="w-24 px-3 py-2 bg-[#1a1a2e] border border-[#1e1e2e] rounded-lg text-white text-sm focus:border-green-400 focus:outline-none"
-            />
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={1}
+                max={maxQuestions}
+                placeholder="Custom"
+                value={customMode ? state.totalQuestions : ""}
+                onChange={(e) => {
+                  setCustomMode(true);
+                  onChange({ totalQuestions: Math.min(Number(e.target.value) || 1, maxQuestions) });
+                }}
+                onFocus={() => setCustomMode(true)}
+                className="w-24 px-3 py-2 bg-[#1a1a2e] border border-[#1e1e2e] rounded-lg text-white text-sm focus:border-green-400 focus:outline-none"
+              />
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Category filter */}
@@ -234,7 +241,15 @@ function ScopeConfig({ state, onChange, maxQuestions, categories, completedRuns 
             <input
               type="checkbox"
               checked={state.retryFromRunId !== null}
-              onChange={(e) => onChange({ retryFromRunId: e.target.checked ? completedRuns[0].id : null })}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  const run = completedRuns[0];
+                  const failedCount = run.completed_questions - run.correct_count;
+                  onChange({ retryFromRunId: run.id, totalQuestions: Math.max(1, failedCount) });
+                } else {
+                  onChange({ retryFromRunId: null, totalQuestions: maxQuestions > 50 ? 50 : maxQuestions });
+                }
+              }}
               className="rounded border-gray-600"
             />
             Only failed from previous run
@@ -242,14 +257,22 @@ function ScopeConfig({ state, onChange, maxQuestions, categories, completedRuns 
           {state.retryFromRunId !== null && (
             <select
               value={state.retryFromRunId ?? ""}
-              onChange={(e) => onChange({ retryFromRunId: Number(e.target.value) || null })}
+              onChange={(e) => {
+                const runId = Number(e.target.value);
+                const run = completedRuns.find((r) => r.id === runId);
+                const failedCount = run ? run.completed_questions - run.correct_count : 0;
+                onChange({ retryFromRunId: runId || null, totalQuestions: Math.max(1, failedCount) });
+              }}
               className="w-full px-3 py-2 bg-[#1a1a2e] border border-[#1e1e2e] rounded-lg text-white text-sm focus:border-green-400 focus:outline-none"
             >
-              {completedRuns.map((r) => (
-                <option key={r.id} value={r.id}>
-                  Run #{r.id}: {r.name} ({r.total_questions - r.valid_count} failed)
-                </option>
-              ))}
+              {completedRuns.map((r) => {
+                const failedCount = r.completed_questions - r.correct_count;
+                return (
+                  <option key={r.id} value={r.id}>
+                    Run #{r.id}: {r.name} ({failedCount} failed)
+                  </option>
+                );
+              })}
             </select>
           )}
         </div>
@@ -524,7 +547,9 @@ export default function CreateTestPage() {
     queryFn: getLabRuns,
   });
   const completedRuns = (runsData ?? []).filter(
-    (r) => r.status === "completed" && (!state.dataset || r.dataset === state.dataset)
+    (r) => ["completed", "paused", "stopped"].includes(r.status) &&
+           r.completed_questions > 0 &&
+           (!state.dataset || r.dataset === state.dataset)
   );
 
   // Auto-generate name when entering step 4

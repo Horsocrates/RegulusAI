@@ -105,6 +105,7 @@ class Run:
     output_tokens: int = 0
     source_run_id: Optional[int] = None
     model_version: str = ""
+    completed_questions: int = 0
     created_at: str = ""
     updated_at: str = ""
     steps: list[Step] = field(default_factory=list)
@@ -114,14 +115,6 @@ class Run:
         d["status"] = self.status.value
         d["steps"] = [s.to_dict() for s in self.steps]
         return d
-
-    @property
-    def completed_questions(self) -> int:
-        return sum(
-            s.questions_end - s.questions_start
-            for s in self.steps
-            if s.status == StepStatus.COMPLETED
-        )
 
     @property
     def progress_percent(self) -> float:
@@ -263,6 +256,20 @@ class LabDB:
             conn.execute("ALTER TABLE runs ADD COLUMN model_version TEXT DEFAULT ''")
         except:
             pass
+        try:
+            conn.execute("ALTER TABLE runs ADD COLUMN completed_questions INTEGER NOT NULL DEFAULT 0")
+        except:
+            pass
+        # Backfill completed_questions from steps
+        try:
+            conn.execute("""
+                UPDATE runs SET completed_questions = (
+                    SELECT COALESCE(SUM(s.questions_end - s.questions_start), 0)
+                    FROM steps s WHERE s.run_id = runs.id AND s.status IN ('completed', 'failed')
+                ) WHERE completed_questions = 0
+            """)
+        except:
+            pass
         conn.commit()
         conn.close()
 
@@ -343,6 +350,7 @@ class LabDB:
             output_tokens=row["output_tokens"] if "output_tokens" in row.keys() else 0,
             source_run_id=row["source_run_id"] if "source_run_id" in row.keys() else None,
             model_version=row["model_version"] if "model_version" in row.keys() else "",
+            completed_questions=row["completed_questions"] if "completed_questions" in row.keys() else 0,
             created_at=row["created_at"],
             updated_at=row["updated_at"],
         )
@@ -411,6 +419,7 @@ class LabDB:
                 output_tokens=row["output_tokens"] if "output_tokens" in keys else 0,
                 source_run_id=row["source_run_id"] if "source_run_id" in keys else None,
                 model_version=row["model_version"] if "model_version" in keys else "",
+                completed_questions=row["completed_questions"] if "completed_questions" in keys else 0,
                 created_at=row["created_at"],
                 updated_at=row["updated_at"],
             ))
@@ -445,14 +454,17 @@ class LabDB:
         total_time: float,
         input_tokens: int = 0,
         output_tokens: int = 0,
+        completed_questions: int = 0,
     ):
         """Update run aggregate stats."""
         conn = self._get_conn()
         now = datetime.utcnow().isoformat()
         conn.execute(
             """UPDATE runs SET valid_count = ?, correct_count = ?, total_time = ?,
-               input_tokens = ?, output_tokens = ?, updated_at = ? WHERE id = ?""",
-            (valid_count, correct_count, total_time, input_tokens, output_tokens, now, run_id)
+               input_tokens = ?, output_tokens = ?, completed_questions = ?,
+               updated_at = ? WHERE id = ?""",
+            (valid_count, correct_count, total_time, input_tokens, output_tokens,
+             completed_questions, now, run_id)
         )
         conn.commit()
         conn.close()
