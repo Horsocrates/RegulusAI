@@ -153,10 +153,15 @@ DOMAIN_DEFINITIONS: Dict[str, dict] = {
                 "If < 90%: [CLARIFICATION NEEDED: question1, question2...]"
             ),
             "fact_status": (
-                "If D1 tagged [FACTUAL DATA REQUIRED: UNCONFIRMED], update status to:\n"
-                "[CONFIRMED] - source found and verified, OR\n"
-                "[UPDATED] - original assumption wrong, correct data found, OR\n"
-                "[UNCONFIRMED] - could not verify or refute"
+                "If D1 tagged [FACTUAL DATA REQUIRED: UNCONFIRMED], update status:\n"
+                "If STABLE fact (definitions, geography, history, science, known people):\n"
+                "  [CONFIRMED BY KNOWLEDGE] — state the fact from training knowledge directly.\n"
+                "  Do NOT mark as UNCONFIRMED just because no external source was searched.\n"
+                "  Your training knowledge IS a valid source for established facts.\n"
+                "If VOLATILE fact (statistics, rankings, current state):\n"
+                "  [CONFIRMED] — external source found and verified, OR\n"
+                "  [UPDATED] — original assumption wrong, correct data found, OR\n"
+                "  [UNCONFIRMED] — could not verify from external sources"
             ),
         },
         "threshold": 60,
@@ -190,11 +195,14 @@ DOMAIN_DEFINITIONS: Dict[str, dict] = {
                 "Format: [CERTAINTY: X%] [CLARIFICATIONS: q1, q2, ...]"
             ),
             "fact_status": (
-                "For each fact tagged as UNCONFIRMED in D1, search sources and assign status:\n"
-                "[CONFIRMED]: Found authoritative source - cite it\n"
-                "[UPDATED]: Original assumption incorrect - provide correct data with source\n"
-                "[UNCONFIRMED]: Could not verify - explain why\n\n"
-                "Format: Fact: <claim> → [STATUS] Source: <source or reason>"
+                "For each fact tagged as UNCONFIRMED in D1:\n"
+                "If the fact is STABLE (established, well-known):\n"
+                "  State it directly: [CONFIRMED BY KNOWLEDGE] Fact: <claim> — <your answer>\n"
+                "  Your training data is reliable for geography, history, science, definitions.\n"
+                "If the fact is VOLATILE (statistics, rankings, current):\n"
+                "  Use external sources: [CONFIRMED] Source: <source>\n"
+                "  Or if no source: [UNCONFIRMED] Reason: <why>\n\n"
+                "NEVER mark a well-known fact as UNCONFIRMED just because you didn't search for it."
             ),
         },
     },
@@ -270,7 +278,10 @@ DOMAIN_DEFINITIONS: Dict[str, dict] = {
             ),
             "conclusion_stated": (
                 "State your conclusion as a clear, direct, one-paragraph answer "
-                "to the original question. No hedging, no meta-commentary."
+                "to the original question.\n"
+                "- If facts were CONFIRMED or CONFIRMED BY KNOWLEDGE, state them as established.\n"
+                "- Do NOT say 'cannot verify' or 'unable to confirm' for confirmed facts.\n"
+                "- No hedging, no meta-commentary, no apologies."
             ),
         },
     },

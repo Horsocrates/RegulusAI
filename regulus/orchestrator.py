@@ -137,21 +137,21 @@ Original question: {question}
 Confidence level: {confidence_level}
 
 Now provide a clear, direct, natural-language answer to the question.
+
+CRITICAL RULES:
+- If your reasoning chain contains the answer, STATE IT DIRECTLY
+- Do NOT say "I cannot verify" or "I was unable to confirm" if you found information in your reasoning
+- Do NOT hedge with "some sources suggest" if your reasoning chain established the fact
+- If the fact was classified as STABLE, your training knowledge IS the verification
 - Be concise and informative
 - Include key facts from your analysis
 - Do NOT use Element/Role/Rule format
 - Do NOT include meta-commentary about your reasoning process
-- Do NOT hedge or say "I cannot verify" if you found the answer in your reasoning
-- If confidence is "unconfirmed", state clearly that the answer could not be verified
-- Otherwise, state the answer directly and confidently
-- At the very end, on a new line, add confidence indicator
+- Answer as if you're directly responding to a person
 
 Format for the last line:
 - If unconfirmed: "⚠️ This answer could not be verified through reliable sources."
-- If low confidence: "Confidence: low"
-- If medium confidence: "Confidence: medium"
-- If high confidence: "Confidence: high"
-- If very high confidence: "Confidence: very high"
+- Otherwise add: "Confidence: [low/medium/high/very high]"
 """
 
 
@@ -893,6 +893,19 @@ class SocraticOrchestrator:
                 else:
                     logger.info("STABLE fact — model reliable, skipping search")
                     source_context = ""
+
+            # Pass fact classification to downstream domains
+            if domain == "D1" and factual_data_required:
+                if fact_subtype == "volatile":
+                    accumulated_context.append(
+                        "[FACT CLASSIFICATION: VOLATILE — external sources required for verification]"
+                    )
+                else:
+                    accumulated_context.append(
+                        "[FACT CLASSIFICATION: STABLE — use training knowledge confidently. "
+                        "Do NOT say 'cannot verify' or 'unable to confirm'. "
+                        "State the answer directly from your knowledge.]"
+                    )
 
             # D2: inject source context if factual data was required
             if domain == "D2" and factual_data_required and source_context:
