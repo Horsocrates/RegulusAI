@@ -73,13 +73,25 @@ DOMAIN_DEFINITIONS: Dict[str, dict] = {
                 "[QUESTION] - meta-question about something, "
                 "[COMMAND] - instruction to perform action"
             ),
-            "err_analysis_complete": (
-                "ERR methodology applied: each key word/phrase analyzed with "
-                "Element (what it is), Role (its function), Rule (governing principle). "
-                "Format: WORD: [E: element] [R: role] [RULE: principle]"
+            "task_goal_identified": (
+                "The GOAL of the task is clearly stated:\n"
+                "GOAL: <what the questioner wants to know/achieve>\n"
+                "SUCCESS CRITERIA: <what counts as a correct/complete answer>"
             ),
-            "object_identified": "The specific object/concept/entity is clearly identified",
-            "context_acknowledged": "The broader context and common assumptions are noted",
+            "task_decomposed": (
+                "The task is decomposed into its structural ELEMENTS using ERR:\n"
+                "For each component of the task (not just words, but logical parts):\n"
+                "ELEMENT: <what is this component>\n"
+                "  ROLE: <what function does it serve in solving the task>\n"
+                "  RULE: <what principle governs it / constraints>\n"
+                "Minimum 2 elements, maximum 6."
+            ),
+            "solution_approach": (
+                "A solution APPROACH is identified:\n"
+                "APPROACH: <method to solve this>\n"
+                "STEPS: <high-level sequence of steps needed>\n"
+                "RISK: <what could go wrong / where errors are likely>"
+            ),
             "no_hallucination": "No fabricated objects, people, laws, or facts",
             "factual_claim_tagged": (
                 "If TYPE is [FACT], tag as [FACTUAL DATA REQUIRED: UNCONFIRMED] "
@@ -97,28 +109,47 @@ DOMAIN_DEFINITIONS: Dict[str, dict] = {
             "prompt_type_classified": (
                 "Classify this prompt's TYPE. Is it asking for:\n"
                 "- [FACT]: verifiable data (statistics, rankings, dates, names)\n"
-                "- [REASONING]: logical analysis or explanation\n"
+                "- [REASONING]: logical analysis, puzzle, math, deduction\n"
                 "- [OPINION]: subjective viewpoint\n"
                 "- [QUESTION]: meta-inquiry\n"
                 "- [COMMAND]: action to perform\n"
                 "State the TYPE explicitly."
             ),
-            "err_analysis_complete": (
-                "Apply ERR methodology to KEY words in the prompt:\n"
-                "For each important word/phrase, state:\n"
-                "- Element (E): What is this word referring to?\n"
-                "- Role (R): What function does it serve in the question?\n"
-                "- Rule: What principle governs its interpretation?\n"
-                "Example: 'produces' → [E: agricultural output] [R: measurement verb] "
-                "[RULE: implies quantity comparison]"
+            "task_goal_identified": (
+                "What is the GOAL of this task? What does the questioner want?\n"
+                "State it as:\n"
+                "GOAL: <concrete objective>\n"
+                "SUCCESS CRITERIA: <what makes the answer correct>\n\n"
+                "Example for 'What is 2+2?':\n"
+                "GOAL: Compute the sum of 2 and 2\n"
+                "SUCCESS CRITERIA: A single numerical value"
             ),
-            "object_identified": (
-                "What specific object, concept, or entity is this question about? "
-                "Name it precisely and verify it exists."
+            "task_decomposed": (
+                "Break this task into its structural components.\n"
+                "For each component, apply ERR:\n"
+                "ELEMENT: <the component> — ROLE: <its function> — RULE: <constraints>\n\n"
+                "Example for 'Which state produces the most peaches?':\n"
+                "ELEMENT: 'state' — ROLE: target entity to identify — RULE: must be a US state\n"
+                "ELEMENT: 'produces' — ROLE: measurement metric — RULE: agricultural production data\n"
+                "ELEMENT: 'most' — ROLE: comparison operator — RULE: requires ranking, superlative\n"
+                "ELEMENT: 'peaches' — ROLE: subject of measurement — RULE: specific fruit crop\n\n"
+                "Example for 'White elephant gift exchange: who ends up with gift 3?':\n"
+                "ELEMENT: participants {A,B,C,D} — ROLE: agents — RULE: each holds exactly 1 gift\n"
+                "ELEMENT: initial state {A→1, B→2...} — ROLE: starting condition — RULE: defines t=0\n"
+                "ELEMENT: steal operations — ROLE: state transformations — RULE: swap mechanics\n"
+                "ELEMENT: move sequence — ROLE: ordered input — RULE: execute sequentially"
             ),
-            "context_acknowledged": (
-                "What is the broader context? Are there common misconceptions or "
-                "assumptions about this topic that need verification?"
+            "solution_approach": (
+                "How should this task be solved? Identify:\n"
+                "APPROACH: <the method> (e.g., state tracking, arithmetic, lookup, deduction)\n"
+                "STEPS: <ordered list of what to do>\n"
+                "RISK: <where errors are most likely>\n\n"
+                "Example for arithmetic: APPROACH: step-by-step calculation\n"
+                "  STEPS: 1) Parse operands 2) Apply operations 3) Verify result\n"
+                "  RISK: Order of operations, sign errors\n\n"
+                "Example for logic puzzle: APPROACH: constraint satisfaction\n"
+                "  STEPS: 1) List all constraints 2) Eliminate impossibilities 3) Find unique solution\n"
+                "  RISK: Missing a constraint, contradictory assumptions"
             ),
             "no_hallucination": (
                 "Verify: does this object/concept/entity actually exist as described? "
@@ -142,7 +173,9 @@ DOMAIN_DEFINITIONS: Dict[str, dict] = {
         "criteria": {
             "d1_validation": (
                 "D1 outputs validated: TYPE classification confirmed, "
-                "ERR analysis reviewed and approved or corrected"
+                "GOAL and SUCCESS CRITERIA reviewed, "
+                "task decomposition (ELEMENTS) reviewed and approved or corrected, "
+                "APPROACH confirmed as appropriate"
             ),
             "terms_defined": "Key terms are precisely defined in context",
             "boundaries_set": "Scope of the question is clearly delimited",
@@ -173,8 +206,9 @@ DOMAIN_DEFINITIONS: Dict[str, dict] = {
             "d1_validation": (
                 "Review D1's analysis:\n"
                 "1. Is the TYPE classification correct?\n"
-                "2. Is the ERR analysis accurate for each key word?\n"
-                "3. Are there any errors or omissions?\n"
+                "2. Is the GOAL and SUCCESS CRITERIA accurate?\n"
+                "3. Is the task decomposition (ELEMENTS) complete and correct?\n"
+                "4. Is the APPROACH appropriate for this task?\n"
                 "State: [D1 VALIDATED] or [D1 CORRECTED: <corrections>]"
             ),
             "terms_defined": (
@@ -213,7 +247,13 @@ DOMAIN_DEFINITIONS: Dict[str, dict] = {
         "name": "Modeling",
         "question": "How do we connect this?",
         "criteria": {
-            "model_appropriate": "The framework/model used is appropriate for this type of question",
+            "model_appropriate": (
+                "A reasoning framework matching D1's APPROACH is applied.\n"
+                "Use the APPROACH identified in D1 as the framework.\n"
+                "If D1 said APPROACH: state tracking → apply state tracking.\n"
+                "If D1 said APPROACH: constraint satisfaction → apply constraint elimination.\n"
+                "Name the framework explicitly."
+            ),
             "no_category_error": "No type mismatches or category errors in comparisons",
             "connections_valid": "Logical/causal connections between elements are justified",
         },
@@ -275,9 +315,9 @@ DOMAIN_DEFINITIONS: Dict[str, dict] = {
             ),
             "conclusion_stated": (
                 "A clear, direct answer to the original question is stated. "
-                "For REASONING tasks: state the computed/derived answer. "
-                "NEVER say 'cannot determine' or 'computationally impractical' if the "
-                "problem is solvable with logical reasoning. Work through it."
+                "The answer must satisfy D1's SUCCESS CRITERIA. "
+                "For REASONING tasks: show the derived answer — NEVER say 'cannot determine'. "
+                "For FACT tasks: state the confirmed fact."
             ),
         },
         "threshold": 70,  # Higher — this IS the answer
