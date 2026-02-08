@@ -48,6 +48,8 @@ interface LabRun {
   input_tokens: number;
   output_tokens: number;
   cost: CostInfo | null;
+  mode: string;
+  reasoning_model: string;
   created_at: string;
   updated_at: string;
   steps: LabStep[];
@@ -864,7 +866,7 @@ export default function RunDetailPage() {
           <div className="flex-1">
             <h1 className="text-xl font-bold">{run.name}</h1>
             <p className="text-sm text-gray-500">
-              {run.dataset} / {run.provider} / {run.num_steps} steps
+              {run.dataset} / {run.provider}{run.mode === "v2" ? ` / v2 Audit (${run.reasoning_model})` : ""} / {run.num_steps} steps
             </p>
           </div>
           <button

@@ -16,10 +16,76 @@ from regulus.lab.costs import estimate_run_cost, calculate_cost
 from regulus.data.simpleqa import load_dataset as load_simpleqa, SimpleQAItem
 from regulus.data.bbeh import load_dataset as load_bbeh, BBEHItem
 from regulus.orchestrator import SocraticOrchestrator
+from regulus.audit.orchestrator import AuditOrchestrator
+from regulus.audit.types import AuditConfig
+from regulus.reasoning.factory import get_provider as get_reasoning_provider
 from regulus.judge import CrossJudge
 from regulus.llm.claude import ClaudeClient
 from regulus.llm.openai import OpenAIClient
 from regulus.llm.hybrid import HybridClient
+
+
+def _print_v2_audit_summary(idx: int, v2_output, elapsed: float):
+    """Print compact v2 audit summary for a single question."""
+    audit = v2_output.final_audit
+    if not audit:
+        print(f"  Q{idx}: {elapsed:.1f}s | valid={v2_output.valid} | NO AUDIT DATA")
+        return
+
+    # Domain weights as compact bar
+    weights = []
+    for d in audit.domains:
+        w = d.weight if d.present else 0
+        weights.append(f"D{d.domain[1]}:{w:>2d}")
+    weight_str = " ".join(weights)
+
+    # v1.0a signals
+    signals = []
+    d1 = next((d for d in audit.domains if d.domain == "D1"), None)
+    d2 = next((d for d in audit.domains if d.domain == "D2"), None)
+    d3 = next((d for d in audit.domains if d.domain == "D3"), None)
+    d5 = next((d for d in audit.domains if d.domain == "D5"), None)
+    d6 = next((d for d in audit.domains if d.domain == "D6"), None)
+
+    if d1 and d1.d1_depth is not None:
+        signals.append(f"d1_depth={d1.d1_depth}")
+    if d2 and d2.d2_depth is not None:
+        signals.append(f"d2_depth={d2.d2_depth}")
+    if d3 and d3.d3_objectivity_pass is not None:
+        signals.append(f"obj={'OK' if d3.d3_objectivity_pass else 'FAIL'}")
+    if d5 and d5.d5_certainty_type:
+        cert_short = {"necessary": "NEC", "probabilistic": "PROB", "evaluative": "EVAL", "unmarked": "UNM"}.get(d5.d5_certainty_type, "?")
+        signals.append(f"cert={cert_short}")
+    if d6 and d6.d6_genuine is not None:
+        signals.append(f"refl={'OK' if d6.d6_genuine else 'FAIL'}")
+
+    violations = getattr(audit, 'violation_patterns', [])
+    if violations:
+        signals.append(f"VIOLATIONS={','.join(violations)}")
+
+    signal_str = " | ".join(signals) if signals else "no v1.0a signals"
+
+    gates_ok = audit.all_gates_passed
+    total_w = audit.total_weight
+    corrections = len(v2_output.corrections)
+    corr_str = f" corr={corrections}" if corrections > 0 else ""
+    status = "PASS" if v2_output.valid else "FAIL"
+
+    print(f"  Q{idx}: {status} {elapsed:.1f}s | W={total_w} gates={'OK' if gates_ok else 'FAIL'}{corr_str} | {weight_str}")
+    print(f"        {signal_str}")
+    if audit.overall_issues:
+        print(f"        issues: {'; '.join(audit.overall_issues[:3])}")
+
+
+def _get_reasoning_api_key(reasoning_model: str) -> str:
+    """Get the appropriate API key for a reasoning model."""
+    if reasoning_model == "deepseek":
+        return os.environ.get("DEEPSEEK_API_KEY", "")
+    elif reasoning_model == "claude-thinking":
+        return os.environ.get("ANTHROPIC_API_KEY", "")
+    elif reasoning_model == "openai-reasoning":
+        return os.environ.get("OPENAI_API_KEY", "")
+    return os.environ.get("OPENAI_API_KEY", "")
 
 
 def estimate_tokens_from_text(text: str) -> int:
@@ -113,6 +179,9 @@ class LabRunner:
         concurrency: int = 5,
         source_run_id: Optional[int] = None,
         model_version: str = "",
+        mode: str = "v1",
+        reasoning_model: str = "",
+        seed: int = 42,
     ) -> Run:
         """Create a new run."""
         return self.db.create_run(
@@ -124,6 +193,9 @@ class LabRunner:
             concurrency=concurrency,
             source_run_id=source_run_id,
             model_version=model_version,
+            mode=mode,
+            reasoning_model=reasoning_model,
+            seed=seed,
         )
 
     def get_run(self, run_id: int) -> Optional[Run]:
@@ -184,9 +256,9 @@ class LabRunner:
 
         # Load dataset
         if run.dataset == "simpleqa":
-            all_items = load_simpleqa(n=run.total_questions, seed=42)
+            all_items = load_simpleqa(n=run.total_questions, seed=run.seed)
         elif run.dataset == "bbeh":
-            all_items = load_bbeh(n=run.total_questions, seed=42)
+            all_items = load_bbeh(n=run.total_questions, seed=run.seed)
         else:
             raise ValueError(f"Unknown dataset: {run.dataset}")
 
@@ -290,36 +362,148 @@ class LabRunner:
                                 },
                             ))
 
-                    # Create per-question orchestrator with callbacks
-                    q_orchestrator = SocraticOrchestrator(
-                        llm_client=llm_client,
-                        on_domain_start=_on_domain_start,
-                        on_domain_complete=_on_domain_complete,
-                        on_correction=_on_correction,
-                    )
+                    if run.mode == "v2":
+                        # v2: AuditOrchestrator (reason → audit → correct)
+                        reasoning_api_key = _get_reasoning_api_key(run.reasoning_model)
+                        reasoning_provider = get_reasoning_provider(
+                            run.reasoning_model, api_key=reasoning_api_key,
+                        )
+                        # Use a lightweight LLM for the audit call
+                        audit_api_key = os.environ.get("OPENAI_API_KEY", "")
+                        audit_llm = OpenAIClient(api_key=audit_api_key, model="gpt-4o-mini")
 
-                    # Run orchestrator
-                    output = await q_orchestrator.process_query(item.problem)
-                    elapsed = time.time() - start_time
-                    print(f"[Runner] Question {idx} completed in {elapsed:.1f}s, valid={output.is_valid}")
+                        q_orchestrator = AuditOrchestrator(
+                            reasoning_provider=reasoning_provider,
+                            audit_llm=audit_llm,
+                            config=AuditConfig(),
+                            on_domain_start=_on_domain_start,
+                            on_domain_complete=_on_domain_complete,
+                            on_correction=_on_correction,
+                        )
 
-                    # Judge evaluation
+                        v2_output = await q_orchestrator.process_query(item.problem)
+                        elapsed = time.time() - start_time
+                        _print_v2_audit_summary(idx, v2_output, elapsed)
+
+                        final_answer = v2_output.answer
+                        is_valid = v2_output.valid
+                        total_corrections = len(v2_output.corrections)
+                        reasoning_json = v2_output.reasoning_json
+                        input_tokens = v2_output.input_tokens
+                        output_tokens = v2_output.output_tokens
+                        reasoning_steps = []
+                    elif run.mode == "mas":
+                        # mas: MASOrchestrator (classify → decompose → process → verify)
+                        from regulus.mas.orchestrator import MASOrchestrator
+                        from regulus.mas.types import MASConfig
+
+                        mas_api_key = os.environ.get("OPENAI_API_KEY", "")
+                        mas_llm = OpenAIClient(api_key=mas_api_key, model="gpt-4o-mini")
+
+                        q_orchestrator = MASOrchestrator(
+                            llm_client=mas_llm,
+                            config=MASConfig(),
+                            on_domain_start=_on_domain_start,
+                            on_domain_complete=_on_domain_complete,
+                            on_correction=_on_correction,
+                        )
+
+                        mas_output = await q_orchestrator.process_query(item.problem)
+                        elapsed = time.time() - start_time
+
+                        final_answer = mas_output.answer
+                        is_valid = mas_output.valid
+                        total_corrections = mas_output.corrections
+                        reasoning_json = mas_output.reasoning_json
+                        input_tokens = mas_output.input_tokens
+                        output_tokens = mas_output.output_tokens
+                        reasoning_steps = []
+                    else:
+                        # v1: SocraticOrchestrator (generate D1→D6)
+                        q_orchestrator = SocraticOrchestrator(
+                            llm_client=llm_client,
+                            on_domain_start=_on_domain_start,
+                            on_domain_complete=_on_domain_complete,
+                            on_correction=_on_correction,
+                        )
+
+                        output = await q_orchestrator.process_query(item.problem)
+                        elapsed = time.time() - start_time
+                        print(f"[Runner] Question {idx} completed in {elapsed:.1f}s, valid={output.is_valid}")
+
+                        final_answer = output.final_answer
+                        is_valid = output.is_valid
+                        total_corrections = output.total_corrections
+
+                        # Serialize full domain reasoning chain
+                        reasoning_chain = []
+                        for rec in getattr(output, 'domain_records', []):
+                            entry = {
+                                "domain": rec.domain,
+                                "weight": rec.final_weight,
+                                "passed": rec.passed,
+                                "attempts": rec.attempts,
+                                "content": rec.content,
+                                "probes": [
+                                    {"criterion": p.criterion,
+                                     "weight_before": p.weight_before,
+                                     "weight_after": p.weight_after}
+                                    for p in rec.probes_used
+                                ],
+                            }
+                            reasoning_chain.append(entry)
+                        reasoning_json = json.dumps(reasoning_chain, ensure_ascii=False)
+
+                        # Estimate tokens
+                        input_tokens = estimate_tokens_from_text(item.problem) + 2000
+                        output_tokens = estimate_tokens_from_text(final_answer or "") + 3000
+
+                        # Extract reasoning steps for display
+                        reasoning_steps = []
+                        for rstep in getattr(output, 'reasoning_steps', []):
+                            reasoning_steps.append({
+                                "domain": rstep.get("domain", ""),
+                                "content": rstep.get("content", ""),
+                            })
+
+                    # Judge evaluation (shared for v1 and v2)
                     judge_result = None
-                    if output.final_answer:
+                    if final_answer:
+                        # Normalize answer for judge
+                        judge_answer = final_answer.strip()
+                        if judge_answer.startswith("**") and judge_answer.endswith("**"):
+                            judge_answer = judge_answer[2:-2].strip()
+                        if len(judge_answer) > 2000:
+                            judge_answer = judge_answer[:2000] + "..."
+
                         prov = "anthropic" if run.provider == "claude" else "openai"
                         eval_result = judge.evaluate(
                             question=item.problem,
                             reference=item.answer,
-                            answer=output.final_answer,
+                            answer=judge_answer,
                             answer_provider=prov,
                         )
-                        is_truthful = eval_result.get("truthful", False)
-                        is_informative = eval_result.get("informative", False)
-                        judge_result = type("JudgeResult", (), {
-                            "correct": is_truthful and is_informative,
-                            "informative": is_informative,
-                            "reason": eval_result.get("truth_reason", ""),
-                        })()
+                        is_truthful = eval_result.get("truthful")
+                        is_informative = eval_result.get("informative")
+
+                        # Handle judge errors: None means judge couldn't determine
+                        judge_error = is_truthful is None or is_informative is None
+
+                        if judge_error:
+                            judge_result = type("JudgeResult", (), {
+                                "correct": None,  # Unknown, not False
+                                "informative": is_informative,
+                                "reason": eval_result.get("truth_reason", "") or eval_result.get("info_reason", ""),
+                                "judge_error": True,
+                            })()
+                            print(f"[Runner] WARNING Q{idx}: Judge error — {judge_result.reason}")
+                        else:
+                            judge_result = type("JudgeResult", (), {
+                                "correct": bool(is_truthful) and bool(is_informative),
+                                "informative": bool(is_informative),
+                                "reason": eval_result.get("truth_reason", ""),
+                                "judge_error": False,
+                            })()
 
                         # Emit judge_result event
                         if on_progress:
@@ -333,60 +517,35 @@ class LabRunner:
                                     "agent_id": agent_id,
                                     "truthful": 1 if is_truthful else 0,
                                     "informative": 1 if is_informative else 0,
-                                    "correct": is_truthful and is_informative,
+                                    "correct": judge_result.correct if not judge_error else None,
                                     "judge_reason": eval_result.get("truth_reason", ""),
+                                    "judge_error": judge_error,
                                 },
                             ))
 
-                    # Serialize full domain reasoning chain
-                    reasoning_chain = []
-                    for rec in getattr(output, 'domain_records', []):
-                        entry = {
-                            "domain": rec.domain,
-                            "weight": rec.final_weight,
-                            "passed": rec.passed,
-                            "attempts": rec.attempts,
-                            "content": rec.content,
-                            "probes": [
-                                {"criterion": p.criterion,
-                                 "weight_before": p.weight_before,
-                                 "weight_after": p.weight_after}
-                                for p in rec.probes_used
-                            ],
-                        }
-                        reasoning_chain.append(entry)
-                    reasoning_json = json.dumps(reasoning_chain, ensure_ascii=False)
-
-                    # Estimate tokens
-                    input_tokens = estimate_tokens_from_text(item.problem) + 2000
-                    output_tokens = estimate_tokens_from_text(output.final_answer or "") + 3000
-
-                    # Extract reasoning steps for display
-                    reasoning_steps = []
-                    for rstep in getattr(output, 'reasoning_steps', []):
-                        reasoning_steps.append({
-                            "domain": rstep.get("domain", ""),
-                            "content": rstep.get("content", ""),
-                        })
-
                     # Determine failure reason
-                    failure_reason = None
                     is_correct = judge_result.correct if judge_result else None
-                    if not output.is_valid:
+                    judge_errored = getattr(judge_result, 'judge_error', False) if judge_result else False
+
+                    if not is_valid:
                         failure_reason = "INVALID_REASONING"
-                    elif judge_result and not judge_result.correct:
+                    elif judge_errored:
+                        failure_reason = f"JUDGE_ERROR: {judge_result.reason}"
+                    elif judge_result and judge_result.correct is False:
                         failure_reason = judge_result.reason or "INCORRECT_ANSWER"
+                    else:
+                        failure_reason = None
 
                     result = Result(
                         question=item.problem,
                         expected=item.answer,
-                        answer=output.final_answer,
-                        valid=output.is_valid,
+                        answer=final_answer,
+                        valid=is_valid,
                         correct=is_correct,
                         informative=judge_result.informative if judge_result else None,
                         judge_reason=judge_result.reason if judge_result else None,
                         failure_reason=failure_reason,
-                        corrections=output.total_corrections,
+                        corrections=total_corrections,
                         time_seconds=elapsed,
                         input_tokens=input_tokens,
                         output_tokens=output_tokens,

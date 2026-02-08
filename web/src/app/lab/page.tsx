@@ -78,6 +78,9 @@ function ActiveRunCard({ run, onStop }: { run: LabRun; onStop: (id: number) => v
           <span className="text-white font-medium">Run #{run.id}: {run.name}</span>
         </div>
         <div className="flex items-center gap-3">
+          {run.mode === "v2" && (
+            <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400">v2</span>
+          )}
           <span className="text-sm text-gray-400">{run.concurrency} agents</span>
           <button
             onClick={handleStop}
@@ -187,7 +190,12 @@ function RunHistoryTable({ runs, onDelete, onStop }: { runs: LabRun[]; onDelete:
                     </div>
                   )}
                 </td>
-                <td className="px-4 py-3 text-gray-400 text-sm capitalize">{run.dataset}</td>
+                <td className="px-4 py-3 text-gray-400 text-sm capitalize">
+                  {run.dataset}
+                  {run.mode === "v2" && (
+                    <span className="ml-1.5 text-[10px] font-medium px-1 py-0.5 rounded bg-purple-500/20 text-purple-400">v2</span>
+                  )}
+                </td>
                 <td className="px-4 py-3 text-right text-gray-300 text-sm">{run.total_questions}</td>
                 <td className="px-4 py-3 text-right text-green-400 text-sm">{run.correct_count}</td>
                 <td className="px-4 py-3 text-right text-red-400 text-sm">{Math.max(0, failCount)}</td>

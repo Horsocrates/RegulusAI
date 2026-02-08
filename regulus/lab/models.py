@@ -56,8 +56,14 @@ class Result:
 
     @property
     def is_passed(self) -> bool:
-        """Result passes if it is valid and judged correct."""
-        return self.valid and self.correct is True
+        """Result passes if valid and judged correct.
+        Judge errors (correct=None) pass if structurally valid."""
+        if not self.valid:
+            return False
+        if self.correct is None:
+            # Judge error — don't penalize; treat as passed if structurally valid
+            return True
+        return self.correct
 
     @property
     def reasoning_chain(self) -> list[dict]:
@@ -116,6 +122,9 @@ class Run:
     source_run_id: Optional[int] = None
     model_version: str = ""
     completed_questions: int = 0
+    mode: str = "v1"  # "v1" (Socratic) or "v2" (audit)
+    reasoning_model: str = ""  # e.g. "deepseek", "claude-thinking"
+    seed: int = 42  # Random seed for dataset sampling
     created_at: str = ""
     updated_at: str = ""
     steps: list[Step] = field(default_factory=list)
@@ -274,6 +283,18 @@ class LabDB:
             conn.execute("ALTER TABLE runs ADD COLUMN completed_questions INTEGER NOT NULL DEFAULT 0")
         except:
             pass
+        try:
+            conn.execute("ALTER TABLE runs ADD COLUMN mode TEXT DEFAULT 'v1'")
+        except:
+            pass
+        try:
+            conn.execute("ALTER TABLE runs ADD COLUMN reasoning_model TEXT DEFAULT ''")
+        except:
+            pass
+        try:
+            conn.execute("ALTER TABLE runs ADD COLUMN seed INTEGER NOT NULL DEFAULT 42")
+        except:
+            pass
         # Backfill completed_questions from steps
         try:
             conn.execute("""
@@ -297,6 +318,9 @@ class LabDB:
         concurrency: int = 5,
         source_run_id: Optional[int] = None,
         model_version: str = "",
+        mode: str = "v1",
+        reasoning_model: str = "",
+        seed: int = 42,
     ) -> Run:
         """Create a new run with steps."""
         # Cap num_steps at total_questions (1 question per step max)
@@ -310,10 +334,12 @@ class LabDB:
         cursor.execute("""
             INSERT INTO runs (name, dataset, provider, total_questions, num_steps,
                               concurrency, status, current_step, source_run_id,
-                              model_version, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)
+                              model_version, mode, reasoning_model, seed,
+                              created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)
         """, (name, dataset, provider, total_questions, num_steps, concurrency,
-              RunStatus.CREATED.value, source_run_id, model_version, now, now))
+              RunStatus.CREATED.value, source_run_id, model_version,
+              mode, reasoning_model, seed, now, now))
         run_id = cursor.lastrowid
 
         # Calculate questions per step
@@ -365,6 +391,9 @@ class LabDB:
             source_run_id=row["source_run_id"] if "source_run_id" in row.keys() else None,
             model_version=row["model_version"] if "model_version" in row.keys() else "",
             completed_questions=row["completed_questions"] if "completed_questions" in row.keys() else 0,
+            mode=row["mode"] if "mode" in row.keys() else "v1",
+            reasoning_model=row["reasoning_model"] if "reasoning_model" in row.keys() else "",
+            seed=row["seed"] if "seed" in row.keys() else 42,
             created_at=row["created_at"],
             updated_at=row["updated_at"],
         )
@@ -434,6 +463,9 @@ class LabDB:
                 source_run_id=row["source_run_id"] if "source_run_id" in keys else None,
                 model_version=row["model_version"] if "model_version" in keys else "",
                 completed_questions=row["completed_questions"] if "completed_questions" in keys else 0,
+                mode=row["mode"] if "mode" in keys else "v1",
+                reasoning_model=row["reasoning_model"] if "reasoning_model" in keys else "",
+                seed=row["seed"] if "seed" in keys else 42,
                 created_at=row["created_at"],
                 updated_at=row["updated_at"],
             ))

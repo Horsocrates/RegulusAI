@@ -29,6 +29,8 @@ interface WizardState {
   provider: "claude" | "openai";
   modelVersion: string;
   name: string;
+  mode: "v1" | "v2";
+  reasoningModel: string;
 }
 
 const INITIAL_STATE: WizardState = {
@@ -45,6 +47,8 @@ const INITIAL_STATE: WizardState = {
   provider: "claude",
   modelVersion: "v1.0a",
   name: "",
+  mode: "v1",
+  reasoningModel: "deepseek",
 };
 
 const COST_PER_Q: Record<string, number> = {
@@ -397,6 +401,72 @@ function ExecutionConfig({ state, onChange }: {
         </div>
       </div>
 
+      {/* Pipeline Mode */}
+      <div>
+        <label className="block text-sm font-medium text-gray-400 mb-2">Pipeline mode</label>
+        <div className="flex gap-2">
+          <button
+            onClick={() => onChange({ mode: "v1" })}
+            className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              state.mode === "v1"
+                ? "bg-green-500 text-white"
+                : "bg-[#1a1a2e] text-gray-300 hover:bg-[#252540]"
+            }`}
+          >
+            v1 Socratic
+          </button>
+          <button
+            onClick={() => onChange({ mode: "v2" })}
+            className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              state.mode === "v2"
+                ? "bg-purple-500 text-white"
+                : "bg-[#1a1a2e] text-gray-300 hover:bg-[#252540]"
+            }`}
+          >
+            v2 Audit
+          </button>
+        </div>
+        <p className="text-xs text-gray-500 mt-1">
+          {state.mode === "v1"
+            ? "Generate reasoning D1-D6 step by step (6+ LLM calls)"
+            : "Reasoning model thinks, then Regulus audits the trace (2 LLM calls)"}
+        </p>
+      </div>
+
+      {/* Reasoning Model (v2 only) */}
+      {state.mode === "v2" && (
+        <div>
+          <label className="block text-sm font-medium text-gray-400 mb-2">Reasoning model</label>
+          <div className="space-y-2">
+            {[
+              { value: "deepseek", label: "DeepSeek-R1", desc: "Full chain-of-thought trace" },
+              { value: "claude-thinking", label: "Claude Extended Thinking", desc: "Summary trace" },
+              { value: "openai-reasoning", label: "OpenAI (Stub)", desc: "No trace (answer-only audit)" },
+            ].map((m) => (
+              <label
+                key={m.value}
+                className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
+                  state.reasoningModel === m.value
+                    ? "bg-purple-500/10 border border-purple-400/40"
+                    : "bg-[#12121a] border border-[#1e1e2e] hover:border-purple-400/20"
+                }`}
+              >
+                <input
+                  type="radio"
+                  checked={state.reasoningModel === m.value}
+                  onChange={() => onChange({ reasoningModel: m.value })}
+                  className="mt-0.5"
+                />
+                <div>
+                  <div className="text-white text-sm font-medium">{m.label}</div>
+                  <div className="text-gray-500 text-xs">{m.desc}</div>
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Model version */}
       <div>
         <label className="block text-sm font-medium text-gray-400 mb-2">Model version label</label>
@@ -477,6 +547,8 @@ function ReviewPanel({ state, onNameChange, submitting }: {
         <Row label="Agents" value={`${state.concurrency} parallel`} />
         <Row label="Steps" value={state.stepMode === "continuous" ? "1 (continuous)" : `${numSteps} (${state.questionsPerAgent * state.concurrency} questions/step = ${state.questionsPerAgent}/agent × ${state.concurrency} agents)`} />
         <Row label="Provider" value={state.provider === "claude" ? "Claude" : "OpenAI"} />
+        <Row label="Pipeline" value={state.mode === "v1" ? "v1 Socratic (6+ LLM calls)" : "v2 Audit (2 LLM calls)"} />
+        {state.mode === "v2" && <Row label="Reasoning model" value={state.reasoningModel} />}
         {state.modelVersion && <Row label="Version" value={state.modelVersion} />}
         {state.retryFromRunId && <Row label="Retry from" value={`Run #${state.retryFromRunId}`} />}
 
@@ -598,6 +670,8 @@ export default function CreateTestPage() {
         category: state.category,
         source_run_id: state.retryFromRunId,
         model_version: state.modelVersion,
+        mode: state.mode,
+        reasoning_model: state.mode === "v2" ? state.reasoningModel : "",
       };
 
       const run = await createLabRun(req);

@@ -36,6 +36,7 @@ def valid_tree():
                 "legacy_idx": 0,
                 "gate_signals": {
                     "e_exists": True, "r_exists": True, "rule_exists": True,
+                    "s_exists": True, "deps_declared": True,
                     "l1_l3_ok": True, "l5_ok": True
                 },
                 "raw_scores": {"struct_points": 10, "domain_points": 8, "current_domain": 1}
@@ -48,6 +49,7 @@ def valid_tree():
                 "legacy_idx": 1,
                 "gate_signals": {
                     "e_exists": True, "r_exists": True, "rule_exists": True,
+                    "s_exists": True, "deps_declared": True,
                     "l1_l3_ok": True, "l5_ok": True
                 },
                 "raw_scores": {"struct_points": 10, "domain_points": 9, "current_domain": 2}
@@ -60,6 +62,7 @@ def valid_tree():
                 "legacy_idx": 2,
                 "gate_signals": {
                     "e_exists": True, "r_exists": True, "rule_exists": True,
+                    "s_exists": True, "deps_declared": True,
                     "l1_l3_ok": True, "l5_ok": True
                 },
                 "raw_scores": {"struct_points": 10, "domain_points": 10, "current_domain": 5}
@@ -81,6 +84,7 @@ def tree_with_invalid_node():
                 "legacy_idx": 0,
                 "gate_signals": {
                     "e_exists": True, "r_exists": True, "rule_exists": True,
+                    "s_exists": True, "deps_declared": True,
                     "l1_l3_ok": True, "l5_ok": True
                 },
                 "raw_scores": {"struct_points": 10, "domain_points": 8, "current_domain": 1}
@@ -93,6 +97,7 @@ def tree_with_invalid_node():
                 "legacy_idx": 1,
                 "gate_signals": {
                     "e_exists": True, "r_exists": True, "rule_exists": False,  # MISSING RULE
+                    "s_exists": True, "deps_declared": True,
                     "l1_l3_ok": True, "l5_ok": True
                 },
                 "raw_scores": {"struct_points": 20, "domain_points": 15, "current_domain": 5}
@@ -114,6 +119,7 @@ def tree_with_equal_weights():
                 "legacy_idx": 0,  # Earlier
                 "gate_signals": {
                     "e_exists": True, "r_exists": True, "rule_exists": True,
+                    "s_exists": True, "deps_declared": True,
                     "l1_l3_ok": True, "l5_ok": True
                 },
                 "raw_scores": {"struct_points": 10, "domain_points": 8, "current_domain": 3}
@@ -126,6 +132,7 @@ def tree_with_equal_weights():
                 "legacy_idx": 1,  # Later
                 "gate_signals": {
                     "e_exists": True, "r_exists": True, "rule_exists": True,
+                    "s_exists": True, "deps_declared": True,
                     "l1_l3_ok": True, "l5_ok": True
                 },
                 "raw_scores": {"struct_points": 10, "domain_points": 8, "current_domain": 3}  # Same weight!
@@ -147,6 +154,7 @@ def tree_all_invalid():
                 "legacy_idx": 0,
                 "gate_signals": {
                     "e_exists": False, "r_exists": True, "rule_exists": True,
+                    "s_exists": True, "deps_declared": True,
                     "l1_l3_ok": True, "l5_ok": True
                 },
                 "raw_scores": {"struct_points": 10, "domain_points": 10, "current_domain": 5}
@@ -159,6 +167,7 @@ def tree_all_invalid():
                 "legacy_idx": 1,
                 "gate_signals": {
                     "e_exists": True, "r_exists": True, "rule_exists": True,
+                    "s_exists": True, "deps_declared": True,
                     "l1_l3_ok": False, "l5_ok": True
                 },
                 "raw_scores": {"struct_points": 10, "domain_points": 10, "current_domain": 5}
@@ -176,7 +185,8 @@ class TestZeroGate:
 
     def test_zero_gate_fires_on_missing_element(self):
         """Missing Element should trigger Zero-Gate"""
-        signals = GateSignals(e_exists=False, r_exists=True, rule_exists=True)
+        signals = GateSignals(e_exists=False, r_exists=True, rule_exists=True,
+                              s_exists=True, deps_declared=True)
         node = Node(
             node_id="test", parent_id=None, entity_id="E1",
             content="", legacy_idx=0,
@@ -193,7 +203,8 @@ class TestZeroGate:
 
     def test_zero_gate_fires_on_missing_role(self):
         """Missing Role should trigger Zero-Gate"""
-        signals = GateSignals(e_exists=True, r_exists=False, rule_exists=True)
+        signals = GateSignals(e_exists=True, r_exists=False, rule_exists=True,
+                              s_exists=True, deps_declared=True)
         node = Node(
             node_id="test", parent_id=None, entity_id="E1",
             content="", legacy_idx=0,
@@ -209,7 +220,8 @@ class TestZeroGate:
 
     def test_zero_gate_fires_on_missing_rule(self):
         """Missing Rule should trigger Zero-Gate"""
-        signals = GateSignals(e_exists=True, r_exists=True, rule_exists=False)
+        signals = GateSignals(e_exists=True, r_exists=True, rule_exists=False,
+                              s_exists=True, deps_declared=True)
         node = Node(
             node_id="test", parent_id=None, entity_id="E1",
             content="", legacy_idx=0,
@@ -221,10 +233,51 @@ class TestZeroGate:
         weight = compute_final_weight(node, gate)
         assert weight == 0
 
+    def test_zero_gate_fires_on_missing_status(self):
+        """Missing Status should trigger Zero-Gate"""
+        signals = GateSignals(
+            e_exists=True, r_exists=True, rule_exists=True,
+            s_exists=False, deps_declared=True,
+            l1_l3_ok=True, l5_ok=True
+        )
+        node = Node(
+            node_id="test", parent_id=None, entity_id="E1",
+            content="", legacy_idx=0,
+            gate_signals=signals,
+            raw_scores=RawScores(struct_points=100, domain_points=100, current_domain=5)
+        )
+
+        gate = compute_gate(node)
+        assert not gate.err_complete
+
+        weight = compute_final_weight(node, gate)
+        assert weight == 0  # ANNIHILATED
+
+    def test_zero_gate_fires_on_missing_deps(self):
+        """Missing dependencies should trigger Zero-Gate"""
+        signals = GateSignals(
+            e_exists=True, r_exists=True, rule_exists=True,
+            s_exists=True, deps_declared=False,
+            l1_l3_ok=True, l5_ok=True
+        )
+        node = Node(
+            node_id="test", parent_id=None, entity_id="E1",
+            content="", legacy_idx=0,
+            gate_signals=signals,
+            raw_scores=RawScores(struct_points=100, domain_points=100, current_domain=5)
+        )
+
+        gate = compute_gate(node)
+        assert not gate.deps_valid
+
+        weight = compute_final_weight(node, gate)
+        assert weight == 0  # ANNIHILATED
+
     def test_zero_gate_fires_on_level_violation(self):
         """L1-L3 violation should trigger Zero-Gate"""
         signals = GateSignals(
             e_exists=True, r_exists=True, rule_exists=True,
+            s_exists=True, deps_declared=True,
             l1_l3_ok=False, l5_ok=True
         )
         node = Node(
@@ -244,6 +297,7 @@ class TestZeroGate:
         """L5 violation should trigger Zero-Gate"""
         signals = GateSignals(
             e_exists=True, r_exists=True, rule_exists=True,
+            s_exists=True, deps_declared=True,
             l1_l3_ok=True, l5_ok=False
         )
         node = Node(
@@ -260,9 +314,10 @@ class TestZeroGate:
         assert weight == 0
 
     def test_valid_gate_passes(self):
-        """All valid signals should pass gate"""
+        """All valid signals should pass gate with all 4 components"""
         signals = GateSignals(
             e_exists=True, r_exists=True, rule_exists=True,
+            s_exists=True, deps_declared=True,
             l1_l3_ok=True, l5_ok=True
         )
         node = Node(
@@ -274,6 +329,11 @@ class TestZeroGate:
 
         gate = compute_gate(node)
         assert gate.is_valid
+        assert gate.err_complete
+        assert gate.deps_valid
+        assert gate.levels_valid
+        assert gate.order_valid
+        assert len(gate.to_vector()) == 4
 
         weight = compute_final_weight(node, gate)
         assert weight > 0  # Should have non-zero weight
@@ -379,6 +439,7 @@ class TestWeightCalculation:
         """W = G × (S_struct + S_domain) where S_domain = domain*10 + quality"""
         signals = GateSignals(
             e_exists=True, r_exists=True, rule_exists=True,
+            s_exists=True, deps_declared=True,
             l1_l3_ok=True, l5_ok=True
         )
         raw = RawScores(struct_points=15, domain_points=7, current_domain=4)
@@ -401,6 +462,7 @@ class TestWeightCalculation:
         """Higher domain index should yield higher weight"""
         signals = GateSignals(
             e_exists=True, r_exists=True, rule_exists=True,
+            s_exists=True, deps_declared=True,
             l1_l3_ok=True, l5_ok=True
         )
 
@@ -478,6 +540,7 @@ class TestIntegration:
                     "legacy_idx": 0,
                     "gate_signals": {
                         "e_exists": True, "r_exists": True, "rule_exists": True,
+                        "s_exists": True, "deps_declared": True,
                         "l1_l3_ok": True, "l5_ok": True
                     },
                     "raw_scores": {"struct_points": 10, "domain_points": 8, "current_domain": 1}

@@ -43,6 +43,12 @@ from .core.domains import (
     DOMAIN_ORDER, DomainPassRecord, ProbeRecord,
 )
 
+# v2: Audit Pipeline
+from .reasoning.provider import TraceFormat, ReasoningResult, ReasoningProvider
+from .reasoning.factory import get_provider as get_reasoning_provider
+from .audit.types import AuditConfig, AuditResult, V2Response
+from .audit.orchestrator import AuditOrchestrator
+
 __all__ = [
     '__version__', '__author__',
     # Engine
@@ -63,4 +69,9 @@ __all__ = [
     'TrisectionOptimizer', 'TrisectionState', 'TrisectChoice',
     # Socratic Trisection (v2)
     'SocraticTrisection', 'SocraticTrisectionState', 'TrisectionResult',
+    # v2: Audit Pipeline
+    'TraceFormat', 'ReasoningResult', 'ReasoningProvider',
+    'get_reasoning_provider',
+    'AuditConfig', 'AuditResult', 'V2Response',
+    'AuditOrchestrator',
 ]

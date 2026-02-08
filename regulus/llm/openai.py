@@ -5,7 +5,12 @@ Regulus AI - OpenAI LLM Client
 OpenAI API integration.
 """
 
+import asyncio
+
 from .client import LLMClient, LLMResponse
+
+MAX_RETRIES = 5
+BASE_DELAY = 3.0  # seconds
 
 
 class OpenAIClient(LLMClient):
@@ -24,20 +29,30 @@ class OpenAIClient(LLMClient):
         return await self._call_api(prompt, system)
 
     async def _call_api(self, prompt: str, system: str | None = None) -> LLMResponse:
+        from openai import RateLimitError
+
         messages = []
         if system:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
 
-        response = await self.client.chat.completions.create(
-            model=self.model,
-            max_tokens=2048,
-            messages=messages
-        )
+        for attempt in range(MAX_RETRIES):
+            try:
+                response = await self.client.chat.completions.create(
+                    model=self.model,
+                    max_tokens=2048,
+                    messages=messages
+                )
 
-        usage = response.usage
-        return LLMResponse(
-            text=response.choices[0].message.content or "",
-            input_tokens=usage.prompt_tokens if usage else 0,
-            output_tokens=usage.completion_tokens if usage else 0,
-        )
+                usage = response.usage
+                return LLMResponse(
+                    text=response.choices[0].message.content or "",
+                    input_tokens=usage.prompt_tokens if usage else 0,
+                    output_tokens=usage.completion_tokens if usage else 0,
+                )
+            except RateLimitError as e:
+                if attempt == MAX_RETRIES - 1:
+                    raise
+                delay = BASE_DELAY * (2 ** attempt)
+                print(f"[OpenAI] Rate limit hit, retry {attempt + 1}/{MAX_RETRIES} in {delay:.0f}s")
+                await asyncio.sleep(delay)

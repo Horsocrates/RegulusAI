@@ -33,6 +33,8 @@ export interface LabRun {
   output_tokens: number;
   source_run_id: number | null;
   cost: CostInfo | null;
+  mode: string;              // "v1" | "v2"
+  reasoning_model: string;   // "deepseek", "claude-thinking", "openai-reasoning"
   created_at: string;
   updated_at: string;
 }
@@ -73,7 +75,15 @@ export interface CreateRunRequest {
   category?: string | null;
   source_run_id?: number | null;
   model_version?: string;
+  mode?: string;               // "v1" | "v2"
+  reasoning_model?: string;    // For v2: "deepseek", "claude-thinking", "openai-reasoning"
 }
+
+export const REASONING_MODELS = [
+  { value: "deepseek",          label: "DeepSeek-R1",              trace: "Full CoT" },
+  { value: "claude-thinking",   label: "Claude Extended Thinking", trace: "Summary" },
+  { value: "openai-reasoning",  label: "OpenAI (Stub)",            trace: "None" },
+] as const;
 
 // === API Functions ===
 

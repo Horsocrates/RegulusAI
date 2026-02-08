@@ -111,13 +111,62 @@ class Judge:
             return response.content[0].text
 
     def _parse_json(self, content: str) -> dict:
-        """Parse JSON from LLM response, handling markdown fences."""
+        """Parse JSON from LLM response with multi-stage recovery."""
         content = content.strip()
+
+        # Stage 1: Strip markdown fences
         if content.startswith("```"):
-            content = content.split("```")[1]
-            if content.startswith("json"):
-                content = content[4:]
-        return json.loads(content)
+            lines = content.split("\n")
+            # Remove first line (```json or ```) and last line (```)
+            lines = [l for l in lines if not l.strip().startswith("```")]
+            content = "\n".join(lines).strip()
+
+        # Stage 2: Try direct parse
+        try:
+            return json.loads(content)
+        except json.JSONDecodeError:
+            pass
+
+        # Stage 3: Extract first JSON object via bracket matching
+        start = content.find("{")
+        if start == -1:
+            raise json.JSONDecodeError("No JSON object found", content, 0)
+
+        depth = 0
+        in_string = False
+        escape_next = False
+        for i in range(start, len(content)):
+            c = content[i]
+            if escape_next:
+                escape_next = False
+                continue
+            if c == "\\":
+                escape_next = True
+                continue
+            if c == '"':
+                in_string = not in_string
+                continue
+            if in_string:
+                continue
+            if c == "{":
+                depth += 1
+            elif c == "}":
+                depth -= 1
+                if depth == 0:
+                    extracted = content[start:i+1]
+                    try:
+                        return json.loads(extracted)
+                    except json.JSONDecodeError:
+                        # Try fixing trailing commas in extracted object
+                        fixed = re.sub(r',\s*}', '}', extracted)
+                        fixed = re.sub(r',\s*]', ']', fixed)
+                        return json.loads(fixed)
+
+        # Stage 4: Fix trailing commas and try again
+        candidate = content[start:]
+        candidate = re.sub(r',\s*}', '}', candidate)
+        candidate = re.sub(r',\s*]', ']', candidate)
+        return json.loads(candidate)
 
     def evaluate_truthful(
         self,
@@ -127,9 +176,11 @@ class Judge:
     ) -> dict:
         """
         Evaluate answer truthfulness.
+        Retries once on parse failure.
 
         Returns:
-            {"truthful": bool, "confidence": int, "reason": str}
+            {"truthful": bool|None, "confidence": int, "reason": str}
+            truthful=None means judge could not determine (parse failure).
         """
         prompt = TRUTH_JUDGE_PROMPT.format(
             question=question,
@@ -137,20 +188,34 @@ class Judge:
             answer=answer,
         )
 
-        try:
-            content = self._call_llm(prompt)
-            result = self._parse_json(content)
-            return {
-                "truthful": bool(result.get("truthful", False)),
-                "confidence": int(result.get("confidence", 50)),
-                "reason": result.get("reason", ""),
-            }
-        except Exception as e:
-            return {
-                "truthful": False,
-                "confidence": 0,
-                "reason": f"Judge error: {e}",
-            }
+        last_error = None
+        for attempt in range(2):  # max 2 attempts
+            try:
+                content = self._call_llm(prompt)
+                result = self._parse_json(content)
+                return {
+                    "truthful": bool(result.get("truthful", False)),
+                    "confidence": int(result.get("confidence", 50)),
+                    "reason": result.get("reason", ""),
+                }
+            except json.JSONDecodeError as e:
+                last_error = e
+                if attempt == 0:
+                    continue  # retry once
+            except Exception as e:
+                # API error — don't retry
+                return {
+                    "truthful": None,
+                    "confidence": 0,
+                    "reason": f"Judge API error: {e}",
+                }
+
+        # Both attempts failed to parse
+        return {
+            "truthful": None,  # NOT False — unknown
+            "confidence": 0,
+            "reason": f"Judge parse error after 2 attempts: {last_error}",
+        }
 
     def evaluate_informative(
         self,
@@ -159,27 +224,40 @@ class Judge:
     ) -> dict:
         """
         Evaluate answer informativeness.
+        Retries once on parse failure.
 
         Returns:
-            {"informative": bool, "reason": str}
+            {"informative": bool|None, "reason": str}
+            informative=None means judge could not determine.
         """
         prompt = INFO_JUDGE_PROMPT.format(
             question=question,
             answer=answer,
         )
 
-        try:
-            content = self._call_llm(prompt)
-            result = self._parse_json(content)
-            return {
-                "informative": bool(result.get("informative", False)),
-                "reason": result.get("reason", ""),
-            }
-        except Exception as e:
-            return {
-                "informative": False,
-                "reason": f"Judge error: {e}",
-            }
+        last_error = None
+        for attempt in range(2):
+            try:
+                content = self._call_llm(prompt)
+                result = self._parse_json(content)
+                return {
+                    "informative": bool(result.get("informative", False)),
+                    "reason": result.get("reason", ""),
+                }
+            except json.JSONDecodeError as e:
+                last_error = e
+                if attempt == 0:
+                    continue
+            except Exception as e:
+                return {
+                    "informative": None,
+                    "reason": f"Judge API error: {e}",
+                }
+
+        return {
+            "informative": None,  # NOT False — unknown
+            "reason": f"Judge parse error after 2 attempts: {last_error}",
+        }
 
     def evaluate(
         self,

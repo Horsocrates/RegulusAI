@@ -87,10 +87,14 @@ class GateSignals:
     Input signals for Zero-Gate verification.
     These are provided by external NLP/classification layer.
 
-    ERR Components:
+    ERRS Components:
     - e_exists: Element is present and identifiable
     - r_exists: Role is defined and functional
     - rule_exists: Rule connecting roles is specified
+    - s_exists: States defined (possible states + current state)
+
+    Dependencies:
+    - deps_declared: Dependencies on prior domains/steps explicitly stated
 
     Level Hierarchy (L1-L3):
     - l1_l3_ok: No hierarchical loops, levels respected
@@ -101,6 +105,8 @@ class GateSignals:
     e_exists: bool = False
     r_exists: bool = False
     rule_exists: bool = False
+    s_exists: bool = False
+    deps_declared: bool = False
     l1_l3_ok: bool = True
     l5_ok: bool = True
 
@@ -109,6 +115,8 @@ class GateSignals:
             "e_exists": self.e_exists,
             "r_exists": self.r_exists,
             "rule_exists": self.rule_exists,
+            "s_exists": self.s_exists,
+            "deps_declared": self.deps_declared,
             "l1_l3_ok": self.l1_l3_ok,
             "l5_ok": self.l5_ok
         }
@@ -138,26 +146,28 @@ class RawScores:
 @dataclass
 class IntegrityGate:
     """
-    The Zero-Gate: G(e) = ⟨g_ERR, g_Levels, g_Order⟩
+    The Zero-Gate: G(e) = ⟨g_ERRS, g_Deps, g_Levels, g_Order⟩
 
     If ANY gate is False, total weight = 0 (annihilation, not penalty)
     """
-    err_complete: bool = False   # E/R/R structure complete
+    err_complete: bool = False   # ERRS structure complete (Element/Role/Rule/Status)
+    deps_valid: bool = False     # Dependencies explicitly declared
     levels_valid: bool = False   # L1-L3: No hierarchical loops
     order_valid: bool = False    # L5: Law of Order respected
 
     @property
     def is_valid(self) -> bool:
-        """G_total = g_ERR ∧ g_Levels ∧ g_Order"""
-        return self.err_complete and self.levels_valid and self.order_valid
+        """G_total = g_ERRS ∧ g_Deps ∧ g_Levels ∧ g_Order"""
+        return self.err_complete and self.deps_valid and self.levels_valid and self.order_valid
 
     def to_vector(self) -> List[bool]:
-        """Return gate as boolean vector [g1, g2, g3]"""
-        return [self.err_complete, self.levels_valid, self.order_valid]
+        """Return gate as boolean vector [g1, g2, g3, g4]"""
+        return [self.err_complete, self.deps_valid, self.levels_valid, self.order_valid]
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "ERR": "OK" if self.err_complete else "FAIL",
+            "ERRS": "OK" if self.err_complete else "FAIL",
+            "Deps": "OK" if self.deps_valid else "FAIL",
             "Levels": "OK" if self.levels_valid else "FAIL",
             "Order": "OK" if self.order_valid else "FAIL",
             "G_total": self.is_valid
@@ -237,7 +247,7 @@ class Diagnostic:
     node_id: str
     entity_id: str
     status: Status
-    gate_vector: Dict[str, str]  # {"ERR": "OK/FAIL", "Levels": "OK/FAIL", "Order": "OK/FAIL"}
+    gate_vector: Dict[str, str]  # {"ERRS": "OK/FAIL", "Deps": "OK/FAIL", "Levels": "OK/FAIL", "Order": "OK/FAIL"}
     final_weight: int
     diagnostic_code: Optional[str] = None
     reason: Optional[str] = None

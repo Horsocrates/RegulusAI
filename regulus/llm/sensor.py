@@ -71,6 +71,8 @@ def create_liar_paradox() -> ParadoxExample:
                         "e_exists": True,
                         "r_exists": True,
                         "rule_exists": True,
+                        "s_exists": True,
+                        "deps_declared": True,
                         "l1_l3_ok": False,  # LEVEL VIOLATION: self-reference
                         "l5_ok": True
                     },
@@ -86,6 +88,8 @@ def create_liar_paradox() -> ParadoxExample:
                         "e_exists": True,
                         "r_exists": True,
                         "rule_exists": True,
+                        "s_exists": True,
+                        "deps_declared": True,
                         "l1_l3_ok": False,  # Inherits level violation
                         "l5_ok": True
                     },
@@ -101,6 +105,8 @@ def create_liar_paradox() -> ParadoxExample:
                         "e_exists": True,
                         "r_exists": True,
                         "rule_exists": True,
+                        "s_exists": True,
+                        "deps_declared": True,
                         "l1_l3_ok": False,  # Inherits level violation
                         "l5_ok": True
                     },
@@ -132,6 +138,8 @@ def create_russell_paradox() -> ParadoxExample:
                         "e_exists": True,
                         "r_exists": True,
                         "rule_exists": True,
+                        "s_exists": True,
+                        "deps_declared": True,
                         "l1_l3_ok": True,  # Definition itself is OK
                         "l5_ok": True
                     },
@@ -147,6 +155,8 @@ def create_russell_paradox() -> ParadoxExample:
                         "e_exists": True,
                         "r_exists": True,
                         "rule_exists": True,
+                        "s_exists": True,
+                        "deps_declared": True,
                         "l1_l3_ok": False,  # LEVEL VIOLATION: self-application
                         "l5_ok": True
                     },
@@ -162,6 +172,8 @@ def create_russell_paradox() -> ParadoxExample:
                         "e_exists": True,
                         "r_exists": True,
                         "rule_exists": True,
+                        "s_exists": True,
+                        "deps_declared": True,
                         "l1_l3_ok": False,
                         "l5_ok": True
                     },
@@ -177,6 +189,8 @@ def create_russell_paradox() -> ParadoxExample:
                         "e_exists": True,
                         "r_exists": True,
                         "rule_exists": True,
+                        "s_exists": True,
+                        "deps_declared": True,
                         "l1_l3_ok": False,
                         "l5_ok": True
                     },
@@ -208,6 +222,8 @@ def create_non_sequitur_example() -> ParadoxExample:
                         "e_exists": True,
                         "r_exists": True,
                         "rule_exists": True,
+                        "s_exists": True,
+                        "deps_declared": True,
                         "l1_l3_ok": True,
                         "l5_ok": True
                     },
@@ -223,6 +239,8 @@ def create_non_sequitur_example() -> ParadoxExample:
                         "e_exists": True,
                         "r_exists": True,
                         "rule_exists": False,  # ERR VIOLATION: no logical rule connecting
+                        "s_exists": True,
+                        "deps_declared": True,
                         "l1_l3_ok": True,
                         "l5_ok": True
                     },
@@ -254,6 +272,8 @@ def create_domain_skip_example() -> ParadoxExample:
                         "e_exists": True,
                         "r_exists": True,
                         "rule_exists": True,
+                        "s_exists": True,
+                        "deps_declared": True,
                         "l1_l3_ok": True,
                         "l5_ok": True
                     },
@@ -269,6 +289,8 @@ def create_domain_skip_example() -> ParadoxExample:
                         "e_exists": True,
                         "r_exists": True,
                         "rule_exists": True,
+                        "s_exists": True,
+                        "deps_declared": True,
                         "l1_l3_ok": True,
                         "l5_ok": False  # ORDER VIOLATION: skipped D2-D4
                     },
@@ -300,6 +322,8 @@ def create_valid_reasoning_example() -> ParadoxExample:
                         "e_exists": True,
                         "r_exists": True,
                         "rule_exists": True,
+                        "s_exists": True,
+                        "deps_declared": True,
                         "l1_l3_ok": True,
                         "l5_ok": True
                     },
@@ -315,6 +339,8 @@ def create_valid_reasoning_example() -> ParadoxExample:
                         "e_exists": True,
                         "r_exists": True,
                         "rule_exists": True,
+                        "s_exists": True,
+                        "deps_declared": True,
                         "l1_l3_ok": True,
                         "l5_ok": True
                     },
@@ -330,6 +356,8 @@ def create_valid_reasoning_example() -> ParadoxExample:
                         "e_exists": True,
                         "r_exists": True,
                         "rule_exists": True,
+                        "s_exists": True,
+                        "deps_declared": True,
                         "l1_l3_ok": True,
                         "l5_ok": True
                     },
@@ -345,6 +373,8 @@ def create_valid_reasoning_example() -> ParadoxExample:
                         "e_exists": True,
                         "r_exists": True,
                         "rule_exists": True,
+                        "s_exists": True,
+                        "deps_declared": True,
                         "l1_l3_ok": True,
                         "l5_ok": True
                     },
@@ -360,6 +390,8 @@ def create_valid_reasoning_example() -> ParadoxExample:
                         "e_exists": True,
                         "r_exists": True,
                         "rule_exists": True,
+                        "s_exists": True,
+                        "deps_declared": True,
                         "l1_l3_ok": True,
                         "l5_ok": True
                     },
@@ -492,6 +524,8 @@ class HeuristicSignalExtractor:
                 "e_exists": e_exists,
                 "r_exists": r_exists,
                 "rule_exists": rule_exists,
+                "s_exists": True,         # Permissive default for v1 pipeline
+                "deps_declared": True,    # Permissive default for v1 pipeline
                 "l1_l3_ok": not has_self_ref,
                 "l5_ok": l5_ok
             },
@@ -523,6 +557,8 @@ For a given reasoning step, extract these signals as JSON:
     "e_exists": true/false,
     "r_exists": true/false,
     "rule_exists": true/false,
+    "s_exists": true/false,
+    "deps_declared": true/false,
     "l1_l3_ok": true/false,
     "l5_ok": true/false,
     "current_domain": 1-6,
@@ -534,10 +570,12 @@ Rules:
 - e_exists: Is there a concrete, identifiable object/claim being reasoned about?
 - r_exists: Is there a defined functional purpose or relationship?
 - rule_exists: Is there a logical principle connecting premises to conclusion?
+- s_exists: Are states defined (possible states + current state for key elements)?
+- deps_declared: Are dependencies on prior domains/steps explicitly stated?
 - l1_l3_ok: false if self-reference, circular definitions, or level confusion detected
 - l5_ok: false if reasoning jumps domains or skips required steps
 - current_domain: 1=Recognition, 2=Clarification, 3=Framework, 4=Comparison, 5=Inference, 6=Reflection
-- struct_points: 0-10 quality of ERR structure (Element/Role/Rule completeness)
+- struct_points: 0-10 quality of ERRS structure (Element/Role/Rule/Status completeness)
 - domain_points: 0-10 quality of reasoning within the domain
 
 Be strict. Absence of evidence = false/0. Respond with JSON only."""
@@ -585,6 +623,8 @@ Be strict. Absence of evidence = false/0. Respond with JSON only."""
                 "e_exists": bool(parsed.get("e_exists", False)),
                 "r_exists": bool(parsed.get("r_exists", False)),
                 "rule_exists": bool(parsed.get("rule_exists", False)),
+                "s_exists": bool(parsed.get("s_exists", False)),
+                "deps_declared": bool(parsed.get("deps_declared", False)),
                 "l1_l3_ok": bool(parsed.get("l1_l3_ok", True)),
                 "l5_ok": bool(parsed.get("l5_ok", True)),
             },

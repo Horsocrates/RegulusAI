@@ -15,7 +15,7 @@ from .types import (
 )
 
 from .zero_gate import (
-    check_err_gate, check_levels_gate, check_order_gate,
+    check_err_gate, check_deps_gate, check_levels_gate, check_order_gate,
     compute_gate, get_failed_gate,
     get_diagnostic_code, get_diagnostic_reason,
     apply_zero_gate, zero_gate_zero_weight,

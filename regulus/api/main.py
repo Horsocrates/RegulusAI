@@ -651,6 +651,9 @@ class LabCreateRequest(BaseModel):
     dataset: str = Field(default="simpleqa")
     provider: str = Field(default="openai", pattern="^(claude|openai)$")
     concurrency: int = Field(default=5, ge=1, le=20)
+    mode: str = Field(default="v1", pattern="^(v1|v2)$")
+    reasoning_model: str = Field(default="", description="For v2 mode: deepseek, claude-thinking, openai-reasoning")
+    seed: int = Field(default=42, ge=0, description="Random seed for dataset sampling")
 
 
 class CostInfo(BaseModel):
@@ -681,6 +684,8 @@ class LabRunSummary(BaseModel):
     input_tokens: int
     output_tokens: int
     cost: CostInfo | None = None
+    mode: str = "v1"
+    reasoning_model: str = ""
     created_at: str
     updated_at: str
 
@@ -795,6 +800,8 @@ def run_to_summary(run) -> LabRunSummary:
         input_tokens=run.input_tokens,
         output_tokens=run.output_tokens,
         cost=cost_info,
+        mode=getattr(run, 'mode', 'v1'),
+        reasoning_model=getattr(run, 'reasoning_model', ''),
         created_at=run.created_at,
         updated_at=run.updated_at,
     )
@@ -826,6 +833,9 @@ async def lab_create_run(request: LabCreateRequest):
         dataset=request.dataset,
         provider=request.provider,
         concurrency=request.concurrency,
+        mode=request.mode,
+        reasoning_model=request.reasoning_model,
+        seed=request.seed,
     )
     return run_to_summary(run)
 
@@ -1520,3 +1530,108 @@ async def lab_get_report(filename: str):
     if not report:
         raise HTTPException(status_code=404, detail=f"Report {filename} not found")
     return report
+
+
+# ============================================================================
+# V2 Audit Pipeline Endpoints
+# ============================================================================
+
+class V2VerifyRequest(BaseModel):
+    query: str = Field(..., min_length=1, max_length=10000)
+    reasoning_model: str = Field(default="deepseek", description="deepseek, claude-thinking, openai-reasoning")
+    analyst_model: str = Field(default="gpt-4o-mini")
+
+class V2AuditRequest(BaseModel):
+    query: str = Field(..., min_length=1, max_length=10000)
+    trace: str = Field(..., min_length=1, description="Reasoning trace to audit")
+    answer: str = Field(..., min_length=1, description="Final answer to audit")
+    trace_format: str = Field(default="full_cot", description="full_cot, summary, or none")
+
+
+@app.post("/api/v2/verify")
+async def v2_verify(request: V2VerifyRequest):
+    """Run v2 pipeline: reasoning model + audit."""
+    from regulus.reasoning.factory import get_provider
+    from regulus.audit.orchestrator import AuditOrchestrator
+    from regulus.audit.types import AuditConfig
+
+    # Get reasoning provider
+    reasoning_api_keys = {
+        "deepseek": os.environ.get("DEEPSEEK_API_KEY", ""),
+        "claude-thinking": os.environ.get("ANTHROPIC_API_KEY", ""),
+        "openai-reasoning": os.environ.get("OPENAI_API_KEY", ""),
+    }
+    api_key = reasoning_api_keys.get(request.reasoning_model, "")
+    if not api_key:
+        raise HTTPException(status_code=400, detail=f"No API key for {request.reasoning_model}")
+
+    reasoning_provider = get_provider(request.reasoning_model, api_key=api_key)
+
+    # Audit LLM
+    audit_api_key = os.environ.get("OPENAI_API_KEY", "")
+    audit_llm = OpenAIClient(api_key=audit_api_key, model=request.analyst_model)
+
+    orchestrator = AuditOrchestrator(
+        reasoning_provider=reasoning_provider,
+        audit_llm=audit_llm,
+        config=AuditConfig(analyst_model=request.analyst_model),
+    )
+
+    result = await with_timeout(orchestrator.process_query(request.query), timeout_seconds=300)
+    return result.to_dict()
+
+
+@app.post("/api/v2/audit")
+async def v2_audit(request: V2AuditRequest):
+    """Audit-only: bring your own trace, get structural audit."""
+    from regulus.reasoning.provider import TraceFormat
+    from regulus.audit.auditor import Auditor
+
+    trace_format_map = {
+        "full_cot": TraceFormat.FULL_COT,
+        "summary": TraceFormat.SUMMARY,
+        "none": TraceFormat.NONE,
+    }
+    trace_format = trace_format_map.get(request.trace_format, TraceFormat.FULL_COT)
+
+    audit_api_key = os.environ.get("OPENAI_API_KEY", "")
+    audit_llm = OpenAIClient(api_key=audit_api_key, model="gpt-4o-mini")
+
+    auditor = Auditor(audit_llm)
+    result = await with_timeout(
+        auditor.audit(
+            trace=request.trace,
+            answer=request.answer,
+            query=request.query,
+            trace_format=trace_format,
+        ),
+        timeout_seconds=120,
+    )
+    return result.to_dict()
+
+
+@app.get("/api/v2/providers")
+async def v2_list_providers():
+    """List available reasoning providers and their trace formats."""
+    return {
+        "providers": [
+            {
+                "name": "deepseek",
+                "display_name": "DeepSeek-R1",
+                "trace_format": "full_cot",
+                "description": "Full raw chain-of-thought via reasoning_content",
+            },
+            {
+                "name": "claude-thinking",
+                "display_name": "Claude Extended Thinking",
+                "trace_format": "summary",
+                "description": "Thinking block summaries (not full CoT)",
+            },
+            {
+                "name": "openai-reasoning",
+                "display_name": "OpenAI (Stub)",
+                "trace_format": "none",
+                "description": "Standard chat completion (no reasoning trace yet)",
+            },
+        ]
+    }

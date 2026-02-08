@@ -2,7 +2,7 @@
 Regulus AI - Zero-Gate Module
 =============================
 
-The Zero-Gate Mechanism: G(e) = ⟨g_ERR, g_Levels, g_Order⟩
+The Zero-Gate Mechanism: G(e) = ⟨g_ERRS, g_Deps, g_Levels, g_Order⟩
 
 Key Property: If ANY gate fails, weight = 0 (ANNIHILATION, not penalty)
 
@@ -11,9 +11,10 @@ This is the "structural impossibility" principle from Article 8:
 - We make dishonesty structurally impossible through G_total
 
 Gate Components:
-1. g_ERR: E/R/R structure complete (Element + Role + Rule)
-2. g_Levels: L1-L3 hierarchy respected (no self-reference loops)
-3. g_Order: L5 Law of Order (D1→D6 sequence respected)
+1. g_ERRS: E/R/R/S structure complete (Element + Role + Rule + Status)
+2. g_Deps: Dependencies on prior domains explicitly declared
+3. g_Levels: L1-L3 hierarchy respected (no self-reference loops)
+4. g_Order: L5 Law of Order (D1→D6 sequence respected)
 """
 
 from typing import Optional, Tuple
@@ -22,12 +23,13 @@ from .types import Node, GateSignals, IntegrityGate, Domain
 
 def check_err_gate(signals: GateSignals) -> Tuple[bool, Optional[str]]:
     """
-    Check ERR (Element/Role/Rule) structural completeness.
+    Check ERRS (Element/Role/Rule/Status) structural completeness.
 
-    The Structural Trinity must be complete:
+    The Structural Quartet must be complete:
     - Element: Concrete identifiable object present
     - Role: Functional purpose defined
     - Rule: Logical connection specified
+    - Status: States defined (possible states + current state)
 
     Returns:
         (gate_passed, diagnostic_code)
@@ -40,6 +42,22 @@ def check_err_gate(signals: GateSignals) -> Tuple[bool, Optional[str]]:
 
     if not signals.rule_exists:
         return False, "ERR_RULE"  # Rule missing - "blind connection"
+
+    if not signals.s_exists:
+        return False, "ERR_S"  # Status missing - "stateless element"
+
+    return True, None
+
+
+def check_deps_gate(signals: GateSignals) -> Tuple[bool, Optional[str]]:
+    """
+    Check that dependencies on prior domains/steps are explicitly declared.
+
+    Returns:
+        (gate_passed, diagnostic_code)
+    """
+    if not signals.deps_declared:
+        return False, "DEPS_MISSING"
 
     return True, None
 
@@ -95,26 +113,28 @@ def compute_gate(node: Node, parent_domain: Optional[int] = None) -> IntegrityGa
     """
     Compute the full Integrity Gate for a node.
 
-    G(e) = ⟨g_ERR, g_Levels, g_Order⟩
-    G_total = g_ERR ∧ g_Levels ∧ g_Order
+    G(e) = ⟨g_ERRS, g_Deps, g_Levels, g_Order⟩
+    G_total = g_ERRS ∧ g_Deps ∧ g_Levels ∧ g_Order
 
     Args:
         node: The reasoning node to check
         parent_domain: Domain of parent node (for sequence validation)
 
     Returns:
-        IntegrityGate with all three components set
+        IntegrityGate with all four components set
     """
     signals = node.gate_signals
     current_domain = node.raw_scores.current_domain
 
     # Check each gate
     err_ok, err_code = check_err_gate(signals)
+    deps_ok, deps_code = check_deps_gate(signals)
     levels_ok, levels_code = check_levels_gate(signals)
     order_ok, order_code = check_order_gate(signals, current_domain, parent_domain)
 
     return IntegrityGate(
         err_complete=err_ok,
+        deps_valid=deps_ok,
         levels_valid=levels_ok,
         order_valid=order_ok
     )
@@ -125,14 +145,16 @@ def get_failed_gate(gate: IntegrityGate) -> Optional[int]:
     Identify which gate failed (for diagnostic purposes).
 
     Returns:
-        1 if ERR failed, 2 if Levels failed, 3 if Order failed, None if all passed
+        1 if ERRS failed, 2 if Deps failed, 3 if Levels failed, 4 if Order failed, None if all passed
     """
     if not gate.err_complete:
         return 1
-    if not gate.levels_valid:
+    if not gate.deps_valid:
         return 2
-    if not gate.order_valid:
+    if not gate.levels_valid:
         return 3
+    if not gate.order_valid:
+        return 4
     return None
 
 
@@ -150,10 +172,15 @@ def get_diagnostic_code(node: Node, parent_domain: Optional[int] = None) -> Opti
     signals = node.gate_signals
     current_domain = node.raw_scores.current_domain
 
-    # Check ERR first
+    # Check ERRS first
     err_ok, err_code = check_err_gate(signals)
     if not err_ok:
         return err_code
+
+    # Then Deps
+    deps_ok, deps_code = check_deps_gate(signals)
+    if not deps_ok:
+        return deps_code
 
     # Then Levels
     levels_ok, levels_code = check_levels_gate(signals)
@@ -176,10 +203,14 @@ def get_diagnostic_reason(code: Optional[str]) -> str:
         return "All structural checks passed"
 
     reasons = {
-        # ERR failures
+        # ERRS failures
         "ERR_E": "Element missing: No identifiable object in reasoning step",
         "ERR_R": "Role missing: Element has no defined functional purpose",
         "ERR_RULE": "Rule missing: No logical connection between roles",
+        "ERR_S": "Status missing: No states defined (possible states + current state)",
+
+        # Deps failures
+        "DEPS_MISSING": "Dependencies missing: Dependencies on prior domains/steps not declared",
 
         # Levels failures
         "LEVELS_LOOP": "Hierarchical loop: Self-referential structure detected (L1-L3 violation)",
