@@ -4,13 +4,14 @@ import { useState } from "react";
 import {
   FlaskConical, Plus, Trash2, ArrowLeft, Loader2, CheckCircle,
   Clock, PauseCircle, XCircle, ExternalLink, RotateCcw, StopCircle,
+  Users, BarChart3, Database, Settings, FileText, BookOpen, Sliders,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  getLabRuns, deleteLabRun, stopLabRun, getRunStats,
-  type LabRun, type RunStatus, STATUS_CONFIG, formatCost, formatTime,
+  getLabRuns, deleteLabRun, stopLabRun, getRunStats, getDashboard,
+  type LabRun, type RunStatus, type DashboardStats, STATUS_CONFIG, formatCost, formatTime,
 } from "@/lib/lab-api";
 
 // === Status Badge ===
@@ -218,17 +219,27 @@ function RunHistoryTable({ runs, onDelete, onStop }: { runs: LabRun[]; onDelete:
                       </button>
                     )}
                     {["completed", "failed", "stopped"].includes(run.status) && (
-                      <button
-                        onClick={(e) => handleDelete(e, run.id, run.name)}
-                        disabled={deletingId === run.id}
-                        className="p-1 text-gray-600 hover:text-red-400 hover:bg-red-400/10 rounded transition-colors"
-                        title="Delete run"
-                      >
-                        {deletingId === run.id
-                          ? <Loader2 className="w-4 h-4 animate-spin" />
-                          : <Trash2 className="w-4 h-4" />
-                        }
-                      </button>
+                      <>
+                        <Link
+                          href={`/lab/results/${run.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="p-1 text-gray-600 hover:text-blue-400 hover:bg-blue-400/10 rounded transition-colors"
+                          title="View results"
+                        >
+                          <BarChart3 className="w-4 h-4" />
+                        </Link>
+                        <button
+                          onClick={(e) => handleDelete(e, run.id, run.name)}
+                          disabled={deletingId === run.id}
+                          className="p-1 text-gray-600 hover:text-red-400 hover:bg-red-400/10 rounded transition-colors"
+                          title="Delete run"
+                        >
+                          {deletingId === run.id
+                            ? <Loader2 className="w-4 h-4 animate-spin" />
+                            : <Trash2 className="w-4 h-4" />
+                          }
+                        </button>
+                      </>
                     )}
                   </div>
                 </td>
@@ -241,6 +252,36 @@ function RunHistoryTable({ runs, onDelete, onStop }: { runs: LabRun[]; onDelete:
   );
 }
 
+// === Dashboard Stats Bar ===
+
+function DashboardStatsBar({ stats }: { stats: DashboardStats | undefined }) {
+  if (!stats || stats.total_runs === 0) return null;
+
+  const items = [
+    { label: "Runs", value: String(stats.total_runs), sub: `${stats.completed_runs} done` },
+    { label: "Questions", value: String(stats.total_questions_answered) },
+    {
+      label: "Accuracy",
+      value: `${(stats.overall_accuracy * 100).toFixed(1)}%`,
+      color: stats.overall_accuracy >= 0.7 ? "text-green-400" : stats.overall_accuracy >= 0.4 ? "text-yellow-400" : "text-red-400",
+    },
+    { label: "Cost", value: formatCost(stats.total_cost) },
+    { label: "Time", value: formatTime(stats.total_time_seconds) },
+  ];
+
+  return (
+    <div className="grid grid-cols-5 gap-3 mb-8">
+      {items.map((item) => (
+        <div key={item.label} className="bg-[#12121a] border border-[#1e1e2e] rounded-lg px-4 py-3">
+          <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">{item.label}</div>
+          <div className={`text-lg font-semibold ${item.color || "text-white"}`}>{item.value}</div>
+          {item.sub && <div className="text-xs text-gray-500">{item.sub}</div>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // === Main Dashboard ===
 
 export default function LabPage() {
@@ -249,6 +290,12 @@ export default function LabPage() {
     queryKey: ["lab-runs"],
     queryFn: getLabRuns,
     refetchInterval: 10000,
+  });
+
+  const { data: dashboardStats } = useQuery({
+    queryKey: ["lab-dashboard"],
+    queryFn: getDashboard,
+    refetchInterval: 30000,
   });
 
   const allRuns = runs ?? [];
@@ -283,6 +330,55 @@ export default function LabPage() {
             <p className="text-gray-500">Benchmark Testing</p>
           </div>
           <Link
+            href="/lab/benchmarks"
+            className="px-3 py-2 border border-[#2a2a3e] hover:bg-[#1a1a2e] text-gray-300 rounded-lg font-medium flex items-center gap-2 transition-colors text-sm"
+          >
+            <Database className="w-4 h-4" />
+            Benchmarks
+          </Link>
+          <Link
+            href="/lab/tests"
+            className="px-3 py-2 border border-[#2a2a3e] hover:bg-[#1a1a2e] text-gray-300 rounded-lg font-medium flex items-center gap-2 transition-colors text-sm"
+          >
+            <Settings className="w-4 h-4" />
+            Tests
+          </Link>
+          <Link
+            href="/lab/results"
+            className="px-3 py-2 border border-[#2a2a3e] hover:bg-[#1a1a2e] text-gray-300 rounded-lg font-medium flex items-center gap-2 transition-colors text-sm"
+          >
+            <BarChart3 className="w-4 h-4" />
+            Results
+          </Link>
+          <Link
+            href="/lab/teams"
+            className="px-3 py-2 border border-[#2a2a3e] hover:bg-[#1a1a2e] text-gray-300 rounded-lg font-medium flex items-center gap-2 transition-colors text-sm"
+          >
+            <Users className="w-4 h-4" />
+            Teams
+          </Link>
+          <Link
+            href="/lab/paradigms"
+            className="px-3 py-2 border border-[#2a2a3e] hover:bg-[#1a1a2e] text-gray-300 rounded-lg font-medium flex items-center gap-2 transition-colors text-sm"
+          >
+            <BookOpen className="w-4 h-4" />
+            Paradigms
+          </Link>
+          <Link
+            href="/lab/config"
+            className="px-3 py-2 border border-[#2a2a3e] hover:bg-[#1a1a2e] text-gray-300 rounded-lg font-medium flex items-center gap-2 transition-colors text-sm"
+          >
+            <Sliders className="w-4 h-4" />
+            Config
+          </Link>
+          <Link
+            href="/lab/reports"
+            className="px-3 py-2 border border-[#2a2a3e] hover:bg-[#1a1a2e] text-gray-300 rounded-lg font-medium flex items-center gap-2 transition-colors text-sm"
+          >
+            <FileText className="w-4 h-4" />
+            Reports
+          </Link>
+          <Link
             href="/lab/new"
             className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium flex items-center gap-2 transition-colors"
           >
@@ -290,6 +386,9 @@ export default function LabPage() {
             New Test
           </Link>
         </div>
+
+        {/* Dashboard Stats */}
+        <DashboardStatsBar stats={dashboardStats} />
 
         {/* Loading */}
         {isLoading && (

@@ -59,12 +59,22 @@ class RoutingConfig:
             else:
                 medium[d] = DomainRoute(domain=d, model="gpt-4o-mini")
 
-        # Hard: D1+D3+D5 get deepseek, rest gpt-4o
+        # Hard: D4+D5 get deepseek-chat (reasoning-heavy), rest gpt-4o-mini
         hard = {}
         for d in domains:
-            if d in ("D1", "D3", "D5"):
+            if d in ("D4", "D5"):
                 hard[d] = DomainRoute(domain=d, model="deepseek")
             else:
-                hard[d] = DomainRoute(domain=d, model="gpt-4o")
+                hard[d] = DomainRoute(domain=d, model="gpt-4o-mini")
 
         return cls(routes={"easy": easy, "medium": medium, "hard": hard})
+
+    @classmethod
+    def all_r1(cls) -> "RoutingConfig":
+        """All-R1 routing: every domain uses deepseek-r1 (reasoning model)."""
+        domains = ["D1", "D2", "D3", "D4", "D5", "D6"]
+        r1_routes = {
+            d: DomainRoute(domain=d, model="deepseek-r1", max_tokens=8192)
+            for d in domains
+        }
+        return cls(routes={"easy": r1_routes, "medium": r1_routes, "hard": r1_routes})

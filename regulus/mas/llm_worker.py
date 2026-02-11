@@ -204,7 +204,7 @@ class LLMWorker(DomainWorker):
 
         elif self._domain == "D5":
             conclusion = data.get("conclusion", {})
-            answer = conclusion.get("answer", "") if isinstance(conclusion, dict) else ""
+            answer = str(conclusion.get("answer", "")) if isinstance(conclusion, dict) else ""
             certainty = conclusion.get("certainty_type", "probabilistic") if isinstance(conclusion, dict) else ""
             return D5Output(
                 conclusion=conclusion,
@@ -242,6 +242,9 @@ class LLMWorker(DomainWorker):
         # D5 answer goes into content; others use internal_log
         content = getattr(typed_output, 'answer', '') or getattr(typed_output, 'content', '')
 
+        # Extract reasoning_tokens if response is from a reasoning model
+        reasoning_tokens = getattr(response, 'reasoning_tokens', 0)
+
         return DomainOutput(
             domain=self._domain,
             status=DomainStatus.COMPLETED,
@@ -258,12 +261,17 @@ class LLMWorker(DomainWorker):
             model_used=model,
             input_tokens=response.input_tokens,
             output_tokens=response.output_tokens,
+            reasoning_tokens=reasoning_tokens,
             time_seconds=elapsed,
         )
 
 
 def _parse_json_response(raw: str) -> dict:
-    """Parse JSON from LLM response with robust recovery."""
+    """Parse JSON from LLM response with robust recovery.
+
+    Handles: markdown fences, preamble text, trailing commas,
+    and truncated responses (unclosed strings/objects/arrays).
+    """
     text = raw.strip()
 
     # Strip markdown fences
@@ -314,7 +322,88 @@ def _parse_json_response(raw: str) -> dict:
     candidate = text[start:]
     candidate = re.sub(r',\s*}', '}', candidate)
     candidate = re.sub(r',\s*]', ']', candidate)
-    return json.loads(candidate)
+    try:
+        return json.loads(candidate)
+    except json.JSONDecodeError:
+        pass
+
+    # Truncated response recovery: close unclosed strings/objects/arrays
+    repaired = _repair_truncated_json(candidate)
+    return json.loads(repaired)
+
+
+def _repair_truncated_json(text: str) -> str:
+    """Attempt to repair truncated JSON by closing unclosed structures."""
+    # Strip trailing partial content after last complete value
+    # Find the last valid structural char
+    stripped = text.rstrip()
+
+    # If we're mid-string, close it
+    in_string = False
+    escape_next = False
+    stack = []  # track open brackets/braces
+    last_good = 0
+
+    for i, c in enumerate(stripped):
+        if escape_next:
+            escape_next = False
+            continue
+        if c == '\\' and in_string:
+            escape_next = True
+            continue
+        if c == '"':
+            in_string = not in_string
+            if not in_string:
+                last_good = i
+            continue
+        if in_string:
+            continue
+        if c in ('{', '['):
+            stack.append(c)
+            last_good = i
+        elif c in ('}', ']'):
+            if stack:
+                stack.pop()
+            last_good = i
+        elif c in (':', ','):
+            last_good = i
+
+    # If still in a string, close it and truncate from there
+    if in_string:
+        stripped = stripped[:i] + '"'
+        # Re-parse to update stack
+        in_string = False
+        escape_next = False
+        stack = []
+        for c in stripped:
+            if escape_next:
+                escape_next = False
+                continue
+            if c == '\\' and in_string:
+                escape_next = True
+                continue
+            if c == '"':
+                in_string = not in_string
+                continue
+            if in_string:
+                continue
+            if c in ('{', '['):
+                stack.append(c)
+            elif c in ('}', ']'):
+                if stack:
+                    stack.pop()
+
+    # Remove trailing commas
+    stripped = re.sub(r',\s*$', '', stripped)
+
+    # Close remaining open structures
+    for opener in reversed(stack):
+        if opener == '{':
+            stripped += '}'
+        elif opener == '[':
+            stripped += ']'
+
+    return stripped
 
 
 def _to_json(obj: Any) -> str:

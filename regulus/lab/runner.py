@@ -364,9 +364,19 @@ class LabRunner:
 
                     if run.mode == "v2":
                         # v2: AuditOrchestrator (reason → audit → correct)
+                        # Resolve model settings from DB
+                        from regulus.api.models.lab import LabNewDB as _LabNewDB
+                        _settings_db = _LabNewDB()
+                        _resolved = _settings_db.resolve_model_settings(
+                            "base", "reasoning", run.reasoning_model
+                        )
+
                         reasoning_api_key = _get_reasoning_api_key(run.reasoning_model)
                         reasoning_provider = get_reasoning_provider(
-                            run.reasoning_model, api_key=reasoning_api_key,
+                            run.reasoning_model,
+                            api_key=reasoning_api_key,
+                            budget_tokens=_resolved.get("thinking_budget", 10000),
+                            max_tokens=_resolved.get("max_tokens", 16000),
                         )
                         # Use a lightweight LLM for the audit call
                         audit_api_key = os.environ.get("OPENAI_API_KEY", "")
@@ -396,13 +406,26 @@ class LabRunner:
                         # mas: MASOrchestrator (classify → decompose → process → verify)
                         from regulus.mas.orchestrator import MASOrchestrator
                         from regulus.mas.types import MASConfig
+                        from regulus.mas.routing import RoutingConfig
+                        from regulus.mas.worker_factory import create_workers_from_routing, clear_client_cache
 
-                        mas_api_key = os.environ.get("OPENAI_API_KEY", "")
-                        mas_llm = OpenAIClient(api_key=mas_api_key, model="gpt-4o-mini")
+                        mas_config = MASConfig()
+
+                        # Select routing based on reasoning_model
+                        if run.reasoning_model in ("deepseek-r1", "r1"):
+                            routing = RoutingConfig.all_r1()
+                        else:
+                            routing = RoutingConfig.default()
+
+                        # Classify complexity heuristically for worker creation
+                        word_count = len(item.problem.split())
+                        complexity = "easy" if word_count <= 15 else "medium" if word_count <= 50 else "hard"
+                        workers = create_workers_from_routing(routing, complexity=complexity)
 
                         q_orchestrator = MASOrchestrator(
-                            llm_client=mas_llm,
-                            config=MASConfig(),
+                            config=mas_config,
+                            routing=routing,
+                            workers=workers,
                             on_domain_start=_on_domain_start,
                             on_domain_complete=_on_domain_complete,
                             on_correction=_on_correction,
@@ -411,7 +434,7 @@ class LabRunner:
                         mas_output = await q_orchestrator.process_query(item.problem)
                         elapsed = time.time() - start_time
 
-                        final_answer = mas_output.answer
+                        final_answer = str(mas_output.answer) if mas_output.answer is not None else ""
                         is_valid = mas_output.valid
                         total_corrections = mas_output.corrections
                         reasoning_json = mas_output.reasoning_json

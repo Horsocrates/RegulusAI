@@ -2,7 +2,7 @@
 
 import sqlite3
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from dataclasses import dataclass, field, asdict
 from enum import Enum
 from pathlib import Path
@@ -326,7 +326,7 @@ class LabDB:
         # Cap num_steps at total_questions (1 question per step max)
         num_steps = min(max(1, num_steps), total_questions)
 
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         conn = self._get_conn()
         cursor = conn.cursor()
 
@@ -476,7 +476,7 @@ class LabDB:
     def update_run_status(self, run_id: int, status: RunStatus, current_step: int = None):
         """Update run status."""
         conn = self._get_conn()
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
 
         if current_step is not None:
             conn.execute(
@@ -504,7 +504,7 @@ class LabDB:
     ):
         """Update run aggregate stats."""
         conn = self._get_conn()
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         conn.execute(
             """UPDATE runs SET valid_count = ?, correct_count = ?, total_time = ?,
                input_tokens = ?, output_tokens = ?, completed_questions = ?,
@@ -518,7 +518,7 @@ class LabDB:
     def update_step_status(self, step_id: int, status: StepStatus):
         """Update step status."""
         conn = self._get_conn()
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
 
         if status == StepStatus.RUNNING:
             conn.execute(
@@ -585,7 +585,7 @@ class LabDB:
         """Add a result to a step."""
         conn = self._get_conn()
         cursor = conn.cursor()
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
 
         cursor.execute("""
             INSERT INTO results (step_id, question, expected, answer, valid, correct,
@@ -670,7 +670,7 @@ class LabDB:
     def update_run_concurrency(self, run_id: int, concurrency: int):
         """Update run concurrency setting."""
         conn = self._get_conn()
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         conn.execute(
             "UPDATE runs SET concurrency = ?, updated_at = ? WHERE id = ?",
             (concurrency, now, run_id)
@@ -733,7 +733,7 @@ class LabDB:
 
         # Update run's num_steps to reflect total
         total_steps = len(completed_steps) + new_num_steps
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         cursor.execute(
             "UPDATE runs SET num_steps = ?, updated_at = ? WHERE id = ?",
             (total_steps, now, run_id)

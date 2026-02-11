@@ -71,6 +71,7 @@ class MASResponse:
     time_seconds: float = 0.0
     input_tokens: int = 0
     output_tokens: int = 0
+    reasoning_tokens: int = 0
 
     @property
     def reasoning_json(self) -> str:

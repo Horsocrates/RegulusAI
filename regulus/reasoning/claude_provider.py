@@ -24,12 +24,18 @@ class ClaudeThinkingProvider(ReasoningProvider):
         api_key: str,
         model: str = "claude-sonnet-4-5-20250929",
         budget_tokens: int = 10000,
+        max_tokens: int = 16000,
+        interleaved_thinking: bool = False,
+        temperature: float = 1.0,
         use_tos_prompt: bool = False,
     ):
         from anthropic import AsyncAnthropic
         self.client = AsyncAnthropic(api_key=api_key)
         self.model = model
         self.budget_tokens = budget_tokens
+        self.max_tokens = max_tokens
+        self.interleaved_thinking = interleaved_thinking
+        self.temperature = temperature
         self.use_tos_prompt = use_tos_prompt
 
     @property
@@ -53,9 +59,9 @@ class ClaudeThinkingProvider(ReasoningProvider):
 
         for attempt in range(MAX_RETRIES):
             try:
-                kwargs = {
+                kwargs: dict = {
                     "model": self.model,
-                    "max_tokens": 16000,
+                    "max_tokens": self.max_tokens,
                     "thinking": {
                         "type": "enabled",
                         "budget_tokens": self.budget_tokens,
@@ -64,6 +70,10 @@ class ClaudeThinkingProvider(ReasoningProvider):
                 }
                 if effective_system:
                     kwargs["system"] = effective_system
+                if self.interleaved_thinking:
+                    kwargs["betas"] = ["interleaved-thinking-2025-05-14"]
+                if self.temperature != 1.0:
+                    kwargs["temperature"] = self.temperature
 
                 response = await self.client.messages.create(**kwargs)
                 elapsed = time.time() - start

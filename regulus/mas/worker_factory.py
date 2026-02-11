@@ -13,6 +13,7 @@ from typing import Optional
 from regulus.llm.client import LLMClient
 from regulus.llm.openai import OpenAIClient
 from regulus.llm.claude import ClaudeClient
+from regulus.llm.deepseek import DeepSeekClient
 from regulus.mas.llm_worker import LLMWorker
 from regulus.mas.workers import DomainWorker, MockWorker
 from regulus.mas.routing import RoutingConfig
@@ -27,6 +28,12 @@ MODEL_REGISTRY = {
     # Anthropic
     "sonnet": ("anthropic", "claude-sonnet-4-20250514"),
     "haiku": ("anthropic", "claude-haiku-4-5-20251001"),
+    # DeepSeek
+    "deepseek": ("deepseek", "deepseek-chat"),
+    "deepseek-chat": ("deepseek", "deepseek-chat"),
+    # DeepSeek R1 (reasoning model — uses ReasoningProviderAdapter)
+    "deepseek-r1": ("deepseek-reasoning", "deepseek-reasoner"),
+    "r1": ("deepseek-reasoning", "deepseek-reasoner"),
     # Short aliases
     "mini": ("openai", "gpt-4o-mini"),
 }
@@ -54,6 +61,15 @@ def _get_client(model_key: str) -> LLMClient:
     elif provider == "anthropic":
         api_key = os.environ.get("ANTHROPIC_API_KEY", "")
         client = ClaudeClient(api_key=api_key, model=model_name)
+    elif provider == "deepseek":
+        api_key = os.environ.get("DEEPSEEK_API_KEY", "")
+        client = DeepSeekClient(api_key=api_key, model=model_name)
+    elif provider == "deepseek-reasoning":
+        api_key = os.environ.get("DEEPSEEK_API_KEY", "")
+        from regulus.reasoning.deepseek_provider import DeepSeekProvider
+        from regulus.mas.reasoning_adapter import ReasoningProviderAdapter
+        reasoning_provider = DeepSeekProvider(api_key=api_key, model=model_name)
+        client = ReasoningProviderAdapter(reasoning_provider)
     else:
         raise ValueError(f"Unknown provider: {provider}")
 

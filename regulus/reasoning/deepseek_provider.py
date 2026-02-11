@@ -19,13 +19,20 @@ BASE_DELAY = 3.0
 class DeepSeekProvider(ReasoningProvider):
     """DeepSeek-R1 reasoning provider with full CoT access."""
 
-    def __init__(self, api_key: str, model: str = "deepseek-reasoner", use_tos_prompt: bool = False):
+    def __init__(
+        self,
+        api_key: str,
+        model: str = "deepseek-reasoner",
+        max_tokens: int = 32000,
+        use_tos_prompt: bool = False,
+    ):
         from openai import AsyncOpenAI
         self.client = AsyncOpenAI(
             api_key=api_key,
             base_url="https://api.deepseek.com",
         )
         self.model = model
+        self.max_tokens = max_tokens
         self.use_tos_prompt = use_tos_prompt
 
     @property
@@ -57,6 +64,7 @@ class DeepSeekProvider(ReasoningProvider):
                 response = await self.client.chat.completions.create(
                     model=self.model,
                     messages=messages,
+                    max_tokens=self.max_tokens,
                 )
                 elapsed = time.time() - start
 

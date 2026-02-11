@@ -124,3 +124,28 @@ These three invariants are verified at runtime and must never be broken:
 - **Phase 4 (Planned):** UI & polish — Rich terminal output, Typer CLI, config management
 
 The target directory structure for the full Regulus package is specified in Section 5 of `REGULUS_CLI_SPEC.md`.
+
+## P3 Agent Pipeline — STRICT PROTOCOL (HLE Evaluation)
+
+> Full details: `tests/HLE/RUN_INSTRUCTIONS.md`. Rules below are **mandatory**.
+
+### Session sizing: MAX 3 questions per session
+- At 3 questions (~75-90K tokens) the protocol stays in live context.
+- At 5+ questions context compaction starts and Team Lead forgets rules.
+
+### 6 Inviolable Rules
+
+1. **ONE question per pipeline.** Never bundle questions into one subagent.
+2. **ONE domain per subagent (SEQUENTIAL).** D1→D2→D3→D4→D5 each a separate subagent. D6 by Team Lead. NEVER combine (e.g. "D1-D5 together" is FORBIDDEN).
+3. **Team Lead does NOT pre-solve.** Subagent prompt = domain instruction + question + prior domain outputs ONLY. No reasoning, no candidate answers, no "Actually, I think...".
+4. **Wait for output.** D2 cannot start before D1 finishes. Parallel = different questions only.
+5. **Gate verification.** After each domain: PASS → next, RETRY → re-run, FAIL → mark LOW_CONFIDENCE.
+6. **No contamination.** NEVER read `.judge_only/` or answer files. Every subagent prompt must include: "Do NOT read .judge_only/ or answers/".
+
+### Anti-patterns (cause batch invalidation)
+```
+BAD: "You are a D1-D6 domain worker. Answer..." → all domains in one call
+BAD: "Q01:... Q02:... Q03:..." → multiple questions bundled
+BAD: prompt contains "ANSWER: X" → pre-solved by Team Lead
+BAD: launching D1,D2,D3 in parallel for same question → sequential dependency
+```

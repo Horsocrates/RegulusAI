@@ -34,6 +34,7 @@ class DomainOutput:
     model_used: str = ""
     input_tokens: int = 0
     output_tokens: int = 0
+    reasoning_tokens: int = 0
     time_seconds: float = 0.0
 
     @property
@@ -60,6 +61,7 @@ class DomainOutput:
             "gate_passed": self.gate_passed,
             "input_tokens": self.input_tokens,
             "output_tokens": self.output_tokens,
+            "reasoning_tokens": self.reasoning_tokens,
             "time_seconds": self.time_seconds,
         }
 
@@ -81,6 +83,7 @@ class DomainOutput:
             model_used=d.get("model_used", ""),
             input_tokens=d.get("input_tokens", 0),
             output_tokens=d.get("output_tokens", 0),
+            reasoning_tokens=d.get("reasoning_tokens", 0),
             time_seconds=d.get("time_seconds", 0.0),
         )
 
@@ -211,6 +214,14 @@ class TaskTable:
     def total_output_tokens(self) -> int:
         return sum(
             d.output_tokens
+            for c in self.all_components_flat
+            for d in c.domains.values()
+        )
+
+    @property
+    def total_reasoning_tokens(self) -> int:
+        return sum(
+            d.reasoning_tokens
             for c in self.all_components_flat
             for d in c.domains.values()
         )

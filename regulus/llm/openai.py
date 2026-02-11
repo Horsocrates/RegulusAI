@@ -28,7 +28,7 @@ class OpenAIClient(LLMClient):
     async def generate_with_usage(self, prompt: str, system: str | None = None) -> LLMResponse:
         return await self._call_api(prompt, system)
 
-    async def _call_api(self, prompt: str, system: str | None = None) -> LLMResponse:
+    async def _call_api(self, prompt: str, system: str | None = None, max_tokens: int = 4096) -> LLMResponse:
         from openai import RateLimitError
 
         messages = []
@@ -40,7 +40,7 @@ class OpenAIClient(LLMClient):
             try:
                 response = await self.client.chat.completions.create(
                     model=self.model,
-                    max_tokens=2048,
+                    max_tokens=max_tokens,
                     messages=messages
                 )
 

@@ -377,7 +377,18 @@ Return needed: yes/no [if yes, which domain and why]
 Meta-check: Sufficient ✓/✗ | Correct ✓/✗ | Complete ✓/✗
 </D6>
 
-After the thinking trace, provide your final answer.
+After the thinking trace, provide your final answer using this EXACT format:
+
+EXACT_ANSWER: {value}
+
+Rules for EXACT_ANSWER:
+- Output ONLY the answer value — no markdown, no explanation, no units unless required
+- For multiple choice: just the letter (e.g., "EXACT_ANSWER: B")
+- For numerical: just the number (e.g., "EXACT_ANSWER: 42" or "EXACT_ANSWER: 3.14")
+- For short text: just the string (e.g., "EXACT_ANSWER: Stans Puer ad Mensam")
+- For mathematical expressions: use plain text or LaTeX (e.g., "EXACT_ANSWER: 3m-1")
+- This line MUST appear as the very last line of your response
+- Everything before this line is your explanation; this line IS your answer
 
 ═══════════════════════════════════════════════════
 SCALING RULES

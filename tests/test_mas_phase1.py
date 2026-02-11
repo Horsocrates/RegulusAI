@@ -387,12 +387,12 @@ class TestRouting:
         assert rc.get_model("medium", "D2") == "gpt-4o-mini"
         assert rc.get_model("medium", "D4") == "gpt-4o-mini"
 
-    def test_default_hard_deepseek_for_key_domains(self):
+    def test_default_hard_deepseek_for_reasoning(self):
         rc = RoutingConfig.default()
-        assert rc.get_model("hard", "D1") == "deepseek"
-        assert rc.get_model("hard", "D3") == "deepseek"
+        assert rc.get_model("hard", "D4") == "deepseek"
         assert rc.get_model("hard", "D5") == "deepseek"
-        assert rc.get_model("hard", "D2") == "gpt-4o"
+        assert rc.get_model("hard", "D1") == "gpt-4o-mini"
+        assert rc.get_model("hard", "D6") == "gpt-4o-mini"
 
     def test_unknown_domain_fallback(self):
         rc = RoutingConfig.default()

@@ -39,6 +39,7 @@ from regulus.mas.worker_factory import (
     clear_client_cache,
 )
 from regulus.mas.prompts import DOMAIN_PROMPTS
+from regulus.mas.reasoning_adapter import ReasoningProviderAdapter, ReasoningLLMResponse
 
 __all__ = [
     "Complexity", "DomainStatus", "TaskStatus",
@@ -58,4 +59,5 @@ __all__ = [
     "LLMWorker", "WorkerError",
     "MODEL_REGISTRY", "create_worker", "create_workers_from_routing", "clear_client_cache",
     "DOMAIN_PROMPTS",
+    "ReasoningProviderAdapter", "ReasoningLLMResponse",
 ]

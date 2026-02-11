@@ -115,6 +115,7 @@ class MASOrchestrator:
             time_seconds=elapsed,
             input_tokens=table.total_input_tokens,
             output_tokens=table.total_output_tokens,
+            reasoning_tokens=table.total_reasoning_tokens,
         )
 
     async def _classify(self, table: TaskTable) -> TaskTable:
@@ -211,6 +212,9 @@ class MASOrchestrator:
                     "component": comp.component_id,
                     "model": output.model_used,
                     "time_ms": int(output.time_seconds * 1000),
+                    "input_tokens": output.input_tokens,
+                    "output_tokens": output.output_tokens,
+                    "reasoning_tokens": output.reasoning_tokens,
                 })
 
         return table

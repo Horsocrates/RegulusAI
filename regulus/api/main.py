@@ -17,7 +17,7 @@ import json
 import asyncio
 import logging
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -131,6 +131,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+from regulus.api.rate_limit import RateLimitMiddleware  # noqa: E402
+
+app.add_middleware(RateLimitMiddleware)
 
 
 @app.exception_handler(Exception)
@@ -1073,7 +1077,7 @@ async def lab_stream_step(
                 # Domain-level events use named SSE event types
                 if progress.type in ("domain_start", "domain_complete", "correction", "judge_result"):
                     event_data = progress.event_data or {}
-                    event_data["timestamp"] = datetime.utcnow().isoformat() + "Z"
+                    event_data["timestamp"] = datetime.now(timezone.utc).isoformat() + "Z"
                     yield f"event: {progress.type}\ndata: {json.dumps(event_data)}\n\n"
                     continue
 
@@ -1404,6 +1408,29 @@ async def lab_error_patterns(run_id: int):
 # ============================================================================
 # Archive & Leaderboard Endpoints
 # ============================================================================
+
+from regulus.api.routers.lab.teams import router as teams_router
+from regulus.api.routers.lab.tests import router as tests_router
+from regulus.api.routers.lab.benchmarks import router as benchmarks_router
+from regulus.api.routers.lab.runs import router as runs_router
+from regulus.api.routers.lab.results import router as results_router
+from regulus.api.routers.lab.instructions import router as instructions_router
+from regulus.api.routers.lab.paradigms import router as paradigms_router
+from regulus.api.routers.lab.paradigm_config import router as paradigm_config_router
+from regulus.api.routers.lab.instruction_sets import router as instruction_sets_router
+from regulus.api.routers.lab.model_settings import router as model_settings_router
+
+app.include_router(teams_router)
+app.include_router(tests_router)
+app.include_router(benchmarks_router)
+app.include_router(runs_router)
+app.include_router(results_router)
+app.include_router(instructions_router)
+app.include_router(paradigms_router)
+app.include_router(paradigm_config_router)
+app.include_router(instruction_sets_router)
+app.include_router(model_settings_router)
+
 
 from regulus.lab.archive import ArchiveManager
 

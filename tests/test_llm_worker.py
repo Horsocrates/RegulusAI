@@ -403,16 +403,14 @@ class TestWorkerFactory:
         assert "haiku" in MODEL_REGISTRY
         assert "mini" in MODEL_REGISTRY
 
-    def test_create_workers_from_routing_mock_fallback(self):
-        """Unknown models in registry should fall back to MockWorker."""
+    def test_create_workers_from_routing_hard(self):
+        """Hard routing creates LLMWorkers for all domains (D4+D5 deepseek)."""
+        clear_client_cache()
         routing = RoutingConfig.default()
-        # Hard routing uses "deepseek" which isn't in MODEL_REGISTRY
         workers = create_workers_from_routing(routing, complexity="hard")
-        # D1 uses deepseek -> MockWorker fallback
-        from regulus.mas.workers import MockWorker
-        assert isinstance(workers["D1"], MockWorker)
-        # D2 uses gpt-4o -> LLMWorker
-        assert isinstance(workers["D2"], LLMWorker)
+        for code in DOMAIN_CODES:
+            assert isinstance(workers[code], LLMWorker)
+        clear_client_cache()
 
     def test_create_workers_easy_all_llm(self):
         """Easy routing uses gpt-4o-mini for all — should create LLMWorkers."""

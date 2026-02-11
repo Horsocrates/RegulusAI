@@ -4,8 +4,9 @@ import { useState, useEffect, useRef } from "react";
 import { FlaskConical, ArrowLeft, Play, Square, Download, Loader2, CheckCircle, XCircle, Clock, PauseCircle, ChevronDown, ChevronRight, Settings, Save, DollarSign } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { type LabRun, formatCost } from "@/lib/lab-api";
 
-const API_URL = "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 interface LabStep {
   id: number;
@@ -20,38 +21,7 @@ interface LabStep {
   completed_at: string | null;
 }
 
-interface CostInfo {
-  input_tokens: number;
-  output_tokens: number;
-  total_tokens: number;
-  spent_cost: number;
-  estimated_remaining: number;
-  estimated_total: number;
-  currency: string;
-}
-
-interface LabRun {
-  id: number;
-  name: string;
-  dataset: string;
-  provider: string;
-  total_questions: number;
-  num_steps: number;
-  concurrency: number;
-  status: string;
-  current_step: number;
-  completed_questions: number;
-  valid_count: number;
-  correct_count: number;
-  total_time: number;
-  progress_percent: number;
-  input_tokens: number;
-  output_tokens: number;
-  cost: CostInfo | null;
-  mode: string;
-  reasoning_model: string;
-  created_at: string;
-  updated_at: string;
+interface LabRunWithSteps extends LabRun {
   steps: LabStep[];
 }
 
@@ -92,63 +62,58 @@ interface AgentState {
   result: LabResult | null;
 }
 
-function formatCost(cost: number): string {
-  if (cost < 0.01) return "<$0.01";
-  return `$${cost.toFixed(2)}`;
-}
-
 function formatTokens(tokens: number): string {
   if (tokens < 1000) return String(tokens);
   if (tokens < 1_000_000) return `${(tokens / 1000).toFixed(1)}K`;
   return `${(tokens / 1_000_000).toFixed(2)}M`;
 }
 
-function ProgressCostBar({ run }: { run: LabRun }) {
+function ProgressCostBar({ run }: { run: LabRunWithSteps }) {
   const correctRate = run.completed_questions > 0
     ? (run.correct_count / run.completed_questions * 100).toFixed(1)
     : "0.0";
 
   return (
-    <div className="bg-white border rounded-lg p-3 mb-4">
+    <div className="bg-[#12121a] border border-[#1e1e2e] rounded-lg p-3 mb-4">
       <div className="flex items-center gap-4">
         {/* Progress */}
         <div className="flex-1">
           <div className="flex items-center justify-between text-sm mb-1">
-            <span className="text-gray-500">Progress</span>
-            <span className="font-medium">{run.completed_questions}/{run.total_questions} ({run.progress_percent.toFixed(0)}%)</span>
+            <span className="text-gray-400">Progress</span>
+            <span className="font-medium text-gray-200">{run.completed_questions}/{run.total_questions} ({run.progress_percent.toFixed(0)}%)</span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
+          <div className="w-full bg-[#1a1a2e] rounded-full h-2">
             <div
-              className="bg-purple-600 h-2 rounded-full transition-all"
+              className="bg-purple-500 h-2 rounded-full transition-all"
               style={{ width: `${run.progress_percent}%` }}
             />
           </div>
         </div>
 
         {/* Stats */}
-        <div className="flex items-center gap-3 text-sm border-l pl-4">
+        <div className="flex items-center gap-3 text-sm border-l border-[#1e1e2e] pl-4">
           <div className="text-center">
-            <div className="font-bold text-green-600">{run.valid_count}</div>
+            <div className="font-bold text-green-400">{run.valid_count}</div>
             <div className="text-xs text-gray-500">valid</div>
           </div>
           <div className="text-center">
-            <div className="font-bold text-blue-600">{correctRate}%</div>
+            <div className="font-bold text-blue-400">{correctRate}%</div>
             <div className="text-xs text-gray-500">correct</div>
           </div>
           <div className="text-center">
-            <div className="font-bold">{run.total_time.toFixed(0)}s</div>
+            <div className="font-bold text-gray-200">{run.total_time.toFixed(0)}s</div>
             <div className="text-xs text-gray-500">time</div>
           </div>
         </div>
 
         {/* Cost */}
         {run.cost && (
-          <div className="flex items-center gap-2 text-sm border-l pl-4">
-            <DollarSign className="w-4 h-4 text-green-600" />
+          <div className="flex items-center gap-2 text-sm border-l border-[#1e1e2e] pl-4">
+            <DollarSign className="w-4 h-4 text-green-400" />
             <div>
-              <span className="font-medium text-green-700">{formatCost(run.cost.spent_cost)}</span>
-              <span className="text-gray-400 mx-1">/</span>
-              <span className="text-gray-500">{formatCost(run.cost.estimated_total)}</span>
+              <span className="font-medium text-green-400">{formatCost(run.cost.spent_cost)}</span>
+              <span className="text-gray-500 mx-1">/</span>
+              <span className="text-gray-400">{formatCost(run.cost.estimated_total)}</span>
             </div>
           </div>
         )}
@@ -434,7 +399,7 @@ function ConfigPanel({
   run,
   onUpdated,
 }: {
-  run: LabRun;
+  run: LabRunWithSteps;
   onUpdated: () => void;
 }) {
   const pendingSteps = run.steps.filter((s) => s.status === "pending");
@@ -485,24 +450,24 @@ function ConfigPanel({
   }
 
   return (
-    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+    <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mb-6">
       <div className="flex items-center gap-2 mb-3">
-        <Settings className="w-5 h-5 text-yellow-600" />
-        <span className="font-medium text-yellow-800">Adjust Configuration</span>
-        <span className="text-sm text-yellow-600 ml-auto">
+        <Settings className="w-5 h-5 text-yellow-400" />
+        <span className="font-medium text-yellow-300">Adjust Configuration</span>
+        <span className="text-sm text-yellow-400/70 ml-auto">
           {remainingQuestions} questions remaining
         </span>
       </div>
 
       <div className="grid grid-cols-2 gap-4 mb-3">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-400 mb-1">
             Parallel Agents
           </label>
           <select
             value={concurrency}
             onChange={(e) => setConcurrency(Number(e.target.value))}
-            className="w-full px-3 py-2 border rounded-lg text-sm"
+            className="w-full px-3 py-2 bg-[#1a1a2e] border border-[#1e1e2e] rounded-lg text-sm text-gray-200"
           >
             <option value={1}>1 (sequential)</option>
             <option value={3}>3</option>
@@ -514,7 +479,7 @@ function ConfigPanel({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-400 mb-1">
             Remaining Steps
           </label>
           <div className="flex gap-2">
@@ -524,12 +489,12 @@ function ConfigPanel({
               max={remainingQuestions}
               value={remainingSteps}
               onChange={(e) => setRemainingSteps(e.target.value)}
-              className="flex-1 px-3 py-2 border rounded-lg text-sm"
+              className="flex-1 px-3 py-2 bg-[#1a1a2e] border border-[#1e1e2e] rounded-lg text-sm text-gray-200"
             />
             <button
               type="button"
               onClick={() => setRemainingSteps(String(Math.ceil(remainingQuestions / concurrency)))}
-              className="px-2 py-1 text-xs bg-yellow-200 text-yellow-800 rounded hover:bg-yellow-300"
+              className="px-2 py-1 text-xs bg-yellow-500/20 text-yellow-300 rounded hover:bg-yellow-500/30"
               title="Set steps = remaining / concurrency"
             >
               Auto
@@ -538,7 +503,7 @@ function ConfigPanel({
         </div>
       </div>
 
-      <div className="text-sm text-yellow-700 mb-3">
+      <div className="text-sm text-yellow-400/70 mb-3">
         {actualSteps} steps × ~{questionsPerStep} questions each, {Math.min(concurrency, questionsPerStep)} parallel
       </div>
 
@@ -552,7 +517,7 @@ function ConfigPanel({
           Apply Changes
         </button>
         {message && (
-          <span className={`text-sm ${message.includes("Error") ? "text-red-600" : "text-green-600"}`}>
+          <span className={`text-sm ${message.includes("Error") ? "text-red-400" : "text-green-400"}`}>
             {message}
           </span>
         )}
@@ -580,21 +545,21 @@ function StepCard({
     : "0.0";
 
   return (
-    <div className={`border rounded-lg overflow-hidden ${isActive ? "border-blue-500 ring-2 ring-blue-200" : ""}`}>
+    <div className={`border border-[#1e1e2e] rounded-lg overflow-hidden ${isActive ? "border-blue-500 ring-2 ring-blue-500/30" : ""}`}>
       <div
         onClick={onExpand}
-        className={`p-4 cursor-pointer hover:bg-gray-50 ${step.status === "completed" ? "bg-green-50/50" : ""}`}
+        className={`p-4 cursor-pointer hover:bg-[#1a1a2e] ${step.status === "completed" ? "bg-green-500/5" : "bg-[#12121a]"}`}
       >
         <div className="flex items-center gap-3">
           <StatusIcon status={step.status} />
           <div className="flex-1">
-            <div className="font-medium">Step {step.step_number}</div>
+            <div className="font-medium text-gray-200">Step {step.step_number}</div>
             <div className="text-sm text-gray-500">
               Questions {step.questions_start + 1} - {step.questions_end} ({questionsCount} total)
             </div>
           </div>
           <div className="text-right text-sm">
-            <div className="font-medium">{step.valid_count}/{results.length || questionsCount} valid</div>
+            <div className="font-medium text-gray-200">{step.valid_count}/{results.length || questionsCount} valid</div>
             {step.status === "completed" && (
               <div className="text-gray-500">{correctRate}% correct</div>
             )}
@@ -604,17 +569,17 @@ function StepCard({
       </div>
 
       {expanded && results.length > 0 && (
-        <div className="border-t bg-gray-50 p-4 max-h-96 overflow-y-auto">
+        <div className="border-t border-[#1e1e2e] bg-[#0e0e16] p-4 max-h-96 overflow-y-auto">
           <div className="space-y-3">
             {results.map((r, i) => (
               <div
                 key={r.id}
-                className={`bg-white p-3 rounded border ${
-                  r.correct ? "border-green-200" : r.valid ? "border-yellow-200" : "border-red-200"
+                className={`bg-[#12121a] p-3 rounded border ${
+                  r.correct ? "border-green-500/30" : r.valid ? "border-yellow-500/30" : "border-red-500/30"
                 }`}
               >
                 <div className="flex items-start gap-2 mb-2">
-                  <span className="text-xs font-mono text-gray-400">#{i + 1}</span>
+                  <span className="text-xs font-mono text-gray-500">#{i + 1}</span>
                   {r.correct ? (
                     <CheckCircle className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
                   ) : r.valid ? (
@@ -622,13 +587,13 @@ function StepCard({
                   ) : (
                     <XCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
                   )}
-                  <p className="text-sm font-medium text-gray-800 flex-1">{r.question}</p>
+                  <p className="text-sm font-medium text-gray-300 flex-1">{r.question}</p>
                 </div>
                 <div className="text-xs text-gray-500 ml-6">
                   <div><strong>Expected:</strong> {r.expected}</div>
                   <div><strong>Answer:</strong> {r.answer || "No answer"}</div>
                   {r.judge_reason && <div><strong>Judge:</strong> {r.judge_reason}</div>}
-                  <div className="mt-1 text-gray-400">
+                  <div className="mt-1 text-gray-600">
                     {r.time_seconds.toFixed(1)}s | {r.corrections} corrections
                   </div>
                 </div>
@@ -645,7 +610,7 @@ export default function RunDetailPage() {
   const params = useParams();
   const runId = Number(params.id);
 
-  const [run, setRun] = useState<LabRun | null>(null);
+  const [run, setRun] = useState<LabRunWithSteps | null>(null);
   const [stepResults, setStepResults] = useState<Record<number, LabResult[]>>({});
   const [expandedStep, setExpandedStep] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -827,18 +792,18 @@ export default function RunDetailPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+      <main className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-purple-400" />
       </main>
     );
   }
 
   if (!run) {
     return (
-      <main className="min-h-screen bg-gray-50 p-8">
+      <main className="min-h-screen bg-[#0a0a0f] p-8">
         <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-2xl font-bold text-red-600">Run not found</h1>
-          <Link href="/lab" className="text-blue-600 hover:underline mt-4 inline-block">
+          <h1 className="text-2xl font-bold text-red-400">Run not found</h1>
+          <Link href="/lab" className="text-purple-400 hover:underline mt-4 inline-block">
             Back to Lab
           </Link>
         </div>
@@ -855,16 +820,16 @@ export default function RunDetailPage() {
   };
 
   return (
-    <main className="min-h-screen bg-gray-50 p-8">
+    <main className="min-h-screen bg-[#0a0a0f] p-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
-          <Link href="/lab" className="text-gray-400 hover:text-gray-600">
+          <Link href="/lab" className="text-gray-400 hover:text-gray-300">
             <ArrowLeft className="w-5 h-5" />
           </Link>
-          <FlaskConical className="w-8 h-8 text-purple-600" />
+          <FlaskConical className="w-8 h-8 text-purple-400" />
           <div className="flex-1">
-            <h1 className="text-xl font-bold">{run.name}</h1>
+            <h1 className="text-xl font-bold text-gray-100">{run.name}</h1>
             <p className="text-sm text-gray-500">
               {run.dataset} / {run.provider}{run.mode === "v2" ? ` / v2 Audit (${run.reasoning_model})` : ""} / {run.num_steps} steps
             </p>
@@ -872,7 +837,7 @@ export default function RunDetailPage() {
           <button
             onClick={handleExport}
             disabled={run.completed_questions === 0}
-            className="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg disabled:opacity-50 flex items-center gap-2"
+            className="px-3 py-2 text-gray-400 hover:bg-[#1a1a2e] rounded-lg disabled:opacity-50 flex items-center gap-2"
           >
             <Download className="w-4 h-4" />
             Export
