@@ -160,19 +160,23 @@ async def list_benchmarks():
     for benchmark_id, loader_cls in BENCHMARK_REGISTRY.items():
         if loader_cls is None:
             continue
-        loader = loader_cls()
-        info = loader.info()
-        results.append(
-            BenchmarkSummary(
-                id=info.id,
-                name=info.name,
-                description=info.description,
-                source=info.source,
-                total_examples=info.total_examples,
-                domains_count=len(info.domains),
-                version=info.version,
+        try:
+            loader = loader_cls()
+            info = loader.info()
+            results.append(
+                BenchmarkSummary(
+                    id=info.id,
+                    name=info.name,
+                    description=info.description,
+                    source=info.source,
+                    total_examples=info.total_examples,
+                    domains_count=len(info.domains),
+                    version=info.version,
+                )
             )
-        )
+        except (RuntimeError, ImportError):
+            # Skip benchmarks with missing dependencies (e.g. HLE without 'datasets')
+            continue
     return results
 
 
