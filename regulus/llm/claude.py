@@ -11,7 +11,7 @@ from .client import LLMClient, LLMResponse
 class ClaudeClient(LLMClient):
     """Claude API client adapter."""
 
-    def __init__(self, api_key: str, model: str = "claude-sonnet-4-20250514"):
+    def __init__(self, api_key: str, model: str = "claude-opus-4-6"):
         from anthropic import AsyncAnthropic
         self.client = AsyncAnthropic(api_key=api_key)
         self.model = model
@@ -26,7 +26,7 @@ class ClaudeClient(LLMClient):
     async def _call_api(self, prompt: str, system: str | None = None) -> LLMResponse:
         response = await self.client.messages.create(
             model=self.model,
-            max_tokens=2048,
+            max_tokens=64000,
             system=system or "",
             messages=[{"role": "user", "content": prompt}]
         )

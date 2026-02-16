@@ -363,6 +363,20 @@ class TestExecutor:
         Returns (answer, tokens_in, tokens_out).
         """
         # Determine which orchestrator to use based on team config
+        # Check for dialogue pipeline first
+        if team and team.team_lead_config.get("pipeline") == "dialogue":
+            from regulus.dialogue.orchestrator import DialogueOrchestrator
+
+            orchestrator = DialogueOrchestrator(
+                api_key=os.environ.get("ANTHROPIC_API_KEY", ""),
+            )
+            output = await orchestrator.process_query(question.input)
+            return (
+                output.answer or "",
+                output.input_tokens,
+                output.output_tokens,
+            )
+
         # Default: use AuditOrchestrator (v2) if available, else SocraticOrchestrator
         try:
             from regulus.audit.orchestrator import AuditOrchestrator

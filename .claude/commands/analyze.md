@@ -20,6 +20,13 @@ Workers in each domain do the actual work. You decide:
    - goal: what needs to be answered
    - complexity: easy/medium/hard
    - task_type: computation|proof|classification|explanation|multi_choice|construction|estimation|code_analysis|optimization
+   - skill_type: decomposition|verification|recall|computation|conceptual
+     (decomposition = multi-step structural breakdown, 3+ dependent steps;
+      verification = checking truth of N statements/options independently;
+      recall = factual retrieval, specific name/date/citation;
+      computation = numerical calculation or formula evaluation;
+      conceptual = understanding mechanism/principle/concept)
+   - skill_confidence: 0-100 (how confident in this classification)
    - your_components: your independent view of the question's structure (compare with D1 later)
    - plan: which domains need emphasis, which can be light
 
@@ -99,6 +106,8 @@ When appropriate, instruct domains to use available tools:
   "goal": "...",
   "complexity": "hard",
   "task_type": "computation",
+  "skill_type": "decomposition",
+  "skill_confidence": 85,
   "your_components": [...],
   "domains": {
     "D1": {"status": "pending", "output": null, "verified": false, "notes": ""},

@@ -42,8 +42,8 @@ class MASConfig:
     err_required: bool = True
     max_corrections: int = 2
     max_decomposition_depth: int = 3
-    default_model: str = "gpt-4o-mini"
-    reasoning_model: str = "deepseek"
+    default_model: str = "opus"
+    reasoning_model: str = "opus"
     domain_timeout_seconds: float = 30.0
 
     def is_passing(self, total_weight: int, domains_present: int, all_gates_passed: bool) -> bool:
