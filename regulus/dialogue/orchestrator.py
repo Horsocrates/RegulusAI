@@ -15,9 +15,11 @@ The orchestrator manages:
 Returns MASResponse for compatibility with lab executor.
 """
 
+import json
 import re
 import time
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -111,8 +113,14 @@ class DialogueOrchestrator:
             })
 
             # Update token state
-            state.tokens.team_lead_input += tl_agent.total_input_tokens
-            state.tokens.team_lead_output += tl_agent.total_output_tokens
+            state.tokens.team_lead_input = tl_agent.total_input_tokens
+            state.tokens.team_lead_output = tl_agent.total_output_tokens
+            state.tokens.cache_creation_tokens = (
+                tl_agent.cache_creation_tokens + worker_agent.cache_creation_tokens
+            )
+            state.tokens.cache_read_tokens = (
+                tl_agent.cache_read_tokens + worker_agent.cache_read_tokens
+            )
 
             # Phase 1-5: Domain loop
             domain_idx = 0
@@ -185,6 +193,14 @@ class DialogueOrchestrator:
                 # Update TL token tracking
                 state.tokens.team_lead_input = tl_agent.total_input_tokens
                 state.tokens.team_lead_output = tl_agent.total_output_tokens
+                state.tokens.cache_creation_tokens = (
+                    tl_agent.cache_creation_tokens
+                    + worker_agent.cache_creation_tokens
+                )
+                state.tokens.cache_read_tokens = (
+                    tl_agent.cache_read_tokens
+                    + worker_agent.cache_read_tokens
+                )
 
                 # Parse TL verdict and update state
                 conspectus.update_from_tl_response(tl_response)
@@ -246,6 +262,15 @@ class DialogueOrchestrator:
 
             elapsed = time.time() - start_time
 
+            # Build and persist reasoning passport
+            passport = self._build_passport(
+                run_dir, state, conspectus, answer, elapsed,
+            )
+            (run_dir / "passport.json").write_text(
+                json.dumps(passport, indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
+
             # Build audit summary
             domain_confidences = {}
             for d, ds in state.domains.items():
@@ -264,6 +289,8 @@ class DialogueOrchestrator:
                 "workers_spawned": state.workers.total_spawned,
                 "tl_messages": tl_agent.message_count,
                 "worker_messages": worker_agent.message_count,
+                "cache_read_tokens": state.tokens.cache_read_tokens,
+                "cache_creation_tokens": state.tokens.cache_creation_tokens,
             }
 
             return MASResponse(
@@ -377,6 +404,157 @@ class DialogueOrchestrator:
         channel.log("worker", "orchestrator", "handoff_ack", ack)
 
         return new_worker
+
+    # ------------------------------------------------------------------
+    # Reasoning Passport
+    # ------------------------------------------------------------------
+
+    def _build_passport(
+        self,
+        run_dir: Path,
+        state: RunState,
+        conspectus: Conspectus,
+        answer: str,
+        elapsed: float,
+    ) -> dict:
+        """Assemble a full reasoning passport from the dialogue log.
+
+        The passport is a structured archive of the COMPLETE reasoning trace
+        for post-mortem analysis, failure investigation, and training data export.
+        """
+        # Read dialogue log
+        dialogue: list[dict] = []
+        log_path = run_dir / "dialogue.jsonl"
+        if log_path.exists():
+            for line in log_path.read_text(encoding="utf-8").splitlines():
+                if line.strip():
+                    dialogue.append(json.loads(line))
+
+        # Extract classification from TL ask response
+        classification: dict = {}
+        for msg in dialogue:
+            if msg.get("type") == "ask_response":
+                content = msg.get("content", "")
+                # Try to parse JSON classification from TL output
+                task_type_m = re.search(
+                    r'"task_type"\s*:\s*"([^"]+)"', content
+                )
+                skill_type_m = re.search(
+                    r'"skill_type"\s*:\s*"([^"]+)"', content
+                )
+                complexity_m = re.search(
+                    r'"complexity"\s*:\s*"([^"]+)"', content
+                )
+                skill_conf_m = re.search(
+                    r'"skill_confidence"\s*:\s*(\d+)', content
+                )
+                classification = {
+                    "complexity": complexity_m.group(1) if complexity_m else "unknown",
+                    "task_type": task_type_m.group(1) if task_type_m else "unknown",
+                    "skill_type": skill_type_m.group(1) if skill_type_m else "unknown",
+                    "skill_confidence": (
+                        int(skill_conf_m.group(1)) if skill_conf_m else None
+                    ),
+                }
+                break
+
+        # Extract per-domain full outputs and TL reflections
+        domains_data: dict[str, dict] = {}
+        for msg in dialogue:
+            msg_type = msg.get("type", "")
+            domain = msg.get("domain", "")
+            if not domain:
+                continue
+
+            if msg_type == "domain_output":
+                # Worker output for this domain
+                if domain not in domains_data:
+                    domains_data[domain] = {
+                        "full_output": msg.get("content", ""),
+                        "iterations": 0,
+                    }
+                else:
+                    # This is a redo/iteration
+                    domains_data[domain]["iterations"] += 1
+                    domains_data[domain].setdefault("iteration_log", [])
+                    domains_data[domain]["iteration_log"].append({
+                        "output": msg.get("content", ""),
+                        "trigger": domain,
+                    })
+
+            elif msg_type == "reflect_response":
+                # TL reflection for this domain
+                if domain in domains_data:
+                    content = msg.get("content", "")
+                    verdict = _extract_xml(content, "verdict").strip().lower()
+                    conf = _extract_confidence(content)
+                    domains_data[domain]["tl_verdict"] = verdict
+                    domains_data[domain]["confidence"] = conf
+                    # Truncate reflection to 500 chars for passport
+                    domains_data[domain]["tl_reflection"] = content[:500]
+
+        # Merge confidence from state into domain data
+        for d, ds in state.domains.items():
+            if d in domains_data and ds.confidence is not None:
+                domains_data[d]["confidence"] = ds.confidence
+
+        # Final confidence from last history entry
+        final_confidence = (
+            state.convergence.confidence_history[-1]
+            if state.convergence.confidence_history
+            else None
+        )
+
+        # Determine final verdict
+        final_verdict = "completed"
+        if state.convergence.confidence_history:
+            threshold = self.profile.get("convergence", {}).get(
+                "confidence_threshold", 85,
+            )
+            if final_confidence and final_confidence >= threshold:
+                final_verdict = "threshold_reached"
+            elif state.convergence.stall_count >= self.profile.get(
+                "convergence", {},
+            ).get("stall_limit", 2):
+                final_verdict = "plateau"
+
+        # Read conspectus markdown
+        conspectus_md = ""
+        conspectus_path = run_dir / "conspectus.md"
+        if conspectus_path.exists():
+            conspectus_md = conspectus_path.read_text(encoding="utf-8")
+
+        from dataclasses import asdict
+
+        return {
+            "version": "1.0",
+            "run_id": state.run_id,
+            "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
+            "question": {
+                "text": state.question,
+            },
+            "classification": classification,
+            "result": {
+                "answer": answer,
+                "confidence": final_confidence,
+                "verdict": final_verdict,
+                "correct": None,  # filled by judge later
+            },
+            "profile": state.profile,
+            "domains": domains_data,
+            "convergence": {
+                "total_iterations": state.convergence.iteration,
+                "confidence_history": state.convergence.confidence_history,
+                "paradigm_shifts": state.convergence.paradigm_shifts_used,
+                "paradigm_history": state.convergence.paradigm_history,
+            },
+            "conspectus_final": conspectus_md,
+            "resources": {
+                "workers_spawned": state.workers.total_spawned,
+                "total_tokens": asdict(state.tokens),
+                "time_seconds": round(elapsed, 1),
+            },
+        }
 
     # ------------------------------------------------------------------
     # Callback helpers

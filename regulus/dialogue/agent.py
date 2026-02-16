@@ -52,6 +52,8 @@ class Agent:
         self._messages: list[dict] = []
         self._total_input_tokens = 0
         self._total_output_tokens = 0
+        self._cache_creation_tokens = 0
+        self._cache_read_tokens = 0
 
     async def send(self, content: str) -> str:
         """Send a message and return the text response.
@@ -76,7 +78,13 @@ class Agent:
                     },
                 }
                 if self.config.system_prompt:
-                    kwargs["system"] = self.config.system_prompt
+                    kwargs["system"] = [
+                        {
+                            "type": "text",
+                            "text": self.config.system_prompt,
+                            "cache_control": {"type": "ephemeral"},
+                        }
+                    ]
                 if self.config.interleaved_thinking:
                     kwargs["betas"] = ["interleaved-thinking-2025-05-14"]
                 if self.config.temperature != 1.0:
@@ -99,6 +107,12 @@ class Agent:
 
                 self._total_input_tokens += response.usage.input_tokens
                 self._total_output_tokens += response.usage.output_tokens
+                self._cache_creation_tokens += getattr(
+                    response.usage, "cache_creation_input_tokens", 0
+                ) or 0
+                self._cache_read_tokens += getattr(
+                    response.usage, "cache_read_input_tokens", 0
+                ) or 0
 
                 return "\n".join(text_parts)
 
@@ -129,6 +143,14 @@ class Agent:
     @property
     def total_output_tokens(self) -> int:
         return self._total_output_tokens
+
+    @property
+    def cache_creation_tokens(self) -> int:
+        return self._cache_creation_tokens
+
+    @property
+    def cache_read_tokens(self) -> int:
+        return self._cache_read_tokens
 
     @property
     def message_count(self) -> int:

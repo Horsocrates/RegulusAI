@@ -44,6 +44,8 @@ class TokenState:
     team_lead_output: int = 0
     worker_input: int = 0
     worker_output: int = 0
+    cache_creation_tokens: int = 0
+    cache_read_tokens: int = 0
 
     @property
     def total(self) -> int:
