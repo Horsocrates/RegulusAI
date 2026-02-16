@@ -16,7 +16,7 @@ from datetime import datetime
 
 MODEL = "claude-opus-4-6"          # Both agents use Opus 4.6
 THINKING_BUDGET = 10000             # Thinking tokens per call
-MAX_OUTPUT = 8192                   # Max output tokens
+MAX_OUTPUT = 64000                  # Max output tokens (must be > THINKING_BUDGET)
 SKILLS_DIR = Path("skills")         # Skills directory
 RUNS_DIR = Path("runs")             # Output directory
 
@@ -91,8 +91,16 @@ class Agent:
     
     def send(self, content: str) -> str:
         self.messages.append({"role": "user", "content": content})
-        
-        response = self.client.messages.create(
+
+        # Use streaming to avoid SDK timeout for large max_tokens
+        text_parts = []
+        thinking_parts = []
+        current_thinking = []
+        content_blocks = []
+        input_tokens = 0
+        output_tokens = 0
+
+        with self.client.messages.stream(
             model=MODEL,
             max_tokens=MAX_OUTPUT,
             thinking={
@@ -105,30 +113,26 @@ class Agent:
                 "cache_control": {"type": "ephemeral"}
             }],
             messages=self.messages
-        )
-        
-        # Extract text (skip thinking blocks for conversation, but log them)
-        text_parts = []
-        thinking_parts = []
+        ) as stream:
+            response = stream.get_final_message()
+
+        # Extract text and thinking from final message
         for block in response.content:
             if block.type == "text":
                 text_parts.append(block.text)
             elif block.type == "thinking":
                 thinking_parts.append(block.thinking)
-        
+
         text = "\n".join(text_parts)
         thinking = "\n---\n".join(thinking_parts) if thinking_parts else ""
-        
+
+        # Store full content (with thinking) for multi-turn
         self.messages.append({"role": "assistant", "content": response.content})
-        
+
         self.total_input += response.usage.input_tokens
         self.total_output += response.usage.output_tokens
         self.call_count += 1
-        
-        # Track thinking tokens if available
-        if hasattr(response.usage, 'cache_read_input_tokens'):
-            pass  # just noting cache usage exists
-        
+
         return text, thinking
     
     def stats(self) -> dict:
