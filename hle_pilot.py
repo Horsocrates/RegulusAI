@@ -292,7 +292,7 @@ def normalize_answer(text: str) -> str:
 
 def extract_core_answer(model_answer: str) -> str:
     """Extract the core answer from model output that may contain explanations.
-    Tries XML tags first, then takes the first substantive line.
+    Tries XML tags first, then markdown patterns, then first substantive line.
     """
     # Try common XML tags
     for tag in ['final_answer', 'answer', 'result']:
@@ -300,15 +300,31 @@ def extract_core_answer(model_answer: str) -> str:
         if match:
             return match.group(1).strip()
 
+    # Try markdown bold "**Answer:** VALUE" or "**Answer:** ... **VALUE**"
+    # Pattern: **Answer:** followed by value on same line
+    md_match = re.search(r'\*\*(?:Final\s+)?Answer[:\s]*\*\*[:\s]*(.+?)(?:\n|$)', model_answer, re.IGNORECASE)
+    if md_match:
+        ans_line = md_match.group(1).strip()
+        # Strip trailing markdown bold markers
+        ans_line = re.sub(r'\*+$', '', ans_line).strip()
+        return ans_line
+
+    # Try "answer: VALUE" at start of a line (YAML-like from structured output)
+    yaml_match = re.search(r'^answer:\s*(.+?)$', model_answer, re.MULTILINE | re.IGNORECASE)
+    if yaml_match:
+        return yaml_match.group(1).strip()
+
     # If answer is short (< 200 chars), it's probably just the answer
     if len(model_answer.strip()) < 200:
         return model_answer.strip()
 
     # Otherwise take first non-empty line that looks like an answer
+    # Strip markdown bold/italic markers before checking prefix
     for line in model_answer.strip().split('\n'):
-        line = line.strip()
-        if line and not line.startswith('#') and not line.startswith('*'):
-            return line
+        stripped = line.strip()
+        plain = re.sub(r'^\*+|\*+$', '', stripped).strip()  # remove leading/trailing bold/italic
+        if plain and not plain.startswith('#') and not plain.startswith('-'):
+            return stripped
 
     return model_answer.strip()[:200]
 
