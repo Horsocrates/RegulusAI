@@ -36,15 +36,14 @@ def main():
         pct = 100 * count / len(ds)
         print(f"    {cat:40s} {count:4d} ({pct:.1f}%)")
 
-    # ─── FILTER: Math, text-only ───
+    # ─── FILTER: Mathematics, text-only ───
     math_questions = []
     for row in ds:
-        # Category filter: "Math" (actual HLE category name)
-        if row["category"] != "Math":
+        # Category filter: Mathematics
+        if row["category"] != "Mathematics":
             continue
-        # Text-only filter: skip if image path is non-empty
-        img = row.get("image")
-        if img:  # non-empty string = has image
+        # Text-only filter: no image required
+        if row.get("image") and row["image"].strip():
             continue
         math_questions.append(row)
 
@@ -87,7 +86,7 @@ def main():
     # ─── BUILD SEED FILE ───
     seed_data = {
         "domain": "Mathematics",
-        "category_filter": "Math",
+        "category_filter": "Mathematics",
         "text_only": True,
         "n_questions": len(selected),
         "seed": seed,

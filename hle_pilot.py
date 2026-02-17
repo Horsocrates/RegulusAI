@@ -547,7 +547,7 @@ def run_question(question: dict, run_dir: Path) -> dict:
         w_text, w_think = worker.send(instruction)
         log("worker", "team_lead", "domain_output", w_text, w_think, domain=domain)
 
-        depth = "full" if domain == "D5" else "quick"
+        depth = "full"
         print(f"  [TL] Reflecting on {domain} ({depth})...")
 
         tl_text, tl_think = tl.send(
@@ -588,8 +588,11 @@ def run_question(question: dict, run_dir: Path) -> dict:
                 print("  [TL] Extracting clean answer...")
                 tl_extract, _ = tl.send(
                     "Output ONLY the final answer. No explanation. No analysis.\n"
-                    "Format: <final_answer>YOUR ANSWER HERE</final_answer>\n"
-                    "The answer should be concise — just the value, name, formula, or letter."
+                    "Format: <final_answer>YOUR ANSWER HERE</final_answer>\n\n"
+                    "CRITICAL — EXACT FORM PRESERVATION:\n"
+                    "- Output the EXACT expression from your derivation, not a simplification\n"
+                    "- Do NOT drop terms, round, or approximate\n"
+                    "- Every dropped term = wrong answer for exact match grading\n"
                 )
                 fa_block = extract(tl_extract, "final_answer")
                 final_answer = fa_block if fa_block else tl_extract.strip()
@@ -633,7 +636,14 @@ def run_question(question: dict, run_dir: Path) -> dict:
         tl_text, tl_think = tl.send(
             "Output ONLY the final answer. No explanation. No analysis. No bullet points.\n\n"
             "Format: <final_answer>YOUR ANSWER HERE</final_answer>\n\n"
-            "The answer should be concise — just the value, name, formula, or letter."
+            "CRITICAL — EXACT FORM PRESERVATION:\n"
+            "- Output the EXACT mathematical expression from your derivation\n"
+            "- Do NOT simplify, approximate, or drop 'negligible' terms\n"
+            "- Do NOT round numbers or convert fractions to decimals\n"
+            "- If D4/D5 derived (10^5010000 - 10^10000)/2, output EXACTLY that\n"
+            "- NOT 5×10^5009999 (drops a term), NOT ≈0.5×10^5010000 (approximation)\n"
+            "- For HLE exact match, every dropped term = wrong answer\n"
+            "- Prefer the form closest to how the answer was derived\n"
         )
         fa_block = extract(tl_text, "final_answer")
         if fa_block:
