@@ -788,6 +788,88 @@ When something feels wrong, trace backward (Socrates' method: clarify the criter
 
 **Diagnostic question generation (Mode C specific):** When reverse diagnostics identify a gap, formulate the diagnosis as a QUESTION targeted at the appropriate domain — not as a command. Instead of "D4: re-check S4" → "Q: What is the measured Ka₁ for H₂SO₄ first dissociation, and does this match the claim 'first dissociation is weak'?" Each diagnostic question includes: the question itself, which sub-question it serves, which domain should answer it, and what a good answer looks like (success criteria). This mirrors the Socratic method: not giving answers, but asking the right questions to help the domain arrive at truth. Route diagnostic questions back through the pipeline via D6 → target domain → D6 re-evaluation (max 2 iterations).
 
+## PROOF BOUNDARY AUDIT (Patch 8 — L4 Sufficient Reason)
+
+**L4 (Sufficient Reason):** A proof step is "sufficient" only when tested against its failure conditions.
+**P2 (Criterion Precedence):** The criterion for a property must be established BEFORE the property is asserted.
+
+**TRIGGER:** When D5 marks `certainty_type: "necessary"` (claims a deductive proof).
+Also trigger when D5 confidence ≥ 85% on a computation — high confidence on computation
+is effectively claiming the model/method is correct, which is a structural claim.
+
+### Procedure
+
+For **each step** in D5's inference_chain:
+
+**Step 1 — IDENTIFY PROPERTY CLAIMS**
+Find every assertion: "X is P" (proper, non-empty, bounded, connected, continuous,
+finite, convergent, regular, closed, open, compact, injective, surjective, ...)
+
+**Step 2 — STATE BOUNDARY CONDITIONS (Negation Test)**
+For each "X is P": "Under what conditions is X NOT P?"
+
+Example:
+```
+Claim: "S = cl(int(A)) is a proper subcontinuum of X"
+Negation: "S is NOT proper when S = X, i.e., when int(A) is dense in X"
+Question: "Can int(A) be dense in X for decomposable continua?"
+```
+
+**Step 3 — CHECK EXCLUSION**
+Is the boundary condition excluded by earlier steps in the proof?
+- **YES** (explicitly excluded with justification) → step VALID ✅
+- **NO** (not addressed at all) → PROOF GAP ❌
+- **MAYBE** (mentioned but not rigorously excluded) → SUSPICIOUS ⚠️
+
+**Step 4 — AGGREGATE**
+- 0 gaps → proof confirmed ✅
+- 1+ gaps → return to D5 with **specific gap identification**:
+  "Step N claims X is P, but condition C (where X is not P) is not excluded.
+   Either prove C cannot occur, or analyze what happens when C occurs."
+
+### Special Case: COMPUTATION/MODEL PROOFS
+
+When the "proof" is a computation (modeling + calculation), audit MODEL ASSUMPTIONS:
+
+For each modeling assumption ("We model X as Y"):
+1. **IDENTIFY:** "walk hits boundary exactly at {2024, 2025}" (model assumption)
+2. **BOUNDARY:** "When does this break?" → "when jump size exceeds distance to boundary"
+3. **CHECK:** For geometric jumps P(jump ≥ k) = (1/3)^k > 0 → walk CAN skip boundary
+4. **VERDICT:** Assumption not justified → model may be wrong → GAP
+
+### Confidence Impact
+
+| Audit Result | Action | Confidence |
+|-------------|--------|------------|
+| proof_confirmed | No adjustment | D5 confidence stands |
+| proof_has_gaps | Return to D5 with gap list | Cap 40% |
+| proof_invalid (multiple gaps / fundamental flaw) | Return to D3 (wrong framework) | Cap 20% |
+| computation_model_gap | Return to D4 (recompute) | Cap 50% |
+
+### Output Addition
+
+Add to d6_output.json:
+
+```json
+"proof_boundary_audit": {
+  "triggered": true,
+  "reason": "D5 certainty_type = necessary",
+  "steps_audited": [
+    {
+      "step": 3,
+      "claim": "S = cl(int(A)) is a proper subcontinuum",
+      "property": "proper (S ≠ X)",
+      "negation": "S = X when int(A) is dense in X",
+      "excluded_by": "NOT EXCLUDED — no step proves int(A) is not dense",
+      "status": "gap"
+    }
+  ],
+  "gaps_found": 1,
+  "verdict": "proof_has_gaps",
+  "return_action": "return_to_D5: Step 3 assumes cl(int(A)) ≠ X but does not exclude the case where int(A) is dense. Address this case or weaken the conclusion."
+}
+```
+
 ## ERR CHAIN VERIFICATION
 
 D6 verifies the ENTIRE ERR pipeline:

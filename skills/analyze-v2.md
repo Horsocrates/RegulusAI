@@ -110,7 +110,7 @@ After each Worker output, check:
 | D2 | All key terms at depth 3+? Hidden assumptions found? **D1 flags resolved or properly branched?** No premature closures on flagged ambiguities? | "Term X insufficiently defined. Question: [specific]". If D1 flags were silently resolved → require AMBIGUITY PROTOCOL |
 | D3 | Framework named? L2 objectivity test passed? Criteria defined for D4? | "Framework selection unclear. Objectivity check: are you ready to accept ANY answer?" |
 | D4 | Every criterion applied to every element? Computation shown? Disconfirming evidence sought? | "Element E3 not covered. Verdict for E3?" |
-| D5 | Chain traceable? Certainty marked honestly? Answer format correct? | "Conclusion not earned by evidence. Show: which D4 verdicts → this conclusion." |
+| D5 | Chain traceable? Certainty marked honestly? Cross-verification attempted? If quantitative: sanity checks pass? If certainty=necessary: boundary audit queued for D6? | Retry D5 — specify: missing cross-verification, failed sanity check, or unaudited proof |
 
 ## THE CONSPECTUS
 

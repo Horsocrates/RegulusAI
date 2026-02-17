@@ -114,6 +114,87 @@ This cap applies AFTER all other confidence adjustments. Self-reported confidenc
 
 **Requirement 4 is critical for HLE:** If the math says the answer is 4 but "it should be 5", go with the math. Do not reject earned conclusions because they seem unlikely.
 
+## CROSS-VERIFICATION (Patch 7 — P1 Identity Principle)
+
+**P1 (Identity):** The answer to a question IS what it IS, independent of method.
+If Method A → X and Method B → Y and X ≠ Y, at least one is wrong.
+Single-method answers on HLE carry inherent risk of undetected model error.
+
+When D5 produces a **quantitative answer** (number, formula, expression, probability),
+perform cross-verification at three levels:
+
+### Level 1 — SANITY CHECKS (mandatory, every quantitative answer)
+
+Test the answer against constraints and limits:
+- **Range check:** Is the answer in valid domain? (probability ∈ [0,1], count ∈ ℤ≥0, angle ∈ [0,2π])
+- **Limit check:** If parameter → 0 or → ∞, does answer → expected limit?
+- **Symmetry check:** If the problem has a symmetry, does the answer respect it? If the answer is suspiciously symmetric (e.g., ≈1/2 for asymmetric boundaries), WHY?
+- **Dimensional check:** Do units work out?
+- **Magnitude check:** Is the answer the right order of magnitude?
+
+If ANY sanity check is suspicious → confidence cap 60%, flag for D6.
+
+### Level 2 — ALTERNATIVE METHOD (when feasible)
+
+Attempt to solve the problem using a **fundamentally different approach**:
+- NOT: redo the same calculation more carefully
+- BUT: use a different mathematical framework entirely
+- For combinatorics: generating functions vs direct counting
+- For probability: martingale theory vs first-step analysis vs simulation reasoning
+- For geometry: coordinate vs synthetic approach
+- For proofs: attempt to construct a COUNTEREXAMPLE to your own claim
+
+If two methods **agree** → confidence uncapped (agreement is evidence).
+If two methods **disagree** → confidence cap 50%, report BOTH answers, flag for D6.
+If alternative not feasible → state why, accept confidence cap 75%.
+
+### Level 3 — SIMULATION REASONING (for stochastic/combinatorial problems)
+
+Describe what a numerical verification would look like:
+- "Simulate 10,000 random walks and estimate P(escape)"
+- "Enumerate all cases for n=small and verify pattern"
+- "Compute numerically for concrete parameter values"
+
+This forces you to think about what the answer SHOULD LOOK LIKE empirically.
+If your analytical answer seems inconsistent with what a simulation would produce → flag.
+
+### Cross-Verification Confidence Rules
+
+| Situation | Confidence Cap | Action |
+|-----------|---------------|--------|
+| Sanity check fails | 60% | Mandatory D6 investigation |
+| Two methods disagree | 50% | Report both, D6 arbitrates |
+| Only one method, no cross-check feasible | 75% | State limitation |
+| Two methods agree | Uncapped | Agreement is evidence |
+| Simulation reasoning contradicts analytical | 60% | Re-examine assumptions |
+
+### Output Addition
+
+Add to d5_output.json:
+
+```json
+"cross_verification": {
+  "sanity_checks": [
+    {"check": "range: probability in [0,1]", "result": "pass", "note": "0.3 ∈ [0,1]"},
+    {"check": "symmetry: answer ≈ 1/2 for asymmetric setup", "result": "suspicious", "note": "boundaries at 2024 vs 2025, yet P ≈ 0.5 — why?"}
+  ],
+  "alternative_method": {
+    "attempted": true,
+    "method": "generating function approach",
+    "result": "different",
+    "primary_answer": "2024/4049",
+    "alt_answer": "3/10",
+    "disagreement_flag": true
+  },
+  "simulation_reasoning": {
+    "description": "simulate 10K geometric random walks from position 2024",
+    "expected_empirical": "should cluster near one of the two analytical answers"
+  },
+  "confidence_cap_applied": 50,
+  "cap_reason": "two methods disagree"
+}
+```
+
 ## ERR IN D5
 
 D5 is where ERR culminates:
