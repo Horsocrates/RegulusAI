@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
 """
 Regulus v3 HLE Pilot — Two-Agent Dialogue on real HLE questions
-Run: python hle_pilot.py hle_seed_chemistry_10q_42.json
-Requires: ANTHROPIC_API_KEY env variable
+Run: python hle_pilot.py hle_seed_math_10q.json
+Env vars:
+  ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN — API key
+  ANTHROPIC_BASE_URL — API base URL (default: Anthropic)
+  REGULUS_MODEL — override model (default: see PROFILES below)
+  REGULUS_PROFILE — "opus" | "glm5" | "glm5-air" (default: glm5)
 """
 
 import anthropic
 import json
+import os
 import re
 import sys
 import time
@@ -18,24 +23,70 @@ from datetime import datetime
 import functools
 print = functools.partial(print, flush=True)
 
-# ─── CONFIG ───────────────────────────────────────────────────────────
+# ─── MODEL PROFILES ──────────────────────────────────────────────────
 
-MODEL = "claude-opus-4-6"          # Both agents use Opus 4.6
-JUDGE_MODEL = "claude-sonnet-4-20250514"  # Cheaper model for judging
-THINKING_BUDGET = 10000             # Thinking tokens per call
-MAX_OUTPUT = 64000                  # Max output tokens (must be > THINKING_BUDGET)
-SKILLS_DIR = Path("skills")         # Skills directory
-RUNS_DIR = Path("runs_hle")         # Output directory (separate from MSV runs)
+PROFILES = {
+    "opus": {
+        "model": "claude-opus-4-6",
+        "judge_model": "claude-sonnet-4-20250514",
+        "base_url": None,  # default Anthropic
+        "thinking": True,
+        "thinking_budget": 10000,
+        "max_output": 64000,
+    },
+    "glm5": {
+        "model": "glm-5",
+        "judge_model": "glm-5",          # GLM-5 for judge Stage 3 too (cheap)
+        "base_url": "https://api.z.ai/api/anthropic",
+        "thinking": False,                # Z.ai may not support thinking blocks
+        "thinking_budget": 0,
+        "max_output": 64000,
+    },
+    "glm5-air": {
+        "model": "glm-4.5-air",
+        "judge_model": "glm-4.5-air",
+        "base_url": "https://api.z.ai/api/anthropic",
+        "thinking": False,
+        "thinking_budget": 0,
+        "max_output": 32000,
+    },
+}
+
+# ─── CONFIG (resolved from profile + env overrides) ──────────────────
+
+PROFILE_NAME = os.environ.get("REGULUS_PROFILE", "glm5")
+if PROFILE_NAME not in PROFILES:
+    print(f"Unknown profile '{PROFILE_NAME}'. Available: {list(PROFILES.keys())}")
+    sys.exit(1)
+
+_P = PROFILES[PROFILE_NAME]
+
+MODEL = os.environ.get("REGULUS_MODEL", _P["model"])
+JUDGE_MODEL = _P["judge_model"]
+BASE_URL = os.environ.get("ANTHROPIC_BASE_URL", _P["base_url"])
+THINKING_ENABLED = _P["thinking"]
+THINKING_BUDGET = _P["thinking_budget"]
+MAX_OUTPUT = _P["max_output"]
+SKILLS_DIR = Path("skills")
+RUNS_DIR = Path("runs_hle")
 
 
 # ─── AGENT CLASS ──────────────────────────────────────────────────────
 
 class Agent:
-    """Thin wrapper around Messages API with thinking support."""
+    """Thin wrapper around Messages API with optional thinking support."""
 
     def __init__(self, name: str, system_prompt: str):
         self.name = name
-        self.client = anthropic.Anthropic()
+        # Build client with optional base_url for Z.ai / OpenRouter
+        client_kwargs = {}
+        if BASE_URL:
+            client_kwargs["base_url"] = BASE_URL
+        # Z.ai uses ANTHROPIC_AUTH_TOKEN, Anthropic uses ANTHROPIC_API_KEY
+        api_key = os.environ.get("ANTHROPIC_AUTH_TOKEN") or os.environ.get("ANTHROPIC_API_KEY")
+        if api_key:
+            client_kwargs["api_key"] = api_key
+        self.client = anthropic.Anthropic(**client_kwargs)
         self.system_prompt = system_prompt
         self.messages = []
         self.total_input = 0
@@ -48,20 +99,31 @@ class Agent:
         last_error = None
         for attempt in range(max_retries):
             try:
-                with self.client.messages.stream(
-                    model=MODEL,
-                    max_tokens=MAX_OUTPUT,
-                    thinking={
+                # Build request kwargs conditionally
+                kwargs = {
+                    "model": MODEL,
+                    "max_tokens": MAX_OUTPUT,
+                    "messages": self.messages,
+                }
+
+                # Thinking: only if enabled (Anthropic Opus supports it, GLM-5 may not)
+                if THINKING_ENABLED:
+                    kwargs["thinking"] = {
                         "type": "enabled",
                         "budget_tokens": THINKING_BUDGET
-                    },
-                    system=[{
+                    }
+
+                # System prompt: use cache_control only for Anthropic native
+                if BASE_URL is None:
+                    kwargs["system"] = [{
                         "type": "text",
                         "text": self.system_prompt,
                         "cache_control": {"type": "ephemeral"}
-                    }],
-                    messages=self.messages
-                ) as stream:
+                    }]
+                else:
+                    kwargs["system"] = self.system_prompt
+
+                with self.client.messages.stream(**kwargs) as stream:
                     response = stream.get_final_message()
                 break  # Success
             except (IndexError, anthropic.APIStatusError, anthropic.APIConnectionError) as e:
@@ -80,7 +142,7 @@ class Agent:
         for block in response.content:
             if block.type == "text":
                 text_parts.append(block.text)
-            elif block.type == "thinking":
+            elif getattr(block, 'type', '') == "thinking":
                 thinking_parts.append(block.thinking)
 
         text = "\n".join(text_parts)
@@ -316,7 +378,13 @@ def judge_answer(model_answer: str, expected_answer: str, answer_type: str) -> b
 
     # ── STAGE 3: LLM judge (only for complex/long answers where formatting varies) ──
     print(f"    [Judge] Stage 3: LLM judge (answers too long/complex for string match)...")
-    client = anthropic.Anthropic()
+    client_kwargs = {}
+    if BASE_URL:
+        client_kwargs["base_url"] = BASE_URL
+    api_key = os.environ.get("ANTHROPIC_AUTH_TOKEN") or os.environ.get("ANTHROPIC_API_KEY")
+    if api_key:
+        client_kwargs["api_key"] = api_key
+    client = anthropic.Anthropic(**client_kwargs)
     judge_prompt = f"""You are a STRICT equivalence judge. Your task: determine if the model's answer
 is EXACTLY EQUIVALENT to the expected answer.
 
@@ -629,7 +697,9 @@ def main():
 
     print("\n" + "="*60)
     print("  REGULUS v3 HLE PILOT — Real HLE Questions")
-    print(f"  Model: {MODEL} + Thinking")
+    print(f"  Profile: {PROFILE_NAME} | Model: {MODEL}")
+    print(f"  Base URL: {BASE_URL or 'Anthropic (default)'}")
+    print(f"  Thinking: {'ON' if THINKING_ENABLED else 'OFF'}")
     print(f"  Domain: {seed_set['domain']}")
     print(f"  Questions: {len(questions)} (of {seed_set['n_questions']} in seed set)")
     print(f"  Seed file: {seed_file}")
@@ -707,6 +777,9 @@ def main():
         "timestamp": timestamp,
         "seed_file": str(seed_file),
         "domain": seed_set["domain"],
+        "profile": PROFILE_NAME,
+        "model": MODEL,
+        "thinking_enabled": THINKING_ENABLED,
         "n_questions": len(questions),
         "accuracy": correct / total if total else 0,
         "correct": correct,
