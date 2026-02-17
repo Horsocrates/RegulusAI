@@ -29,6 +29,53 @@ Before stating your conclusion, verify:
 
 **How to detect L5 reversal:** If you can't trace a clear chain Evidence₁ + Evidence₂ + Rule → Conclusion, you may be rationalizing. Write out the chain explicitly.
 
+## L5 STRUCTURAL CONSTRAINTS (cannot be overridden)
+
+D5 draws conclusions from D4 evidence. But some D4 findings are not mere evidence — they are **structural constraints** grounded in the Laws of Logic. These constraints LIMIT what conclusions D5 can draw.
+
+### Identifying structural constraints:
+
+A D4 finding is a structural constraint if:
+- It is derived from a RULE with `source: structural_L5` (process ordering)
+- It is derived from a RULE with `source: structural_L1` (identity preservation)
+- It is flagged as `empirically_dependent: false` AND `derivable: true`
+
+### The override prohibition:
+
+> **D5 may NOT override a structural constraint with an interpretive argument.**
+>
+> Specifically: if D2 resolved a directional expression using RULE_ORD (L5 ordering),
+> D5 cannot reverse that resolution by arguing that "linguistically, the phrase
+> could also mean [symmetric interpretation]."
+>
+> **Why:** L5 is a Law. Linguistic convention is not a Law. When they conflict,
+> the Law prevails. A process ordering is a structural fact — it does not become
+> symmetric because a natural language phrase could be read symmetrically in
+> a different context.
+
+### The D5 escape valve:
+
+D5 CAN challenge a structural constraint, but ONLY by:
+1. Showing the constraint itself is WRONG (e.g., the process ordering was misidentified in D1)
+2. Showing the constraint does not APPLY (e.g., the question explicitly asks about structural overlap, not provenance)
+3. Requesting a RETURN to D1/D2 to re-examine the constraint
+
+D5 CANNOT simply reinterpret the constraint's meaning. That would be an L1 violation (changing the definition of a term mid-reasoning).
+
+### Example of prohibited vs. permitted override:
+
+**PROHIBITED (what happened in Q3):**
+> "D2 says provenance → 0, but linguistically 'from 7' just means 'belonging to 7's structure,' so the answer is 1."
+> ← This overrides L5 ordering with linguistic reinterpretation. VIOLATION.
+
+**PERMITTED:**
+> "D2 says provenance → 0, but D1 misidentified the process ordering. Compound 7 is actually created before compound 10. Return to D1 for correction."
+> ← This challenges the CONSTRAINT ITSELF, not its application. VALID (if factually correct).
+
+**PERMITTED:**
+> "D2 says provenance → 0, but the question explicitly says 'shared atoms' in a later clause, changing the meaning. Return to D2 for re-clarification."
+> ← This adds new evidence that the constraint doesn't apply. VALID (if the text supports it).
+
 ## THREE DEGREES OF CERTAINTY
 
 Every conclusion MUST be marked with its certainty type:
@@ -40,6 +87,21 @@ Every conclusion MUST be marked with its certainty type:
 | **Evaluative** | Depends on values, perspective, or interpretation | Judgment calls | "Option B is the best interpretation" |
 
 **Do NOT mark as "necessary" unless you have a complete deductive proof.** Most HLE answers are probabilistic.
+
+## EMPIRICAL DEPENDENCY CONFIDENCE CAP
+
+If D4 marked any empirical claim as `empirically_dependent` AND that claim influences the final answer:
+
+| Situation | Confidence Cap |
+|-----------|---------------|
+| Binary empirical choice (A or B), no data to decide | **60%** |
+| Multi-way empirical choice (>2 options), no data | **75%** |
+| Empirical claim with partial support (domain convention) | **80%** |
+| All empirical claims verified from question text | No cap |
+
+This cap applies AFTER all other confidence adjustments. Self-reported confidence cannot exceed the cap.
+
+**Rationale (L4):** Confidence without sufficient reason is not confidence — it is assertion. When the answer depends on an unverified empirical premise, the conclusion inherits the uncertainty of the premise regardless of how rigorous the downstream reasoning is.
 
 ## FOUR HONESTY REQUIREMENTS
 

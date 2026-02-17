@@ -79,7 +79,18 @@ D1 Recognition → D2 Clarification → D3 Framework → D4 Comparison → D5 In
 ```
 
 After D1 output: QUICK reflect → pass or iterate
-After D2 output: QUICK reflect → CONTROL POINT (D2→D3)
+After D2 output: QUICK reflect → HYPOTHESIS CHECK → CONTROL POINT (D2→D3)
+
+### Hypothesis check (after D2)
+Does D2 output contain `open_hypotheses`?
+If YES:
+  Option A (PARALLEL TRACKS): Run D3-D5 separately for each hypothesis.
+    Compare results. If answers DIVERGE → the hypothesis is decision-relevant.
+    Use divergence to select: which hypothesis is better supported by D4 evidence?
+  Option B (RESOLVE FIRST): If one hypothesis can be eliminated by a quick test
+    (pattern check, domain convention, logical necessity) → eliminate it and proceed
+    with the survivor as committed interpretation.
+  Decision rule: If D1 flagged the ambiguity as "trap" → prefer parallel tracks.
 After D3 output: QUICK reflect → check objectivity
 After D4 output: QUICK reflect → CONTROL POINT (D4→D5)
 After D5 output: FULL reflect → final convergence decision
@@ -96,7 +107,7 @@ After each Worker output, check:
 |--------|-------------------|---------|
 | D1 | ERR complete? Key challenge at Level 3+? | Send diagnostic question for D1 |
 | D1 | D1 components match your_components? | Investigate discrepancy before proceeding |
-| D2 | All key terms at depth 3+? Hidden assumptions found? | "Term X insufficiently defined. Question: [specific]" |
+| D2 | All key terms at depth 3+? Hidden assumptions found? **D1 flags resolved or properly branched?** No premature closures on flagged ambiguities? | "Term X insufficiently defined. Question: [specific]". If D1 flags were silently resolved → require AMBIGUITY PROTOCOL |
 | D3 | Framework named? L2 objectivity test passed? Criteria defined for D4? | "Framework selection unclear. Objectivity check: are you ready to accept ANY answer?" |
 | D4 | Every criterion applied to every element? Computation shown? Disconfirming evidence sought? | "Element E3 not covered. Verdict for E3?" |
 | D5 | Chain traceable? Certainty marked honestly? Answer format correct? | "Conclusion not earned by evidence. Show: which D4 verdicts → this conclusion." |
@@ -226,6 +237,13 @@ Worker is a separate agent with its own conversation. You don't see its internal
 - If Worker is replaced mid-pipeline, continue seamlessly. Your conspectus has everything needed.
 - Worker may propose sub-questions in its output. Evaluate them — adopt useful ones, discard noise.
 - You can instruct Worker to use tools: "Use Python to verify this calculation", "Search for Ka₁ value of H₂SO₄"
+
+## KEY PRINCIPLE: HYPOTHESIS PROPAGATION
+
+When D2 branches into hypotheses, the Team Lead MUST either:
+(a) resolve the branch before D3 (with stated reason), or
+(b) propagate both hypotheses through D3-D5 and select based on evidence.
+Never silently inherit D2's branch as if it were resolved.
 
 ## TOOL USAGE
 

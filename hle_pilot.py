@@ -180,11 +180,66 @@ Always include confidence assessment with justification.
 
 # ─── LLM JUDGE ───────────────────────────────────────────────────────
 
+def normalize_answer(text: str) -> str:
+    """Normalize answer string for comparison.
+    Strips whitespace, lowercases, removes common formatting variations.
+    """
+    s = text.strip().lower()
+    # Remove LaTeX wrappers
+    s = re.sub(r'\$+', '', s)
+    s = re.sub(r'\\text\{([^}]*)\}', r'\1', s)
+    s = re.sub(r'\\mathrm\{([^}]*)\}', r'\1', s)
+    s = re.sub(r'\\textbf\{([^}]*)\}', r'\1', s)
+    # Normalize subscripts: ₂ → 2, ₃ → 3, etc.
+    sub_map = str.maketrans('₀₁₂₃₄₅₆₇₈₉', '0123456789')
+    s = s.translate(sub_map)
+    # Normalize superscripts: ² → 2, ³ → 3, etc.
+    sup_map = str.maketrans('⁰¹²³⁴⁵⁶⁷⁸⁹', '0123456789')
+    s = s.translate(sup_map)
+    # Remove common wrapper words
+    for prefix in ['the answer is ', 'answer: ', 'final answer: ']:
+        if s.startswith(prefix):
+            s = s[len(prefix):]
+    # Normalize whitespace around commas and colons
+    s = re.sub(r'\s*,\s*', ', ', s)
+    s = re.sub(r'\s*:\s*', ':', s)
+    # Collapse multiple spaces
+    s = re.sub(r'\s+', ' ', s).strip()
+    return s
+
+
+def extract_core_answer(model_answer: str) -> str:
+    """Extract the core answer from model output that may contain explanations.
+    Tries XML tags first, then takes the first substantive line.
+    """
+    # Try common XML tags
+    for tag in ['final_answer', 'answer', 'result']:
+        match = re.search(f"<{tag}>(.*?)</{tag}>", model_answer, re.DOTALL)
+        if match:
+            return match.group(1).strip()
+
+    # If answer is short (< 200 chars), it's probably just the answer
+    if len(model_answer.strip()) < 200:
+        return model_answer.strip()
+
+    # Otherwise take first non-empty line that looks like an answer
+    for line in model_answer.strip().split('\n'):
+        line = line.strip()
+        if line and not line.startswith('#') and not line.startswith('*'):
+            return line
+
+    return model_answer.strip()[:200]
+
+
 def judge_answer(model_answer: str, expected_answer: str, answer_type: str) -> bool:
     """
-    Compare model answer to expected using LLM judge.
+    Compare model answer to expected.
     For multipleChoice: direct letter comparison.
-    For exactMatch: LLM-based semantic comparison.
+    For exactMatch: string pre-check first, then LLM judge as fallback.
+
+    P0 FIX (2026-02-17): Added string equality pre-check before LLM judge.
+    Previous bug: LLM judge did semantic similarity instead of exact match,
+    marking S₄≠D₂ as "correct" and "2,1,0"≠"2,1,1" as "correct".
     """
     if not model_answer:
         return False
@@ -196,39 +251,114 @@ def judge_answer(model_answer: str, expected_answer: str, answer_type: str) -> b
             return match.group(1).upper() == expected_answer.strip().upper()
         return False
 
-    # exactMatch — use LLM judge
+    # ─── exactMatch: THREE-STAGE JUDGE ───
+    # Stage 1: String equality (fast, reliable)
+    # Stage 2: Numeric equivalence (for mathematical answers)
+    # Stage 3: LLM judge (only for genuinely ambiguous formatting)
+
+    core_answer = extract_core_answer(model_answer)
+    norm_model = normalize_answer(core_answer)
+    norm_expected = normalize_answer(expected_answer)
+
+    print(f"    [Judge] Normalized model:    '{norm_model[:80]}'")
+    print(f"    [Judge] Normalized expected: '{norm_expected[:80]}'")
+
+    # ── STAGE 1: Exact string match after normalization ──
+    if norm_model == norm_expected:
+        print(f"    [Judge] Stage 1: EXACT STRING MATCH → correct")
+        return True
+
+    # Check if normalized expected is contained as a distinct answer in model output
+    # (handles cases like "S₄" in "The point group is S₄")
+    if len(norm_expected) >= 1 and norm_expected in norm_model:
+        # Verify it's not a substring of a different answer
+        # e.g., "1" should not match "21" — require word boundary
+        pattern = r'(?<![a-z0-9])' + re.escape(norm_expected) + r'(?![a-z0-9])'
+        if re.search(pattern, norm_model):
+            print(f"    [Judge] Stage 1: Expected found as distinct token in model answer → correct")
+            return True
+
+    # ── STAGE 2: Numeric equivalence ──
+    try:
+        # Try parsing both as numbers (handles "0.5" vs "1/2" vs ".5")
+        def parse_number(s):
+            s = s.strip()
+            if '/' in s:
+                parts = s.split('/')
+                if len(parts) == 2:
+                    return float(parts[0]) / float(parts[1])
+            return float(s)
+
+        num_model = parse_number(norm_model)
+        num_expected = parse_number(norm_expected)
+        # Use relative tolerance for large numbers, absolute for small
+        if num_expected != 0:
+            rel_diff = abs(num_model - num_expected) / abs(num_expected)
+            is_match = rel_diff < 1e-9
+        else:
+            is_match = abs(num_model) < 1e-9
+        if is_match:
+            print(f"    [Judge] Stage 2: NUMERIC MATCH ({num_model} ≈ {num_expected}) → correct")
+            return True
+        else:
+            print(f"    [Judge] Stage 2: NUMERIC MISMATCH ({num_model} ≠ {num_expected}) → incorrect")
+            return False
+    except (ValueError, ZeroDivisionError):
+        pass  # Not numeric — continue to Stage 3
+
+    # ── STAGE 2.5: Short answer quick-reject ──
+    # If both answers are short (< 30 chars) and clearly different after normalization,
+    # reject without LLM. This catches S₄≠D₂, "2, 1, 1"≠"2, 1, 0", etc.
+    if len(norm_model) < 30 and len(norm_expected) < 30:
+        # Both are short, normalized, and don't match — they're different
+        print(f"    [Judge] Stage 2.5: Short answers differ after normalization → incorrect")
+        return False
+
+    # ── STAGE 3: LLM judge (only for complex/long answers where formatting varies) ──
+    print(f"    [Judge] Stage 3: LLM judge (answers too long/complex for string match)...")
     client = anthropic.Anthropic()
-    judge_prompt = f"""You are a STRICT judge comparing a model's answer to the expected answer.
+    judge_prompt = f"""You are a STRICT equivalence judge. Your task: determine if the model's answer
+is EXACTLY EQUIVALENT to the expected answer.
 
 Expected answer: {expected_answer}
-Model's answer: {model_answer}
+Model's answer: {core_answer}
 
-RULES:
-1. Extract the CORE answer from the model's response (ignore explanations, confidence scores, justifications)
-2. The core answer must be EXACTLY equivalent to the expected answer
-3. Minor formatting differences are OK (e.g., subscripts, LaTeX vs plain text)
-4. Mathematical equivalence is OK (e.g., 1/2 = 0.5)
-5. BUT different values are NEVER equivalent:
-   - "D2" and "S4" are DIFFERENT point groups → incorrect
-   - "2, 1, 1" and "2, 1, 0" are DIFFERENT → incorrect
-   - "5.57" and "5.58" are DIFFERENT → incorrect
-6. Chemical formula equivalence is OK (FeCl₂ = FeCl2)
-7. When in doubt, answer "incorrect"
+STRICT RULES — read carefully:
+1. Extract the CORE factual answer (ignore explanations, confidence, caveats)
+2. The answer must be EXACTLY the same value/entity/concept
+3. EQUIVALENT (return "correct"):
+   - Formatting only: "FeCl₂" = "FeCl2", "H₂O" = "H2O"
+   - LaTeX vs text: "$\\pi$" = "π" = "pi"
+   - Units stated vs implied: "5 meters" = "5" (if units clear from context)
+   - Trivial rephrasing: "sodium chloride" = "NaCl"
+4. NOT EQUIVALENT (return "incorrect"):
+   - Different values: "5.57" ≠ "5.58", "42" ≠ "43"
+   - Different entities: "D₂" ≠ "S₄", "glucose" ≠ "fructose"
+   - Different lists: "2, 1, 1" ≠ "2, 1, 0" (even one element differs = different)
+   - Partial match: "A and B" ≠ "A" (incomplete answer)
+   - Superset/subset: model says more than expected ≠ correct
+5. When in doubt → "incorrect"
 
-Respond with ONLY "correct" or "incorrect"."""
+Respond with EXACTLY one word: "correct" or "incorrect"."""
 
     for attempt in range(3):
         try:
             response = client.messages.create(
                 model=JUDGE_MODEL,
-                max_tokens=100,
+                max_tokens=10,
                 messages=[{"role": "user", "content": judge_prompt}]
             )
             judge_text = response.content[0].text.strip().lower()
-            # "incorrect" contains "correct" — must check explicitly
+            # "incorrect" contains "correct" — must check "incorrect" first
             if "incorrect" in judge_text:
+                print(f"    [Judge] Stage 3: LLM says incorrect")
                 return False
-            return "correct" in judge_text
+            if "correct" in judge_text:
+                print(f"    [Judge] Stage 3: LLM says correct")
+                return True
+            # Unexpected response — treat as incorrect
+            print(f"    [Judge] Stage 3: Unexpected LLM response: '{judge_text}' → incorrect")
+            return False
         except Exception as e:
             if attempt < 2:
                 print(f"    [judge retry {attempt+1}] {e}")

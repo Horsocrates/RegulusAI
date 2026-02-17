@@ -22,6 +22,44 @@ Every comparison must satisfy:
 
 If any rule is violated, the comparison is INVALID. Flag it and fix before proceeding.
 
+## L4 — SUFFICIENT REASON FOR EMPIRICAL CLAIMS
+
+**Principle:** Every empirical claim that influences the final answer must have a stated basis. If the basis is absent, the claim must be marked `unverified` and its impact on the answer must be traced.
+
+An **empirical claim** is any assertion about the physical world that cannot be derived from the question text alone. Examples:
+- "Isomer X is more stable than isomer Y" (requires thermodynamic data)
+- "Crystal structure shows geometry Z" (requires crystallographic source)
+- "This reaction typically gives product A, not B" (requires experimental knowledge)
+- "The preferred conformation is X" (requires energetic comparison)
+
+### For each empirical claim in D4, state:
+
+| Field | Content |
+|-------|---------|
+| **claim** | The empirical assertion |
+| **source** | `from_question` / `domain_knowledge:[specific fact]` / `unverified` |
+| **impact** | What happens to the answer if this claim is WRONG? |
+| **confidence** | How certain is this claim? |
+
+### Rules:
+1. If a claim is `unverified` AND changing it changes the answer -> the answer inherits `empirically_dependent` status
+2. `empirically_dependent` status propagates to D5 confidence: **hard cap at 60%** for binary choices, **hard cap at 75%** for choices with >2 options
+3. If D4 can identify a way to VERIFY the claim (web search, computation, domain convention), it should say so explicitly
+4. Claims sourced as `domain_knowledge` must specify WHAT knowledge (not just "well-known fact")
+
+### Worked example (from HLE error):
+
+**WRONG:**
+> "The delta-lambda isomer is energetically preferred due to lower steric strain."
+> (No source. No verification. Presented as fact. Actually wrong.)
+
+**RIGHT:**
+> Claim: "delta-lambda (meso) isomer is preferred over delta-delta (rac)"
+> Source: unverified — no thermodynamic data in question, no crystallographic reference cited
+> Impact: If WRONG -> answer changes from D2 to S4 (completely different point group)
+> Confidence: 50% (binary choice without evidence)
+> -> Status: **empirically_dependent**. D5 confidence capped at 60%.
+
 ## ERR IN D4
 
 D4 is where ERR structure gets **applied**:
@@ -58,6 +96,7 @@ For HLE questions, D4 is typically the LONGEST domain. Here is where you:
 | **False analogy** | Analogy breaks down at critical point | Check: where does the analogy FAIL? |
 | **Simpson's paradox** | Aggregate trend reverses in subgroups | Check: does conclusion hold when you split the data? |
 | **Premature termination** | Stopping comparison when "good enough" | Check: are there untested criteria or unexamined elements? |
+| **Ungrounded empirical claim** | Asserting physical facts without source or derivation | Check: for every "X is preferred / X is typical / X is known" — what is the source? Would the answer change if the claim is wrong? |
 
 ## DIAGNOSTIC SELF-CHECK
 
@@ -67,6 +106,7 @@ For HLE questions, D4 is typically the LONGEST domain. Here is where you:
 4. Where are the GAPS — what information would I need but don't have?
 5. Is my computation trace complete — could someone verify each step?
 6. Have I considered extreme/edge cases?
+7. Have I stated the SOURCE for every empirical claim? If any claim is "unverified" — does the answer depend on it?
 
 ## META-OBSERVER CHECKLIST
 
@@ -124,6 +164,15 @@ Write to d4_output.json:
     "key_findings": ["Most important finding 1", "..."],
     "disconfirming_evidence": "What evidence AGAINST the emerging conclusion exists?",
     "cross_verification": "Alternative method used to check result (or 'not applicable')",
+    "empirical_claims": [
+      {
+        "claim": "Description of the empirical assertion",
+        "source": "from_question|domain_knowledge:[detail]|unverified",
+        "impact_if_wrong": "How the answer changes",
+        "confidence": 50,
+        "status": "verified|unverified|empirically_dependent"
+      }
+    ],
     "failure_check": {
       "selective_comparison": "none|risk:[details]",
       "false_equivalence": "none|risk:[details]",
@@ -147,3 +196,5 @@ Update state.json: D4 → "complete".
 8. Flag gaps honestly — what would you need but don't have?
 9. Do NOT draw final conclusions (that's D5)
 10. Do NOT reflect on limits (that's D6)
+11. Every empirical claim that influences the answer must cite its source (L4 Sufficient Reason). "Domain knowledge" is acceptable but must specify WHAT knowledge. "Unverified" must trace impact on answer.
+12. If the final answer depends on an unverified empirical claim — mark the answer as `empirically_dependent` and note the confidence cap for D5.

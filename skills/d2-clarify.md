@@ -63,7 +63,7 @@ You RECEIVE ERR from D1. You must:
 | Failure | Description | How to Detect |
 |---------|-------------|---------------|
 | **Equivocation** | Term changes meaning during reasoning | Check: is term used identically in D1 elements and rules? |
-| **Premature closure** | "Defined" but collapses under pressure | Test: can you give a counterexample that breaks the definition? |
+| **Premature closure** | "Defined" but collapses under pressure. **Includes:** resolving D1 ambiguity flags by choosing the simpler reading without testing alternatives | Test: can you give a counterexample? For ambiguity flags: did you enumerate ALL readings before choosing one? |
 | **Definitional circularity** | X defined through X or equally unclear terms | Check: would someone unfamiliar understand the definition? |
 | **False insight** | Vivid "got it!" without actual correctness | Test: can you EXPLAIN, not just recognize? |
 | **Depth mismatch** | Stopping at Level 1-2 when task requires 3-4 | Check: depth_achieved vs task complexity |
@@ -77,6 +77,114 @@ Ask yourself:
 3. At what depth level am I operating? Does it match the task? (calibrate)
 4. Can I give a counterexample that breaks this definition? (test robustness)
 5. Is this term used identically throughout? (L1 compliance)
+
+## AMBIGUITY PROTOCOL (L4 — Sufficient Reason for closure)
+
+When D1 flags an ambiguity (especially those marked "trap", "unusual", or "FLAG"), D2 must NOT silently choose one interpretation. Instead:
+
+### Step 1: Enumerate ALL viable interpretations
+For each ambiguity, list every semantically distinct reading. Do not filter by "most likely" — filter only by "logically possible given the text."
+
+### Step 2: Test each against context
+- Does interpretation A align with the structure of other sub-questions?
+- Does interpretation B require assumptions not present in the text?
+- Does the question's phrasing have a standard meaning in the domain?
+
+### Step 2.5: Directional Expression Resolution (L5)
+
+When the ambiguity involves directional language ("from X in Y"):
+
+1. **Retrieve RULE_ORD** from D1 output
+2. **Determine causal direction:** In the process described, does X precede Y or does Y precede X?
+3. **Apply the Provenance Principle (L5):**
+
+   > **"From X in Y" means: atoms/components that ORIGINATE IN X and are found IN Y.**
+   > Origination requires that X existed as a source. If X was created AFTER Y in the process,
+   > then X cannot be a source for Y. The answer to "how many [things] from X in Y" is 0.
+
+4. **If the question reverses the process direction — this is a SIGNAL, not noise:**
+   - The question likely tests whether the reasoner understands the ordering
+   - The answer under provenance semantics is typically 0 or null
+   - Do NOT reinterpret the direction as "shared" or "overlapping" — this collapses the asymmetry that L5 requires
+
+5. **Log the resolution explicitly:**
+
+```json
+{
+  "flag": "FLAG_DIRECTION",
+  "expression": "from 7 in 10",
+  "process_order": "10 → 7 (10 created before 7)",
+  "direction": "REVERSE — question asks about source that was created AFTER target",
+  "provenance_answer": 0,
+  "shared_atoms_answer": 1,
+  "resolution": "L5 provenance: 0. Process ordering is structural (RULE_ORD), not interpretive.",
+  "confidence": "high — consistent with Q1 and Q2 forward direction pattern"
+}
+```
+
+### Worked Example
+
+Question: "How many nitrogens from compound 7 are present in compound 10?"
+
+| Check | Result |
+|-------|--------|
+| RULE_ORD | Synthesis: 11→12→10→7→13→14→15→1 |
+| Direction | 10 is created BEFORE 7 |
+| "From 7 in 10" | Asks: atoms originating FROM 7 found IN 10 |
+| L5 test | 7 does not exist when 10 is created → 7 cannot be a source for 10 |
+| Provenance answer | **0** |
+| "Shared atoms" answer | 1 (they share the same nitrogen) |
+| Pattern check | Q1: from 11 in 1 (forward ✅). Q2: from 11 in 14 (forward ✅). Q3: from 7 in 10 (**reverse** — intentional trap) |
+| Resolution | **0** — L5 ordering is structural, not reinterpretable |
+
+### Step 3: BRANCH or COMMIT
+
+**COMMIT** (single interpretation) — only if:
+- All other readings violate L1 (Identity) or domain conventions
+- The context unambiguously resolves the ambiguity
+- You can state why the alternative is WRONG, not just why yours is "more natural"
+
+**BRANCH** (multiple hypotheses) — if:
+- Two or more readings are viable after testing
+- D1 flagged the ambiguity as a potential trap
+- The alternative interpretation would change the answer
+
+When branching, output ALL interpretations as `open_hypotheses`:
+
+```json
+"open_hypotheses": [
+  {
+    "id": "H1",
+    "interpretation": "Description of reading A",
+    "basis": "Why this reading is viable",
+    "implications": "What answer this leads to",
+    "test": "How D3-D5 could distinguish this from H2"
+  },
+  {
+    "id": "H2",
+    "interpretation": "Description of reading B",
+    "basis": "Why this reading is viable",
+    "implications": "What answer this leads to",
+    "test": "How D3-D5 could distinguish this from H1"
+  }
+]
+```
+
+**CRITICAL:** Branching is NOT indecision — it is intellectual honesty. Premature closure (choosing one reading without sufficient reason) is a D2 failure mode. Branching when genuinely ambiguous is correct behavior.
+
+### Worked example (from HLE error):
+
+Question: "How many nitrogens from compound 7 are present in compound 10?"
+D1 flag: "Synthesis goes 10->7, but question asks 7->10. May be a trap."
+
+**WRONG (premature closure):**
+> "Since 10 and 7 share the same nitrogen, the answer is 1."
+
+**RIGHT (branch):**
+> H1: "from X in Y" = shared atoms between X and Y -> answer: 1
+> H2: "from X in Y" = atoms that originate FROM X and end up IN Y (provenance) -> answer: 0
+> Test: Q1 and Q2 both follow forward synthesis direction. If Q3 is consistent, H2 is correct. If Q3 intentionally reverses, H1 may be intended.
+> Note: D1 flagged this as a "trap" — pattern break favors H2.
 
 ## META-OBSERVER CHECKLIST
 
@@ -140,6 +248,17 @@ Write to d2_output.json:
       "Assumption 1: what is taken for granted",
       "Assumption 2: ..."
     ],
+    "open_hypotheses": [
+      {
+        "id": "H1",
+        "source_flag": "FLAG ID from D1 that triggered this",
+        "interpretation": "Reading A",
+        "basis": "Why viable",
+        "implications": "What downstream answer this implies",
+        "test": "How D3-D5 could resolve"
+      }
+    ],
+    "branching_decision": "committed:[reason] | branched:[count] hypotheses",
     "d1_gaps": ["Any elements D1 missed that clarification revealed (do NOT add — flag for Team Lead)"],
     "critical_clarification": "The single most important clarification for this question",
     "depth_summary": "Deepest level achieved and whether sufficient for task",
@@ -166,3 +285,6 @@ Update state.json: D2 status → "complete".
 7. Do NOT evaluate or compare (that's D4)
 8. Do NOT draw conclusions (that's D5)
 9. If you discover D1 missed something — flag it in d1_gaps, don't silently add
+10. When D1 flags an ambiguity — follow the AMBIGUITY PROTOCOL. Enumerate all readings, test against context, then COMMIT or BRANCH. Never silently resolve a D1 flag.
+11. When branching: output open_hypotheses for Team Lead. Team Lead decides whether to run parallel D3-D5 tracks or to resolve before proceeding.
+12. Pattern consistency: if a multi-part question has parts 1-N following one pattern, and part N+1 breaks the pattern — this is likely intentional. Flag the pattern break; do not normalize it.

@@ -57,6 +57,30 @@ Verify:
 - NO element occupies roles at multiple hierarchical levels
 - NO circular dependencies
 
+## PROCESS ORDERING RULE (L5)
+
+When the question describes a PROCESS (any sequence of steps that produce outputs from inputs):
+
+1. **Identify the process:** Synthesis, construction, derivation, computation, causal chain, etc.
+2. **Establish ordering:** Which entities are created BEFORE which others? This is a temporal/causal fact, not an interpretation.
+3. **Register as RULE:** The ordering is tagged `[RULE_ORD]` with `source: structural (L5)` and `override: none`.
+
+```json
+{
+  "id": "RULE_ORD",
+  "content": "Process ordering: [entity_A] → [entity_B] → [entity_C] (A is created before B, B before C)",
+  "source": "structural_L5",
+  "level": "law",
+  "override": "This ordering is a structural fact grounded in L5. It cannot be reinterpreted as symmetric or reversed by linguistic arguments."
+}
+```
+
+4. **Flag directional questions:** When a question uses "from X in Y" or similar directional language, cross-reference with RULE_ORD:
+   - If X→Y matches the process direction → **forward provenance** (normal)
+   - If Y→X in the process (Y was created before X) → **reverse direction** — flag as `[FLAG_DIRECTION]` with priority HIGH
+
+**Why RULE, not ELEMENT:** Elements can be reinterpreted. Rules are structural constraints. L5 ordering is not a piece of data to be weighed — it is a law that governs how data can be related.
+
 ## D1 INTERNAL HIERARCHY (4-Level Depth)
 
 Process recognition through ascending levels:

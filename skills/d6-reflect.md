@@ -773,7 +773,7 @@ When something feels wrong, trace backward (Socrates' method: clarify the criter
 | **D5** | Does conclusion follow from D4? Logical leap? Injected premises? L5 direction valid? | Problem is earlier |
 | **D4** | All elements compared? Framework applied consistently? Anomalies missed? Survivorship in sample? | Problem is earlier |
 | **D3** | Why this framework? Did it predetermine the answer? Alternatives considered? Was selection conscious or automatic (eikasia)? | Problem is earlier |
-| **D2** | Key terms defined? Ambiguities remaining? Depth sufficient? False clarity? | Problem is earlier |
+| **D2** | Key terms defined? Ambiguities remaining? Depth sufficient? False clarity? **D1 flags resolved correctly (not just resolved)?** Open hypotheses properly branched or committed with reason? | Problem is earlier |
 | **D1** | Everything noticed? Nothing added? Perception distorted by projection? | Problem outside reasoning |
 
 **Aristotle's Sophistical Refutations check:** At each domain, ask: was there a hidden fallacy? Term substitution? Scope shift? These are pathologies that mask themselves as valid reasoning.
@@ -806,6 +806,65 @@ Check:
 - ☐ Dependencies remain acyclic (no circular reasoning — beware the Cartesian circle)
 - ☐ Status transitions are justified (each change has a reason)
 - ☐ No level violations (Rules governing Rules, Elements acting as Rules)
+
+## FLAG RESOLUTION AUDIT
+
+D6 must re-examine EVERY flag raised by D1 that D2 "resolved." The question is not "was the flag addressed?" but "was the flag resolved CORRECTLY?"
+
+### Process:
+1. List all D1 flags (from d1_output)
+2. For each flag, find D2's resolution (from d2_output)
+3. Evaluate: does the resolution hold in light of D4-D5 evidence?
+4. Special attention to flags D1 labeled as "trap", "unusual", or "caution"
+
+### Red flags in D2 resolutions:
+- D2 chose the simpler of two interpretations without testing the harder one
+- D2 "resolved" a flag by redefining the question rather than answering it
+- D2 dismissed a flag that D1 marked as high-priority
+- D2's resolution conflicts with patterns visible in D4 evidence
+
+### If a D2 resolution is suspect:
+-> Return type: **corrective**, target: **D2**
+-> Instruction: "Re-examine FLAG [id]. Test BOTH interpretations. What would the answer be under interpretation B?"
+
+## UPSTREAM CHOICE AUDIT
+
+D6 must identify every point where the pipeline made a CHOICE between alternatives, and verify each choice was justified.
+
+### Process:
+1. Scan D2-D5 outputs for decision points (interpretation choices, isomer selections, framework preferences, binary empirical claims)
+2. For each choice: what was the alternative? What would the answer be if the OTHER option was chosen?
+3. If an alternative choice leads to a DIFFERENT final answer -> this is a **critical branch point**
+
+### Critical branch point protocol:
+- Was the choice made with sufficient reason (L4)?
+- Was the choice verified independently (not just inherited from an earlier domain)?
+- Is the confidence appropriately calibrated for a choice-dependent answer?
+- If the choice was empirical and unverified -> does the answer carry `empirically_dependent` status?
+
+### Worked example (from HLE errors):
+
+**Q1 (Point Group):**
+Branch point: D4 Step 7 — meso vs rac isomer preference
+Alternative: If rac -> answer is S4 (not D2)
+Basis for choice: "lower steric strain" — unverified, no source
+-> D6 should flag: critical branch point with unverified empirical basis. Return to D4 or cap confidence.
+
+**Q3 (Atom Tracking):**
+Branch point: D2 resolution of FLAG 4 — "shared atoms" vs "provenance"
+Alternative: If provenance -> answer is 0 (not 1)
+Basis for choice: D2 chose simpler reading without testing pattern consistency
+-> D6 should flag: D1 marked this as "trap". D2 dismissed it. Return to D2 for branching.
+
+### L5 Override Detection
+
+In the Upstream Choice Audit, specifically check:
+
+1. Did D5 reverse or reinterpret any D2 resolution that was grounded in RULE_ORD?
+2. Did D5 treat process ordering as "one argument" and weigh it against linguistic arguments?
+3. If D5 overrode a structural constraint — did it use the escape valve (challenging the constraint itself) or did it use prohibited reinterpretation?
+
+**Red flag pattern:** D2 and D4 agree on answer X. D5 changes to answer Y via "linguistic" or "interpretive" argument that doesn't challenge the underlying constraint. This is almost always an L5 violation.
 
 ## TEN TRAPS OF REFLECTION
 
@@ -1077,6 +1136,9 @@ Update state.json: D6 → "complete" (if PASS) or "iterating" (if DIAGNOSTIC).
 15. Integration must lead to CHANGE, not just understanding (Augustine's conversio)
 16. Distinguish LEVELS of reflection — don't confuse empirical with transcendental (Kant's amphiboly)
 17. Probe for below-threshold influences — petites perceptions, training defaults (Leibniz)
+18. Run FLAG RESOLUTION AUDIT: re-verify every D1 flag that D2 resolved. Especially flags marked "trap" or "unusual."
+19. Run UPSTREAM CHOICE AUDIT: identify all binary/multi-way choices in D2-D5. For each, ask "what if the other option?" If alternative changes the answer -> flag as critical branch point.
+20. If D4 contains empirical claims marked `unverified` that change the answer -> verify D5 confidence reflects the `empirically_dependent` cap.
 18. Check for antinomies — if equally strong arguments exist for opposite conclusions, the question may exceed the data (Kant)
 19. Reflection is not only repair but also RESEARCH — investigate structure even when nothing is broken (contra Heidegger)
 20. Verify this is GENUINE self-awareness (Fichte), not boilerplate appended to D5
