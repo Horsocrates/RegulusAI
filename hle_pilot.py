@@ -18,9 +18,28 @@ import time
 import traceback
 from pathlib import Path
 from datetime import datetime
+from dotenv import load_dotenv
 
-# Force unbuffered output
+# Load .env: try local first, then walk up to find project root .env
+load_dotenv(override=True)
+_here = Path(__file__).resolve().parent
+for _ancestor in [_here] + list(_here.parents):
+    _candidate = _ancestor / ".env"
+    if _candidate.exists() and _candidate != _here / ".env":
+        load_dotenv(_candidate, override=False)  # fill missing keys from root
+        break
+
+# Z.ai uses ZAI_API_KEY → map to ANTHROPIC_AUTH_TOKEN for SDK compatibility
+if os.environ.get("ZAI_API_KEY") and not os.environ.get("ANTHROPIC_AUTH_TOKEN"):
+    os.environ["ANTHROPIC_AUTH_TOKEN"] = os.environ["ZAI_API_KEY"]
+
+# Force unbuffered output + safe encoding for Windows cp1251
 import functools
+import io
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+if hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 print = functools.partial(print, flush=True)
 
 # ─── MODEL PROFILES ──────────────────────────────────────────────────
@@ -31,16 +50,16 @@ PROFILES = {
         "judge_model": "claude-sonnet-4-20250514",
         "base_url": None,  # default Anthropic
         "thinking": True,
-        "thinking_budget": 10000,
-        "max_output": 64000,
+        "thinking_budget": 64000,
+        "max_output": 128000,             # must be > thinking_budget
     },
     "glm5": {
         "model": "glm-5",
         "judge_model": "glm-5",          # GLM-5 for judge Stage 3 too (cheap)
         "base_url": "https://api.z.ai/api/anthropic",
-        "thinking": False,                # Z.ai may not support thinking blocks
-        "thinking_budget": 0,
-        "max_output": 64000,
+        "thinking": True,                 # GLM-5 supports thinking via Z.ai
+        "thinking_budget": 64000,
+        "max_output": 128000,             # must be > thinking_budget
     },
     "glm5-air": {
         "model": "glm-4.5-air",
@@ -63,7 +82,8 @@ _P = PROFILES[PROFILE_NAME]
 
 MODEL = os.environ.get("REGULUS_MODEL", _P["model"])
 JUDGE_MODEL = _P["judge_model"]
-BASE_URL = os.environ.get("ANTHROPIC_BASE_URL", _P["base_url"])
+# Profile's base_url takes precedence; env var only used if profile says None
+BASE_URL = _P["base_url"]
 THINKING_ENABLED = _P["thinking"]
 THINKING_BUDGET = _P["thinking_budget"]
 MAX_OUTPUT = _P["max_output"]
