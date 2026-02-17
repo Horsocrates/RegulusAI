@@ -12,6 +12,10 @@ import random
 import sys
 from datetime import datetime
 
+# Fix Windows cp1251 encoding
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+
 def main():
     n_questions = int(sys.argv[1]) if len(sys.argv) > 1 else 10
     seed = int(sys.argv[2]) if len(sys.argv) > 2 else 42
@@ -32,18 +36,24 @@ def main():
         pct = 100 * count / len(ds)
         print(f"    {cat:40s} {count:4d} ({pct:.1f}%)")
 
-    # ─── FILTER: Mathematics, text-only ───
+    # ─── FILTER: Math, text-only ───
     math_questions = []
     for row in ds:
-        # Category filter: Mathematics
-        if row["category"] != "Mathematics":
+        # Category filter: "Math" (actual HLE category name)
+        if row["category"] != "Math":
             continue
-        # Text-only filter: no image required
-        if row.get("image") and row["image"].strip():
+        # Text-only filter: skip if image path is non-empty
+        img = row.get("image")
+        if img:  # non-empty string = has image
             continue
         math_questions.append(row)
 
     print(f"\n  Math text-only questions: {len(math_questions)}")
+
+    if not math_questions:
+        print("  ERROR: No math text-only questions found!")
+        print("  Check category names in the dataset.")
+        return
 
     # ─── ANSWER TYPE BREAKDOWN ───
     types = {}
@@ -77,7 +87,7 @@ def main():
     # ─── BUILD SEED FILE ───
     seed_data = {
         "domain": "Mathematics",
-        "category_filter": "Mathematics",
+        "category_filter": "Math",
         "text_only": True,
         "n_questions": len(selected),
         "seed": seed,
@@ -100,7 +110,7 @@ def main():
     with open(outfile, 'w', encoding='utf-8') as f:
         json.dump(seed_data, f, indent=2, ensure_ascii=False)
 
-    print(f"\n  ✅ Saved: {outfile}")
+    print(f"\n  Saved: {outfile}")
     print(f"  Run: python hle_pilot.py {outfile}")
 
 
