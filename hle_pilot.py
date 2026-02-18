@@ -544,11 +544,55 @@ def run_question(question: dict, run_dir: Path) -> dict:
     for domain in domains:
         print(f"  [Worker] Executing {domain}...")
 
+        # ── PATCH 7+8 ENFORCEMENT (hardcoded, not dependent on skill reading) ──
+        # GLM-5 ignores cross-verification in long system prompts.
+        # Inject explicit requirements into D5 instruction sent to Worker.
+        if domain == "D5" and instruction:
+            instruction += """
+
+## MANDATORY: CROSS-VERIFICATION (do this AFTER your main conclusion)
+
+You MUST include a `cross_verification` section in your output:
+
+1. **SANITY CHECKS** (mandatory):
+   - Range: Is answer in valid domain? (probability ∈ [0,1], count ∈ ℤ≥0, etc.)
+   - Magnitude: Is the order of magnitude reasonable?
+   - Symmetry: If answer has suspicious symmetry (≈1/2, ≈0, ≈1), explain WHY
+   - Small case: Verify your formula on a SMALL CONCRETE EXAMPLE (n=2 or n=3)
+
+2. **ALTERNATIVE METHOD** (attempt if feasible):
+   - Solve using a fundamentally DIFFERENT approach (not redo same calculation)
+   - If two methods disagree → report BOTH, cap confidence at 50%
+
+3. **CONFIDENCE RULES**:
+   - Sanity check fails → max 60%
+   - Only one method, no cross-check → max 75%
+   - Two methods agree → uncapped
+   - DO NOT claim 100% unless you have verified by alternative method
+
+If your answer yields a probability < 0.001 or > 0.999 for a combinatorial problem,
+or if your "proof" uses a theorem you cannot cite precisely, FLAG THIS.
+"""
+
         w_text, w_think = worker.send(instruction)
         log("worker", "team_lead", "domain_output", w_text, w_think, domain=domain)
 
         depth = "full"
         print(f"  [TL] Reflecting on {domain} ({depth})...")
+
+        # ── PATCH 7+8 ENFORCEMENT: TL checks for cross-verification after D5 ──
+        reflect_extra = ""
+        if domain == "D5":
+            reflect_extra = """
+
+CRITICAL CHECK — before accepting D5 output:
+1. Does output contain cross-verification with sanity checks? If NO → iterate, ask Worker to add it.
+2. Does Worker claim confidence > 75% with only ONE method? → Ask for alternative method or reduce confidence.
+3. Does Worker claim certainty_type "necessary"? → Queue PROOF BOUNDARY AUDIT:
+   For each proof step claiming "X is P", ask: "When is X NOT P? Is that case excluded?"
+4. Is the answer's magnitude reasonable? (probability ≈ 10⁻¹¹ for a simple partition → SUSPICIOUS)
+5. Did Worker verify the formula on a small concrete example? If NO → iterate.
+"""
 
         tl_text, tl_think = tl.send(
             f"MODE: reflect\nDEPTH: {depth}\nDOMAIN: {domain}\n\n"
@@ -556,6 +600,7 @@ def run_question(question: dict, run_dir: Path) -> dict:
             f"Evaluate this output. Update your conspectus. Decide verdict. "
             f"If pass, produce instruction for next domain. "
             f"Output <conspectus>, <verdict>, and <worker_instruction> blocks."
+            f"{reflect_extra}"
         )
 
         verdict = extract(tl_text, "verdict").strip().lower()
