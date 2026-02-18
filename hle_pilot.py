@@ -572,6 +572,9 @@ You MUST include a `cross_verification` section in your output:
 
 If your answer yields a probability < 0.001 or > 0.999 for a combinatorial problem,
 or if your "proof" uses a theorem you cannot cite precisely, FLAG THIS.
+
+4. **REPORT YOUR CONFIDENCE** as `worker_confidence: N%` with brief justification.
+   This measures YOUR confidence in the computation, separate from answer correctness.
 """
 
         w_text, w_think = worker.send(instruction)
@@ -581,17 +584,62 @@ or if your "proof" uses a theorem you cannot cite precisely, FLAG THIS.
         print(f"  [TL] Reflecting on {domain} ({depth})...")
 
         # ── PATCH 7+8 ENFORCEMENT: TL checks for cross-verification after D5 ──
+        # ── CONFIDENCE SCORECARD: TL computes structured confidence ──
         reflect_extra = ""
+        if domain == "D3":
+            reflect_extra = """
+
+FRAMEWORK DISTRIBUTION — you MUST include this in your conspectus:
+List ALL frameworks/approaches considered for this problem.
+Assign probability weights that SUM TO 100%.
+If only ONE framework was considered, it gets max 70% (30% = "unconsidered alternatives").
+If the chosen framework has weight < 60%, instruct Worker to compute D4 for the TOP 2 frameworks.
+
+Format in conspectus:
+  Framework A: [name] — [weight]% (CHOSEN / not chosen)
+  Framework B: [name] — [weight]%
+  Framework C: Other/Unknown — [weight]%
+  TOTAL: 100%
+"""
         if domain == "D5":
             reflect_extra = """
 
-CRITICAL CHECK — before accepting D5 output:
-1. Does output contain cross-verification with sanity checks? If NO → iterate, ask Worker to add it.
-2. Does Worker claim confidence > 75% with only ONE method? → Ask for alternative method or reduce confidence.
-3. Does Worker claim certainty_type "necessary"? → Queue PROOF BOUNDARY AUDIT:
-   For each proof step claiming "X is P", ask: "When is X NOT P? Is that case excluded?"
-4. Is the answer's magnitude reasonable? (probability ≈ 10⁻¹¹ for a simple partition → SUSPICIOUS)
-5. Did Worker verify the formula on a small concrete example? If NO → iterate.
+CRITICAL — CONFIDENCE SCORECARD (fill this BEFORE deciding verdict):
+
+You must evaluate D5 output on 7 checkpoints. Score each 0.0 to 1.0.
+Write the scorecard in your conspectus.
+
+| Checkpoint | Score | Note |
+|------------|-------|------|
+| A. Recognition completeness (D1: all elements, no phantoms) | ?/1.0 | |
+| B. Definition depth (D2: key terms at depth 3+) | ?/1.0 | |
+| C. Framework selection (D3: multiple considered? weight ≥60%?) | ?/1.0 | |
+| D. Computation completeness (D4: all criteria, edge cases) | ?/1.0 | |
+| E. Cross-verification (D5: sanity checks, alt method, small case) | ?/1.0 | |
+| F. Proof integrity (no hasty generalization, boundary conditions) | ?/1.0 | |
+| G. Answer format & magnitude (correct format, reasonable magnitude) | ?/1.0 | |
+
+HARD CAPS (override your score):
+- E = 0 (no cross-verification at all) → TL confidence max 50%
+- C < 0.5 (only 1 framework, no alternatives) → max 65%
+- Sanity check failed → max 45%
+- Two methods disagree → max 40%
+- "iff" theorem with only one direction proven → max 35%
+- Magnitude obviously wrong (P ≈ 10⁻¹¹ for simple problem) → max 25%
+
+Compute: tl_confidence = min(hard_cap, round(weighted_sum × 100))
+Weights: A=0.10, B=0.10, C=0.15, D=0.15, E=0.20, F=0.15, G=0.15
+
+Compare with Worker's self-reported confidence:
+- Gap < 10pp → normal
+- Gap 10-25pp → note concern
+- Gap 25-50pp → ITERATE (structural issue)
+- Gap > 50pp → RETURN to D3 (Worker likely on wrong model)
+
+Include in conspectus:
+  Worker confidence: X%
+  TL confidence: Y% (scorecard)
+  Gap: Zpp → [action]
 """
 
         tl_text, tl_think = tl.send(
