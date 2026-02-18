@@ -544,9 +544,33 @@ def run_question(question: dict, run_dir: Path) -> dict:
     for domain in domains:
         print(f"  [Worker] Executing {domain}...")
 
-        # ── PATCH 7+8 ENFORCEMENT (hardcoded, not dependent on skill reading) ──
-        # GLM-5 ignores cross-verification in long system prompts.
-        # Inject explicit requirements into D5 instruction sent to Worker.
+        # ── PATCH 10: Assumption Register at D2 ──
+        if domain == "D2" and instruction:
+            instruction += """
+
+## MANDATORY: ASSUMPTION REGISTER
+
+List ALL assumptions entering your reasoning. For each, classify:
+
+| ID | Assumption | Source | Origin | Justified? |
+|----|-----------|--------|--------|:----------:|
+| A1 | ... | PROVEN / IMPORTED / ASSUMED | where from | yes/no |
+
+Source types:
+- **PROVEN**: Derived within this problem (stated in question, or derived in D1)
+- **IMPORTED**: Taken from another theorem/problem and applied here.
+  You MUST justify why it applies to THIS specific problem.
+  If you cannot justify → mark as UNVERIFIED_IMPORT
+- **ASSUMED**: Taken as given without proof (honest uncertainty)
+
+For each IMPORTED assumption, state: "impact_if_wrong: [what changes if this is false]"
+
+CRITICAL: Properties from similar-but-different problems are IMPORTED, not PROVEN.
+Example: "120° angles are optimal" from Steiner trees does NOT prove they are
+optimal for area maximization. Different objective = different problem = must re-prove.
+"""
+
+        # ── PATCH 7+8+10 ENFORCEMENT for D5 ──
         if domain == "D5" and instruction:
             instruction += """
 
@@ -562,19 +586,29 @@ You MUST include a `cross_verification` section in your output:
 
 2. **ALTERNATIVE METHOD** (attempt if feasible):
    - Solve using a fundamentally DIFFERENT approach (not redo same calculation)
-   - If two methods disagree → report BOTH, cap confidence at 50%
+   - CRITICAL: alternative method must NOT share assumptions with primary method
+   - If both methods use the same imported theorem → they are NOT independent
+   - If two independent methods disagree → report BOTH, cap confidence at 50%
 
-3. **CONFIDENCE RULES**:
+3. **ASSUMPTION AUDIT**:
+   - Review assumption register from D2
+   - For each IMPORTED/UNVERIFIED assumption: is it proven for THIS problem?
+   - Does your answer DEPEND on any unverified import? If YES → confidence max 60%
+   - Do your primary and alternative methods share unverified assumptions?
+     If YES → methods are NOT independent, agreement proves nothing
+
+4. **CONFIDENCE RULES**:
    - Sanity check fails → max 60%
    - Only one method, no cross-check → max 75%
-   - Two methods agree → uncapped
-   - DO NOT claim 100% unless you have verified by alternative method
+   - Two INDEPENDENT methods agree → uncapped
+   - Two DEPENDENT methods agree (shared assumptions) → max 70%
+   - Unverified import affects answer → max 60%
+   - DO NOT claim 100% unless verified by independent alternative method
 
 If your answer yields a probability < 0.001 or > 0.999 for a combinatorial problem,
 or if your "proof" uses a theorem you cannot cite precisely, FLAG THIS.
 
-4. **REPORT YOUR CONFIDENCE** as `worker_confidence: N%` with brief justification.
-   This measures YOUR confidence in the computation, separate from answer correctness.
+5. **REPORT YOUR CONFIDENCE** as `worker_confidence: N%` with brief justification.
 """
 
         w_text, w_think = worker.send(instruction)
@@ -586,6 +620,14 @@ or if your "proof" uses a theorem you cannot cite precisely, FLAG THIS.
         # ── PATCH 7+8 ENFORCEMENT: TL checks for cross-verification after D5 ──
         # ── CONFIDENCE SCORECARD: TL computes structured confidence ──
         reflect_extra = ""
+        if domain == "D2":
+            reflect_extra = """
+
+CHECK: Does Worker output include an ASSUMPTION REGISTER?
+If NO → iterate, ask Worker to list all assumptions with PROVEN/IMPORTED/ASSUMED classification.
+If YES → verify: are any IMPORTED assumptions marked as UNVERIFIED_IMPORT?
+If unverified imports exist → note in conspectus, these will affect D5 confidence scoring.
+"""
         if domain == "D3":
             reflect_extra = """
 
@@ -606,40 +648,56 @@ Format in conspectus:
 
 CRITICAL — CONFIDENCE SCORECARD (fill this BEFORE deciding verdict):
 
-You must evaluate D5 output on 7 checkpoints. Score each 0.0 to 1.0.
+Evaluate D5 output on 8 checkpoints. Score each 0.0 to 1.0.
 Write the scorecard in your conspectus.
 
-| Checkpoint | Score | Note |
-|------------|-------|------|
-| A. Recognition completeness (D1: all elements, no phantoms) | ?/1.0 | |
-| B. Definition depth (D2: key terms at depth 3+) | ?/1.0 | |
-| C. Framework selection (D3: multiple considered? weight ≥60%?) | ?/1.0 | |
-| D. Computation completeness (D4: all criteria, edge cases) | ?/1.0 | |
-| E. Cross-verification (D5: sanity checks, alt method, small case) | ?/1.0 | |
-| F. Proof integrity (no hasty generalization, boundary conditions) | ?/1.0 | |
-| G. Answer format & magnitude (correct format, reasonable magnitude) | ?/1.0 | |
+| Checkpoint | Weight | Score | Note |
+|------------|:------:|:-----:|------|
+| A. Recognition completeness (all elements, no phantoms) | 0.10 | ?/1.0 | |
+| B. Definition depth (key terms at depth 3+) | 0.08 | ?/1.0 | |
+| C. Framework selection (multiple considered? weight ≥60%?) | 0.12 | ?/1.0 | |
+| D. Computation completeness (all criteria, edge cases) | 0.12 | ?/1.0 | |
+| E. Cross-verification (sanity + alt method + INDEPENDENCE) | 0.18 | ?/1.0 | |
+| F. Proof integrity (no hasty gen, boundary conditions) | 0.12 | ?/1.0 | |
+| G. Answer format & magnitude (correct format, reasonable) | 0.13 | ?/1.0 | |
+| H. Assumption independence (unverified imports?) | 0.15 | ?/1.0 | |
+
+CHECKPOINT E — INDEPENDENCE CHECK (critical):
+Before scoring E, verify: do the two methods share assumptions?
+- Methods truly independent + agree → E up to 1.0
+- Methods share unverified assumptions + agree → E max 0.5
+  (agreement on shared foundation proves nothing!)
+- Only one method → E max 0.3
+
+CHECKPOINT H — ASSUMPTION AUDIT:
+- H=1.0: All assumptions PROVEN within this problem
+- H=0.8: Imports exist, all justified with proof for THIS problem
+- H=0.5: 1 unverified import, non-critical to answer
+- H=0.3: 1 unverified import that AFFECTS the answer
+- H=0.1: 2+ unverified imports
+- H=0.0: Key result depends entirely on imported theorem
 
 HARD CAPS (override your score):
-- E = 0 (no cross-verification at all) → TL confidence max 50%
-- C < 0.5 (only 1 framework, no alternatives) → max 65%
+- E = 0 (no cross-verification at all) → max 50%
+- Only 1 framework considered → max 65%
 - Sanity check failed → max 45%
 - Two methods disagree → max 40%
 - "iff" theorem with only one direction proven → max 35%
-- Magnitude obviously wrong (P ≈ 10⁻¹¹ for simple problem) → max 25%
+- Magnitude obviously wrong → max 25%
+- 1+ UNVERIFIED_IMPORT affecting answer → max 60%
+- Cross-verification methods share assumptions → max 55%
+- Key result depends on IMPORTED theorem without re-proof → max 50%
 
-Compute: tl_confidence = min(hard_cap, round(weighted_sum × 100))
-Weights: A=0.10, B=0.10, C=0.15, D=0.15, E=0.20, F=0.15, G=0.15
+Compute: tl_confidence = min(all_triggered_caps, round(weighted_sum × 100))
 
-Compare with Worker's self-reported confidence:
-- Gap < 10pp → normal
-- Gap 10-25pp → note concern
-- Gap 25-50pp → ITERATE (structural issue)
-- Gap > 50pp → RETURN to D3 (Worker likely on wrong model)
-
-Include in conspectus:
+CONFIDENCE GAP:
   Worker confidence: X%
   TL confidence: Y% (scorecard)
-  Gap: Zpp → [action]
+  Gap: Zpp
+  - Gap < 10pp → normal, proceed
+  - Gap 10-25pp → note concern in conspectus
+  - Gap 25-50pp → ITERATE D5 (structural issue likely)
+  - Gap > 50pp → RETURN to D3 (Worker likely on wrong model entirely)
 """
 
         tl_text, tl_think = tl.send(
@@ -769,6 +827,23 @@ Include in conspectus:
         is_correct = False
 
     # ── BUILD RESULT ──
+    # Extract confidence values from conspectus/TL output
+    def extract_confidence(text, label):
+        """Try to find 'label: N%' or 'label N%' in text."""
+        patterns = [
+            rf'{label}[:\s]+(\d+)%',
+            rf'{label}[:\s]+(\d+)',
+        ]
+        for p in patterns:
+            m = re.search(p, text, re.IGNORECASE)
+            if m:
+                return int(m.group(1))
+        return None
+
+    worker_conf = extract_confidence(conspectus, "worker confidence")
+    tl_conf = extract_confidence(conspectus, "tl confidence")
+    conf_gap = (worker_conf - tl_conf) if (worker_conf is not None and tl_conf is not None) else None
+
     result = {
         "question_id": q_id,
         "question": q_text[:200] + "..." if len(q_text) > 200 else q_text,
@@ -777,6 +852,12 @@ Include in conspectus:
         "expected": expected,
         "answer_raw": final_answer,
         "judge_correct": is_correct,
+        "confidence": {
+            "worker": worker_conf,
+            "tl": tl_conf,
+            "gap": conf_gap,
+            "method": "scorecard_v2",
+        },
         "elapsed_seconds": round(elapsed, 1),
         "team_lead_stats": tl.stats(),
         "worker_stats": worker.stats(),
@@ -808,6 +889,7 @@ Include in conspectus:
     print(f"  Answer:     {final_answer[:80]}")
     print(f"  Expected:   {expected[:80]}")
     print(f"  Judge:      {'CORRECT' if is_correct else 'INCORRECT'}")
+    print(f"  Confidence: W={worker_conf}% TL={tl_conf}% Gap={conf_gap}pp")
     print(f"  Time:       {elapsed:.1f}s")
     print(f"  Calls:      TL={tl.call_count}, W={worker.call_count}")
     print(f"  Tokens:     {result['total_tokens']:,}")
