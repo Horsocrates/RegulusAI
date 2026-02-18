@@ -20,9 +20,9 @@ from typing import Optional
 # ---------------------------------------------------------------------------
 
 MODEL_DEFAULTS: dict[str, dict] = {
-    "opus-4.6":    {"context_window": 200000, "max_tokens": 16000, "thinking_enabled": True,  "thinking_budget": 10000, "interleaved_thinking": True,  "temperature": 1.0},
-    "sonnet-4.5":  {"context_window": 200000, "max_tokens": 16000, "thinking_enabled": True,  "thinking_budget": 10000, "interleaved_thinking": True,  "temperature": 1.0},
-    "haiku-4.5":   {"context_window": 200000, "max_tokens": 16000, "thinking_enabled": True,  "thinking_budget": 10000, "interleaved_thinking": False, "temperature": 1.0},
+    "opus-4.6":    {"context_window": 200000, "max_tokens": 64000, "thinking_enabled": True,  "thinking_budget": 10000, "interleaved_thinking": True,  "temperature": 1.0},
+    "sonnet-4.5":  {"context_window": 200000, "max_tokens": 64000, "thinking_enabled": True,  "thinking_budget": 10000, "interleaved_thinking": True,  "temperature": 1.0},
+    "haiku-4.5":   {"context_window": 200000, "max_tokens": 64000, "thinking_enabled": True,  "thinking_budget": 10000, "interleaved_thinking": False, "temperature": 1.0},
     "gpt-4o":      {"context_window": 128000, "max_tokens": 16384, "thinking_enabled": False, "thinking_budget": 0,     "interleaved_thinking": False, "temperature": 1.0},
     "o3-mini":     {"context_window": 128000, "max_tokens": 65536, "thinking_enabled": True,  "thinking_budget": 32000, "interleaved_thinking": False, "temperature": 1.0},
     "deepseek-r1": {"context_window": 64000,  "max_tokens": 32000, "thinking_enabled": True,  "thinking_budget": 16000, "interleaved_thinking": False, "temperature": 1.0},

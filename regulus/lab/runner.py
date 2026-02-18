@@ -376,7 +376,7 @@ class LabRunner:
                             run.reasoning_model,
                             api_key=reasoning_api_key,
                             budget_tokens=_resolved.get("thinking_budget", 10000),
-                            max_tokens=_resolved.get("max_tokens", 16000),
+                            max_tokens=_resolved.get("max_tokens", 64000),
                         )
                         # Use a lightweight LLM for the audit call
                         audit_api_key = os.environ.get("OPENAI_API_KEY", "")

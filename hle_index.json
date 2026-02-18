@@ -1,0 +1,3154 @@
+{
+  "Other|Chess|exactMatch|img": [
+    0,
+    229,
+    1771,
+    2391
+  ],
+  "Humanities/Social Science|Philosophy|multipleChoice|text": [
+    1,
+    59,
+    72,
+    294,
+    2199
+  ],
+  "Other|Trivia|exactMatch|text": [
+    2,
+    33,
+    71,
+    76,
+    102,
+    133,
+    135,
+    521,
+    587,
+    629,
+    682,
+    710,
+    745,
+    809,
+    820,
+    1065,
+    1096,
+    1131,
+    1134,
+    1322,
+    1516,
+    1588,
+    1624,
+    1671,
+    1738,
+    1816,
+    1848,
+    1924,
+    1937,
+    1977,
+    2067,
+    2137,
+    2274,
+    2291,
+    2387
+  ],
+  "Math|Mathematics|exactMatch|text": [
+    3,
+    4,
+    5,
+    9,
+    10,
+    18,
+    21,
+    22,
+    24,
+    26,
+    28,
+    31,
+    34,
+    38,
+    49,
+    51,
+    55,
+    58,
+    73,
+    79,
+    82,
+    90,
+    99,
+    100,
+    104,
+    122,
+    124,
+    125,
+    128,
+    146,
+    148,
+    152,
+    153,
+    162,
+    168,
+    170,
+    172,
+    175,
+    177,
+    181,
+    183,
+    188,
+    190,
+    195,
+    196,
+    197,
+    199,
+    200,
+    202,
+    206,
+    208,
+    209,
+    213,
+    214,
+    216,
+    217,
+    219,
+    220,
+    221,
+    225,
+    227,
+    232,
+    235,
+    240,
+    245,
+    246,
+    247,
+    250,
+    252,
+    253,
+    254,
+    255,
+    256,
+    257,
+    260,
+    269,
+    271,
+    274,
+    275,
+    277,
+    281,
+    284,
+    287,
+    291,
+    292,
+    295,
+    297,
+    298,
+    299,
+    301,
+    303,
+    306,
+    308,
+    310,
+    312,
+    313,
+    314,
+    315,
+    317,
+    318,
+    319,
+    320,
+    321,
+    323,
+    324,
+    325,
+    326,
+    327,
+    332,
+    333,
+    340,
+    343,
+    345,
+    348,
+    349,
+    353,
+    355,
+    356,
+    357,
+    359,
+    360,
+    362,
+    367,
+    369,
+    374,
+    387,
+    396,
+    406,
+    407,
+    415,
+    416,
+    419,
+    422,
+    424,
+    430,
+    436,
+    437,
+    438,
+    440,
+    442,
+    443,
+    444,
+    449,
+    453,
+    457,
+    462,
+    464,
+    465,
+    472,
+    477,
+    482,
+    484,
+    495,
+    501,
+    504,
+    514,
+    516,
+    517,
+    518,
+    519,
+    523,
+    524,
+    529,
+    540,
+    542,
+    544,
+    549,
+    550,
+    553,
+    557,
+    560,
+    561,
+    563,
+    567,
+    571,
+    572,
+    573,
+    574,
+    576,
+    578,
+    580,
+    585,
+    589,
+    590,
+    594,
+    595,
+    597,
+    599,
+    613,
+    618,
+    623,
+    628,
+    630,
+    632,
+    635,
+    637,
+    638,
+    642,
+    645,
+    650,
+    651,
+    652,
+    657,
+    662,
+    664,
+    667,
+    669,
+    670,
+    672,
+    673,
+    674,
+    676,
+    679,
+    683,
+    685,
+    693,
+    695,
+    712,
+    713,
+    714,
+    715,
+    716,
+    719,
+    722,
+    730,
+    732,
+    733,
+    736,
+    737,
+    738,
+    739,
+    746,
+    748,
+    751,
+    755,
+    758,
+    761,
+    765,
+    768,
+    769,
+    770,
+    776,
+    778,
+    782,
+    804,
+    806,
+    811,
+    815,
+    818,
+    821,
+    824,
+    826,
+    832,
+    837,
+    838,
+    839,
+    840,
+    841,
+    843,
+    845,
+    848,
+    851,
+    852,
+    854,
+    856,
+    857,
+    858,
+    859,
+    860,
+    861,
+    863,
+    864,
+    865,
+    866,
+    868,
+    870,
+    872,
+    879,
+    881,
+    882,
+    884,
+    887,
+    888,
+    890,
+    891,
+    895,
+    898,
+    899,
+    904,
+    906,
+    907,
+    908,
+    910,
+    912,
+    918,
+    919,
+    922,
+    924,
+    925,
+    929,
+    932,
+    933,
+    939,
+    943,
+    947,
+    952,
+    954,
+    959,
+    968,
+    975,
+    979,
+    983,
+    984,
+    985,
+    986,
+    987,
+    991,
+    994,
+    995,
+    998,
+    1000,
+    1001,
+    1002,
+    1003,
+    1004,
+    1006,
+    1007,
+    1011,
+    1020,
+    1026,
+    1028,
+    1029,
+    1030,
+    1033,
+    1053,
+    1061,
+    1064,
+    1085,
+    1086,
+    1090,
+    1091,
+    1094,
+    1099,
+    1100,
+    1102,
+    1105,
+    1106,
+    1110,
+    1112,
+    1114,
+    1117,
+    1118,
+    1125,
+    1147,
+    1148,
+    1162,
+    1164,
+    1165,
+    1167,
+    1168,
+    1169,
+    1172,
+    1173,
+    1176,
+    1178,
+    1180,
+    1181,
+    1184,
+    1185,
+    1186,
+    1187,
+    1189,
+    1195,
+    1199,
+    1200,
+    1202,
+    1203,
+    1205,
+    1206,
+    1208,
+    1210,
+    1212,
+    1222,
+    1223,
+    1225,
+    1228,
+    1229,
+    1232,
+    1242,
+    1243,
+    1245,
+    1247,
+    1248,
+    1252,
+    1253,
+    1254,
+    1255,
+    1259,
+    1261,
+    1265,
+    1267,
+    1270,
+    1271,
+    1275,
+    1277,
+    1284,
+    1286,
+    1299,
+    1300,
+    1302,
+    1303,
+    1320,
+    1326,
+    1327,
+    1336,
+    1337,
+    1343,
+    1349,
+    1351,
+    1355,
+    1357,
+    1358,
+    1359,
+    1361,
+    1363,
+    1367,
+    1369,
+    1371,
+    1374,
+    1375,
+    1377,
+    1387,
+    1404,
+    1408,
+    1409,
+    1410,
+    1412,
+    1413,
+    1414,
+    1422,
+    1426,
+    1427,
+    1428,
+    1431,
+    1432,
+    1434,
+    1435,
+    1437,
+    1438,
+    1439,
+    1440,
+    1442,
+    1443,
+    1447,
+    1455,
+    1456,
+    1461,
+    1465,
+    1468,
+    1469,
+    1473,
+    1478,
+    1479,
+    1480,
+    1485,
+    1492,
+    1495,
+    1501,
+    1503,
+    1507,
+    1523,
+    1531,
+    1532,
+    1538,
+    1539,
+    1541,
+    1543,
+    1544,
+    1550,
+    1551,
+    1556,
+    1558,
+    1562,
+    1570,
+    1574,
+    1575,
+    1576,
+    1578,
+    1579,
+    1583,
+    1584,
+    1589,
+    1599,
+    1607,
+    1609,
+    1610,
+    1615,
+    1616,
+    1617,
+    1619,
+    1620,
+    1622,
+    1625,
+    1627,
+    1628,
+    1629,
+    1631,
+    1645,
+    1649,
+    1650,
+    1652,
+    1658,
+    1660,
+    1661,
+    1669,
+    1673,
+    1675,
+    1678,
+    1684,
+    1693,
+    1695,
+    1698,
+    1700,
+    1701,
+    1702,
+    1703,
+    1709,
+    1718,
+    1724,
+    1725,
+    1726,
+    1727,
+    1728,
+    1729,
+    1731,
+    1732,
+    1733,
+    1734,
+    1735,
+    1739,
+    1742,
+    1746,
+    1747,
+    1748,
+    1752,
+    1753,
+    1754,
+    1758,
+    1763,
+    1765,
+    1769,
+    1774,
+    1775,
+    1776,
+    1777,
+    1778,
+    1780,
+    1793,
+    1796,
+    1797,
+    1798,
+    1802,
+    1811,
+    1812,
+    1813,
+    1814,
+    1820,
+    1821,
+    1822,
+    1823,
+    1825,
+    1832,
+    1833,
+    1840,
+    1844,
+    1845,
+    1846,
+    1849,
+    1850,
+    1851,
+    1854,
+    1857,
+    1858,
+    1859,
+    1860,
+    1870,
+    1873,
+    1876,
+    1879,
+    1887,
+    1891,
+    1892,
+    1894,
+    1895,
+    1896,
+    1898,
+    1899,
+    1901,
+    1903,
+    1906,
+    1923,
+    1925,
+    1931,
+    1942,
+    1950,
+    1952,
+    1955,
+    1957,
+    1960,
+    1962,
+    1963,
+    1964,
+    1966,
+    1968,
+    1970,
+    1971,
+    1979,
+    1981,
+    1988,
+    1989,
+    1992,
+    1996,
+    1997,
+    2002,
+    2008,
+    2009,
+    2012,
+    2015,
+    2025,
+    2026,
+    2027,
+    2028,
+    2036,
+    2045,
+    2047,
+    2048,
+    2050,
+    2051,
+    2054,
+    2055,
+    2057,
+    2064,
+    2070,
+    2071,
+    2075,
+    2076,
+    2077,
+    2078,
+    2079,
+    2080,
+    2081,
+    2089,
+    2094,
+    2096,
+    2098,
+    2099,
+    2106,
+    2107,
+    2109,
+    2110,
+    2112,
+    2113,
+    2115,
+    2119,
+    2123,
+    2125,
+    2129,
+    2131,
+    2134,
+    2141,
+    2142,
+    2145,
+    2147,
+    2151,
+    2152,
+    2157,
+    2159,
+    2160,
+    2162,
+    2165,
+    2171,
+    2172,
+    2173,
+    2175,
+    2180,
+    2183,
+    2184,
+    2185,
+    2188,
+    2189,
+    2190,
+    2192,
+    2193,
+    2196,
+    2201,
+    2210,
+    2211,
+    2213,
+    2215,
+    2216,
+    2219,
+    2226,
+    2228,
+    2233,
+    2236,
+    2237,
+    2238,
+    2241,
+    2242,
+    2243,
+    2245,
+    2251,
+    2256,
+    2260,
+    2262,
+    2264,
+    2265,
+    2266,
+    2267,
+    2268,
+    2270,
+    2271,
+    2282,
+    2284,
+    2286,
+    2290,
+    2293,
+    2294,
+    2296,
+    2300,
+    2309,
+    2310,
+    2312,
+    2313,
+    2314,
+    2315,
+    2316,
+    2319,
+    2320,
+    2322,
+    2325,
+    2340,
+    2342,
+    2343,
+    2344,
+    2345,
+    2348,
+    2349,
+    2352,
+    2353,
+    2355,
+    2356,
+    2363,
+    2378,
+    2383,
+    2385,
+    2386
+  ],
+  "Physics|Physics|exactMatch|text": [
+    6,
+    7,
+    19,
+    40,
+    47,
+    61,
+    80,
+    137,
+    174,
+    264,
+    300,
+    364,
+    391,
+    399,
+    409,
+    423,
+    551,
+    552,
+    554,
+    558,
+    564,
+    596,
+    602,
+    680,
+    717,
+    718,
+    766,
+    786,
+    788,
+    802,
+    915,
+    916,
+    951,
+    992,
+    1043,
+    1095,
+    1097,
+    1101,
+    1123,
+    1132,
+    1149,
+    1154,
+    1170,
+    1171,
+    1193,
+    1197,
+    1218,
+    1230,
+    1238,
+    1268,
+    1273,
+    1280,
+    1288,
+    1304,
+    1314,
+    1318,
+    1323,
+    1324,
+    1360,
+    1362,
+    1398,
+    1418,
+    1441,
+    1449,
+    1474,
+    1475,
+    1506,
+    1560,
+    1561,
+    1582,
+    1621,
+    1632,
+    1633,
+    1635,
+    1636,
+    1638,
+    1639,
+    1642,
+    1648,
+    1654,
+    1655,
+    1656,
+    1657,
+    1659,
+    1664,
+    1667,
+    1668,
+    1721,
+    1744,
+    1781,
+    1784,
+    1785,
+    1788,
+    1789,
+    1824,
+    1834,
+    1835,
+    1842,
+    1900,
+    1913,
+    1921,
+    1985,
+    1986,
+    1991,
+    2029,
+    2030,
+    2031,
+    2040,
+    2042,
+    2056,
+    2058,
+    2059,
+    2065,
+    2068,
+    2069,
+    2072,
+    2095,
+    2100,
+    2102,
+    2103,
+    2118,
+    2124,
+    2126,
+    2127,
+    2166,
+    2194,
+    2227,
+    2231,
+    2234,
+    2244,
+    2249,
+    2253,
+    2258,
+    2259,
+    2269,
+    2273,
+    2297,
+    2341,
+    2359
+  ],
+  "Computer Science/AI|Cybersecurity|exactMatch|text": [
+    8,
+    45
+  ],
+  "Computer Science/AI|Artificial Intelligence|multipleChoice|text": [
+    11,
+    13,
+    27,
+    95,
+    131,
+    556,
+    877,
+    1153,
+    1419,
+    1545,
+    1928,
+    2120
+  ],
+  "Humanities/Social Science|Law|exactMatch|text": [
+    12,
+    1027,
+    1411,
+    1757,
+    1975
+  ],
+  "Other|Chess|multipleChoice|text": [
+    14,
+    1333,
+    2263
+  ],
+  "Other|Game Design|exactMatch|text": [
+    15,
+    640,
+    1801,
+    2295
+  ],
+  "Biology/Medicine|Bioinformatics|multipleChoice|text": [
+    16,
+    2153
+  ],
+  "Computer Science/AI|Computer Science|exactMatch|text": [
+    17,
+    30,
+    63,
+    89,
+    139,
+    163,
+    182,
+    192,
+    194,
+    198,
+    201,
+    204,
+    205,
+    215,
+    222,
+    224,
+    233,
+    244,
+    261,
+    263,
+    279,
+    290,
+    296,
+    311,
+    322,
+    372,
+    375,
+    379,
+    397,
+    490,
+    511,
+    534,
+    570,
+    644,
+    658,
+    671,
+    675,
+    721,
+    731,
+    743,
+    757,
+    783,
+    798,
+    803,
+    828,
+    873,
+    900,
+    901,
+    914,
+    940,
+    955,
+    964,
+    974,
+    1037,
+    1059,
+    1063,
+    1103,
+    1104,
+    1113,
+    1161,
+    1163,
+    1201,
+    1217,
+    1221,
+    1224,
+    1226,
+    1237,
+    1282,
+    1287,
+    1346,
+    1356,
+    1448,
+    1490,
+    1533,
+    1535,
+    1537,
+    1571,
+    1581,
+    1587,
+    1595,
+    1600,
+    1611,
+    1612,
+    1614,
+    1623,
+    1644,
+    1687,
+    1688,
+    1730,
+    1737,
+    1751,
+    1767,
+    1768,
+    1770,
+    1772,
+    1828,
+    1831,
+    1897,
+    1902,
+    1910,
+    1916,
+    1948,
+    1959,
+    1961,
+    1974,
+    1994,
+    1998,
+    2007,
+    2018,
+    2019,
+    2023,
+    2053,
+    2063,
+    2090,
+    2092,
+    2108,
+    2139,
+    2143,
+    2144,
+    2195,
+    2221,
+    2232,
+    2277,
+    2321,
+    2331,
+    2366,
+    2380
+  ],
+  "Humanities/Social Science|Political Science|exactMatch|text": [
+    20,
+    64
+  ],
+  "Biology/Medicine|Bioinformatics|exactMatch|text": [
+    23
+  ],
+  "Chemistry|Chemistry|exactMatch|img": [
+    25,
+    147,
+    541,
+    588,
+    639,
+    641,
+    648,
+    649,
+    689,
+    729,
+    749,
+    750,
+    760,
+    762,
+    763,
+    764,
+    785,
+    789,
+    796,
+    799,
+    823,
+    886,
+    909,
+    950,
+    958,
+    989,
+    1032,
+    1036,
+    1107,
+    1136,
+    1146,
+    1151,
+    1152,
+    1345,
+    1354,
+    1500,
+    1670,
+    1706,
+    1720,
+    1760,
+    1807,
+    1936,
+    2170,
+    2206,
+    2482
+  ],
+  "Biology/Medicine|Biology|exactMatch|text": [
+    29,
+    248,
+    347,
+    418,
+    459,
+    515,
+    817,
+    1373,
+    1759,
+    1983,
+    2000,
+    2122,
+    2135
+  ],
+  "Computer Science/AI|Computer Science|multipleChoice|text": [
+    32,
+    39,
+    50,
+    54,
+    328,
+    331,
+    354,
+    435,
+    591,
+    603,
+    661,
+    699,
+    791,
+    810,
+    867,
+    875,
+    894,
+    905,
+    911,
+    1166,
+    1192,
+    1315,
+    1317,
+    1341,
+    1388,
+    1394,
+    1444,
+    1454,
+    1596,
+    1613,
+    1750,
+    2087,
+    2225
+  ],
+  "Biology/Medicine|Biophysics|multipleChoice|text": [
+    35,
+    677
+  ],
+  "Other|Poker|exactMatch|text": [
+    36
+  ],
+  "Other|Poker|multipleChoice|text": [
+    37,
+    158
+  ],
+  "Math|Mathematics|multipleChoice|text": [
+    41,
+    112,
+    144,
+    370,
+    371,
+    376,
+    382,
+    433,
+    441,
+    452,
+    456,
+    473,
+    496,
+    497,
+    532,
+    533,
+    568,
+    592,
+    604,
+    607,
+    643,
+    655,
+    692,
+    696,
+    705,
+    707,
+    724,
+    752,
+    787,
+    792,
+    827,
+    829,
+    855,
+    893,
+    897,
+    930,
+    931,
+    936,
+    945,
+    948,
+    969,
+    999,
+    1021,
+    1023,
+    1067,
+    1423,
+    1446,
+    1450,
+    1467,
+    1487,
+    1528,
+    1567,
+    1577,
+    1590,
+    1679,
+    1696,
+    1697,
+    1699,
+    1803,
+    1836,
+    1865,
+    2132,
+    2140,
+    2181,
+    2182,
+    2187,
+    2202,
+    2203,
+    2220,
+    2250,
+    2252,
+    2257
+  ],
+  "Biology/Medicine|Genetics|exactMatch|text": [
+    42,
+    156,
+    273,
+    735,
+    2317
+  ],
+  "Physics|Atmospheric Physics|exactMatch|text": [
+    43
+  ],
+  "Other|Logic|multipleChoice|text": [
+    44,
+    1198,
+    1240
+  ],
+  "Other|Art History|multipleChoice|text": [
+    46,
+    2093
+  ],
+  "Humanities/Social Science|Finance|multipleChoice|text": [
+    48,
+    885,
+    1452
+  ],
+  "Other|Game Design|multipleChoice|text": [
+    52,
+    1958
+  ],
+  "Computer Science/AI|Computer Science|multipleChoice|img": [
+    53
+  ],
+  "Humanities/Social Science|Linguistics|exactMatch|text": [
+    56,
+    77,
+    78,
+    91,
+    159,
+    270,
+    342,
+    566,
+    631,
+    962,
+    1068,
+    1155,
+    1156,
+    1593,
+    1689,
+    1723,
+    1852,
+    1954,
+    2021,
+    2033,
+    2035,
+    2304,
+    2382
+  ],
+  "Computer Science/AI|Artificial Intelligence|exactMatch|text": [
+    57,
+    134,
+    902,
+    1121,
+    1239,
+    1548,
+    1982,
+    2301,
+    2365
+  ],
+  "Computer Science/AI|Machine Learning|multipleChoice|text": [
+    60,
+    747
+  ],
+  "Math|Applied Mathematics|exactMatch|text": [
+    62,
+    93,
+    107,
+    140,
+    160,
+    282,
+    363,
+    425,
+    439,
+    475,
+    492,
+    575,
+    581,
+    584,
+    600,
+    684,
+    740,
+    990,
+    1190,
+    1213,
+    1257,
+    1258,
+    1281,
+    1283,
+    1289,
+    1294,
+    1331,
+    1350,
+    1366,
+    1378,
+    1406,
+    1416,
+    1417,
+    1425,
+    1429,
+    1430,
+    1445,
+    1477,
+    1526,
+    1542,
+    1554,
+    1557,
+    1564,
+    1585,
+    1591,
+    1592,
+    1597,
+    1608,
+    1618,
+    1626,
+    1637,
+    1662,
+    1663,
+    1677,
+    1712,
+    1714,
+    1717,
+    1741,
+    1773,
+    1795,
+    1805,
+    1818,
+    1875,
+    1943,
+    1949,
+    1978,
+    1984,
+    1995,
+    1999,
+    2006,
+    2017,
+    2082,
+    2086,
+    2114,
+    2148,
+    2169,
+    2222,
+    2224,
+    2247,
+    2255,
+    2272,
+    2278,
+    2287,
+    2361,
+    2368,
+    2370,
+    2434,
+    2451,
+    2471,
+    2483
+  ],
+  "Humanities/Social Science|English Literature|exactMatch|text": [
+    65,
+    759,
+    1191,
+    1214,
+    1555,
+    1665,
+    2121,
+    2239,
+    2390
+  ],
+  "Other|Art History|exactMatch|text": [
+    66,
+    103,
+    377,
+    627,
+    1293,
+    1839,
+    1911,
+    1918,
+    2004,
+    2280,
+    2475,
+    2477
+  ],
+  "Computer Science/AI|Computer Science|exactMatch|img": [
+    67,
+    127,
+    634,
+    862,
+    953,
+    2218,
+    2384
+  ],
+  "Humanities/Social Science|Linguistics|multipleChoice|text": [
+    68,
+    75,
+    262,
+    346,
+    543,
+    700,
+    801,
+    814,
+    1433,
+    1481,
+    1606,
+    2062,
+    2158,
+    2168
+  ],
+  "Math|Mathematics|exactMatch|img": [
+    69,
+    249,
+    268,
+    361,
+    365,
+    468,
+    520,
+    559,
+    562,
+    610,
+    754,
+    774,
+    775,
+    777,
+    781,
+    847,
+    878,
+    889,
+    960,
+    1025,
+    1044,
+    1352,
+    1400,
+    1486,
+    1527,
+    1707,
+    1715,
+    1736,
+    2302,
+    2362
+  ],
+  "Biology/Medicine|Medicine|multipleChoice|text": [
+    70,
+    179,
+    434,
+    460,
+    934,
+    935,
+    988,
+    1024,
+    1376,
+    1381,
+    1382,
+    1393,
+    1395,
+    1397,
+    1401,
+    1407,
+    1494,
+    1502,
+    1505,
+    1808,
+    1927,
+    1945,
+    1947,
+    1980,
+    2010,
+    2037,
+    2179,
+    2332,
+    2333,
+    2379
+  ],
+  "Other|Musicology|exactMatch|img": [
+    74,
+    231,
+    285,
+    545,
+    1634,
+    1794,
+    1907,
+    2438
+  ],
+  "Other|Videogame Trivia|exactMatch|text": [
+    81,
+    816
+  ],
+  "Other|3D Modelling|exactMatch|text": [
+    83
+  ],
+  "Engineering|Computer Engineering|multipleChoice|text": [
+    84
+  ],
+  "Biology/Medicine|Genetics|multipleChoice|text": [
+    85,
+    660,
+    1379,
+    1380,
+    1383,
+    1384,
+    1385,
+    1386,
+    1389,
+    1390,
+    1391,
+    1392,
+    1460,
+    1463,
+    1511,
+    1518,
+    1519,
+    1524,
+    1530,
+    1536,
+    2073,
+    2074
+  ],
+  "Other|Chess|exactMatch|text": [
+    86,
+    129,
+    1013,
+    1018,
+    1244,
+    2039,
+    2150,
+    2372
+  ],
+  "Humanities/Social Science|Law|multipleChoice|text": [
+    87,
+    625,
+    800,
+    883,
+    970,
+    981,
+    1129,
+    1220,
+    1249,
+    1316,
+    1365,
+    1476,
+    1546,
+    1856,
+    1922
+  ],
+  "Biology/Medicine|Computational Biology|multipleChoice|text": [
+    88,
+    498,
+    647,
+    1196
+  ],
+  "Computer Science/AI|Machine Learning|exactMatch|text": [
+    92
+  ],
+  "Other|Musicology|exactMatch|text": [
+    94,
+    96,
+    97,
+    304,
+    307,
+    621,
+    1124,
+    1484,
+    1640,
+    1674,
+    1711,
+    2128,
+    2283,
+    2298
+  ],
+  "Biology/Medicine|Medicine|multipleChoice|img": [
+    98,
+    385,
+    2174,
+    2197
+  ],
+  "Chemistry|Electrochemistry|exactMatch|img": [
+    101
+  ],
+  "Chemistry|Chemistry|exactMatch|text": [
+    105,
+    154,
+    339,
+    398,
+    400,
+    401,
+    404,
+    448,
+    458,
+    469,
+    474,
+    478,
+    479,
+    491,
+    500,
+    502,
+    506,
+    507,
+    509,
+    513,
+    609,
+    611,
+    612,
+    616,
+    619,
+    622,
+    772,
+    780,
+    833,
+    928,
+    949,
+    973,
+    977,
+    1010,
+    1017,
+    1035,
+    1115,
+    1262,
+    1291,
+    1319,
+    1321,
+    1372,
+    1464,
+    1472,
+    1482,
+    1491,
+    1493,
+    1496,
+    1497,
+    1498,
+    1499,
+    1508,
+    1549,
+    1692,
+    1885,
+    1915,
+    1929,
+    1932,
+    1941,
+    1956,
+    2155,
+    2208,
+    2381,
+    2413,
+    2415,
+    2461,
+    2498
+  ],
+  "Math|Spatial Geometry|exactMatch|text": [
+    106
+  ],
+  "Math|Applied Mathematics|multipleChoice|text": [
+    108,
+    155,
+    681,
+    708,
+    1309,
+    1563,
+    1792,
+    2097
+  ],
+  "Humanities/Social Science|Education|multipleChoice|text": [
+    109,
+    145,
+    191,
+    380
+  ],
+  "Engineering|Materials Science|exactMatch|text": [
+    110,
+    186,
+    1710,
+    2066,
+    2133,
+    2330
+  ],
+  "Biology/Medicine|Microbiology|multipleChoice|img": [
+    111
+  ],
+  "Humanities/Social Science|Economics|exactMatch|text": [
+    113,
+    381,
+    395,
+    512,
+    624,
+    727,
+    734,
+    742,
+    1279,
+    1295,
+    1540,
+    1939,
+    1973
+  ],
+  "Computer Science/AI|Data Science|multipleChoice|text": [
+    114,
+    236,
+    243,
+    330,
+    1177
+  ],
+  "Humanities/Social Science|Economics|multipleChoice|text": [
+    115,
+    118,
+    548,
+    711,
+    2005
+  ],
+  "Computer Science/AI|Information Technology|exactMatch|text": [
+    116,
+    173
+  ],
+  "Computer Science/AI|Robotics|multipleChoice|text": [
+    117,
+    119,
+    251,
+    337,
+    2326
+  ],
+  "Humanities/Social Science|History|multipleChoice|text": [
+    120,
+    123,
+    126,
+    288,
+    427,
+    1586,
+    1837,
+    1940,
+    2046,
+    2214
+  ],
+  "Humanities/Social Science|History|exactMatch|text": [
+    121,
+    228,
+    421,
+    579,
+    615,
+    620,
+    1040,
+    1466,
+    1786,
+    1951,
+    2217,
+    2375
+  ],
+  "Other|Travel|exactMatch|text": [
+    130
+  ],
+  "Biology/Medicine|Microbiology|exactMatch|text": [
+    132,
+    982
+  ],
+  "Computer Science/AI|Quantum Computing|multipleChoice|text": [
+    136,
+    138,
+    1312
+  ],
+  "Humanities/Social Science|Psychology|multipleChoice|text": [
+    141,
+    280,
+    293
+  ],
+  "Engineering|Chemical Engineering|multipleChoice|text": [
+    142
+  ],
+  "Other|Games|exactMatch|text": [
+    143,
+    161,
+    166,
+    180,
+    211,
+    223,
+    373,
+    537,
+    795,
+    1305,
+    1306,
+    1790,
+    1969
+  ],
+  "Math|Math|exactMatch|text": [
+    149
+  ],
+  "Other|Trivia|exactMatch|img": [
+    150,
+    234,
+    903,
+    1062,
+    1605,
+    2011,
+    2376
+  ],
+  "Engineering|Electrical Engineering|exactMatch|text": [
+    151,
+    446,
+    447,
+    455,
+    993,
+    1005,
+    1039,
+    1041,
+    1111,
+    2001,
+    2138,
+    2198
+  ],
+  "Humanities/Social Science|Education|exactMatch|img": [
+    157
+  ],
+  "Other|Games|exactMatch|img": [
+    164,
+    165
+  ],
+  "Math|Mathematics|multipleChoice|img": [
+    167,
+    1420,
+    1504,
+    2261
+  ],
+  "Other|Geography|multipleChoice|text": [
+    169
+  ],
+  "Computer Science/AI|Cryptography|exactMatch|text": [
+    171,
+    1653,
+    1791,
+    1838
+  ],
+  "Humanities/Social Science|International Business|multipleChoice|text": [
+    176,
+    187,
+    189
+  ],
+  "Biology/Medicine|Biology|multipleChoice|text": [
+    178,
+    184,
+    210,
+    335,
+    429,
+    450,
+    451,
+    831,
+    938,
+    1056,
+    1058,
+    1219,
+    1458,
+    1787,
+    1843,
+    2111,
+    2116,
+    2308
+  ],
+  "Biology/Medicine|Ecology|multipleChoice|text": [
+    185,
+    218,
+    241,
+    350,
+    358,
+    508,
+    547,
+    1055,
+    1070,
+    1073,
+    1084,
+    1088,
+    1301,
+    1332
+  ],
+  "Biology/Medicine|Immunology|multipleChoice|text": [
+    193,
+    463,
+    486,
+    499,
+    1135,
+    1682
+  ],
+  "Computer Science/AI|Programming|exactMatch|text": [
+    203,
+    2083
+  ],
+  "Biology/Medicine|Immunology|exactMatch|text": [
+    207,
+    488
+  ],
+  "Biology/Medicine|Ecology|multipleChoice|img": [
+    212,
+    1077
+  ],
+  "Engineering|Mechanical Engineering|exactMatch|img": [
+    226
+  ],
+  "Biology/Medicine|Ecology|exactMatch|text": [
+    230,
+    238,
+    510,
+    527,
+    1072,
+    1078
+  ],
+  "Computer Science/AI|Robotics|exactMatch|text": [
+    237,
+    659
+  ],
+  "Humanities/Social Science|Economics|exactMatch|img": [
+    239
+  ],
+  "Other|Oceanography|multipleChoice|text": [
+    242
+  ],
+  "Engineering|Materials Science|exactMatch|img": [
+    258,
+    617,
+    1453,
+    2061
+  ],
+  "Humanities/Social Science|Finance|exactMatch|text": [
+    259,
+    656
+  ],
+  "Other|Logic|exactMatch|text": [
+    265,
+    555,
+    1405,
+    2311,
+    2351
+  ],
+  "Engineering|Process Optimization|exactMatch|text": [
+    266
+  ],
+  "Physics|Astronomy|multipleChoice|text": [
+    267,
+    1601
+  ],
+  "Biology/Medicine|Molecular Biology|multipleChoice|text": [
+    272,
+    926,
+    971,
+    997,
+    1817
+  ],
+  "Biology/Medicine|Molecular Diagnostics|exactMatch|img": [
+    276
+  ],
+  "Physics|Physics|multipleChoice|text": [
+    278,
+    338,
+    344,
+    636,
+    819,
+    1031,
+    1050,
+    1066,
+    1098,
+    1116,
+    1127,
+    1179,
+    1269,
+    1272,
+    1290,
+    1488,
+    1534,
+    1565,
+    1666,
+    1676,
+    1740,
+    1743,
+    1745,
+    1749,
+    1809,
+    1861,
+    1862,
+    1863,
+    1864,
+    2200,
+    2212,
+    2373
+  ],
+  "Math|Game Theory|multipleChoice|text": [
+    283,
+    779,
+    1399
+  ],
+  "Chemistry|Chemoinformatics|exactMatch|text": [
+    286
+  ],
+  "Other|Graphic Design|exactMatch|text": [
+    289,
+    1087
+  ],
+  "Biology/Medicine|Neuroscience|multipleChoice|text": [
+    302,
+    403,
+    1231,
+    1260,
+    1347,
+    1547,
+    2334,
+    2335,
+    2337,
+    2354,
+    2360,
+    2371
+  ],
+  "Other|Art History|exactMatch|img": [
+    305,
+    546,
+    771,
+    1042,
+    1806,
+    2395,
+    2396
+  ],
+  "Other|Other|multipleChoice|text": [
+    309
+  ],
+  "Biology/Medicine|Neuroscience|exactMatch|text": [
+    316,
+    536,
+    538,
+    665,
+    2049
+  ],
+  "Biology/Medicine|Biochemistry|multipleChoice|text": [
+    329,
+    697,
+    790,
+    830,
+    1150,
+    1298,
+    1436,
+    1459,
+    1672,
+    1685,
+    1889,
+    2154
+  ],
+  "Computer Science/AI|Computational Geometry|exactMatch|text": [
+    334
+  ],
+  "Engineering|Aerospace Engineering|exactMatch|text": [
+    336,
+    2299,
+    2323
+  ],
+  "Biology/Medicine|Biology|multipleChoice|img": [
+    341,
+    1074,
+    1334,
+    2038
+  ],
+  "Math|Graph Theory|multipleChoice|text": [
+    351
+  ],
+  "Biology/Medicine|Ecology|exactMatch|img": [
+    352,
+    1075,
+    1076,
+    1602,
+    1603,
+    1604
+  ],
+  "Computer Science/AI|Cybersecurity|multipleChoice|text": [
+    366,
+    1489
+  ],
+  "Humanities/Social Science|Classics|multipleChoice|text": [
+    368,
+    526,
+    633
+  ],
+  "Biology/Medicine|Biology|exactMatch|img": [
+    378,
+    605,
+    606,
+    1014,
+    1060,
+    1069,
+    1815,
+    1866,
+    1867,
+    1868,
+    1878,
+    1881,
+    1883,
+    1886,
+    1888,
+    1912
+  ],
+  "Humanities/Social Science|Religious Studies|multipleChoice|text": [
+    383
+  ],
+  "Biology/Medicine|Nutrition|exactMatch|text": [
+    384
+  ],
+  "Biology/Medicine|Biochemistry|exactMatch|text": [
+    386,
+    701,
+    704,
+    874
+  ],
+  "Humanities/Social Science|Sociology|multipleChoice|text": [
+    388
+  ],
+  "Humanities/Social Science|Anthropology|multipleChoice|img": [
+    389
+  ],
+  "Biology/Medicine|Neuroscience|exactMatch|img": [
+    390,
+    1681
+  ],
+  "Humanities/Social Science|Knowledge Management|multipleChoice|img": [
+    392
+  ],
+  "Engineering|Mechanical Engineering|exactMatch|text": [
+    393,
+    686,
+    920,
+    961,
+    1990
+  ],
+  "Engineering|Biomedical Engineering|exactMatch|img": [
+    394
+  ],
+  "Engineering|Materials Science|multipleChoice|img": [
+    402,
+    476
+  ],
+  "Physics|Nuclear Physics|exactMatch|text": [
+    405
+  ],
+  "Humanities/Social Science|Classics|exactMatch|text": [
+    408,
+    428,
+    493,
+    525,
+    530,
+    577,
+    1521,
+    2229,
+    2230
+  ],
+  "Biology/Medicine|Agronomy|multipleChoice|img": [
+    410
+  ],
+  "Engineering|Electrical Engineering|exactMatch|img": [
+    411,
+    413,
+    471,
+    956,
+    1140,
+    1141,
+    1142,
+    1143,
+    1144,
+    1145,
+    1157,
+    1158,
+    1160,
+    1209,
+    1211,
+    1216,
+    1278
+  ],
+  "Engineering|Computer Engineering|exactMatch|text": [
+    412,
+    1233,
+    1335,
+    2136
+  ],
+  "Biology/Medicine|Epigenetics|exactMatch|text": [
+    414
+  ],
+  "Biology/Medicine|Theoretical Biology|multipleChoice|text": [
+    417
+  ],
+  "Other|Art History|multipleChoice|img": [
+    420
+  ],
+  "Chemistry|Chemistry|multipleChoice|text": [
+    426,
+    461,
+    522,
+    614,
+    678,
+    690,
+    876,
+    880,
+    966,
+    978,
+    1008,
+    1012,
+    1019,
+    1038,
+    1079,
+    1188,
+    1285,
+    1292,
+    1339,
+    1509,
+    1522,
+    1680,
+    1800,
+    1853,
+    2177
+  ],
+  "Biology/Medicine|Medicine|exactMatch|text": [
+    431,
+    927,
+    944,
+    946,
+    1227,
+    1264,
+    1274,
+    1421,
+    1514,
+    1893,
+    1993,
+    2014,
+    2041,
+    2276
+  ],
+  "Other|Musicology|multipleChoice|text": [
+    432,
+    1457,
+    2470
+  ],
+  "Biology/Medicine|Computational Biology|exactMatch|text": [
+    445,
+    485,
+    2357
+  ],
+  "Chemistry|Chemistry|multipleChoice|img": [
+    454,
+    467,
+    470,
+    598,
+    698,
+    728,
+    773,
+    892,
+    923,
+    980,
+    1046,
+    1071,
+    1342,
+    1344,
+    1877,
+    2016,
+    2024
+  ],
+  "Humanities/Social Science|Philosophy|exactMatch|text": [
+    466,
+    976,
+    1251,
+    1641,
+    1783,
+    2105,
+    2164,
+    2223
+  ],
+  "Biology/Medicine|Molecular Biology|exactMatch|text": [
+    480,
+    1297,
+    2032
+  ],
+  "Physics|Physics|exactMatch|img": [
+    481,
+    756,
+    1015,
+    1204,
+    2149,
+    2161,
+    2246,
+    2303
+  ],
+  "Biology/Medicine|Pharmacy|exactMatch|text": [
+    483,
+    535,
+    565
+  ],
+  "Chemistry|Quantum Chemistry|exactMatch|text": [
+    487,
+    503,
+    505
+  ],
+  "Other|Sliding Block Puzzles|exactMatch|img": [
+    489
+  ],
+  "Humanities/Social Science|Classics|exactMatch|img": [
+    494,
+    528
+  ],
+  "Biology/Medicine|Molecular Genetics|multipleChoice|text": [
+    531
+  ],
+  "Biology/Medicine|Microbiology|multipleChoice|text": [
+    539,
+    694,
+    1080,
+    1424,
+    1520,
+    1799,
+    2163
+  ],
+  "Engineering|Industrial Engineering|exactMatch|text": [
+    569
+  ],
+  "Computer Science/AI|Data Science|multipleChoice|img": [
+    582,
+    583,
+    1081
+  ],
+  "Humanities/Social Science|Communications|exactMatch|text": [
+    586
+  ],
+  "Biology/Medicine|Molecular Biology|multipleChoice|img": [
+    593
+  ],
+  "Computer Science/AI|Pattern Recognition|exactMatch|text": [
+    601
+  ],
+  "Math|Statistics|exactMatch|text": [
+    608,
+    1559,
+    2146,
+    2235,
+    2288,
+    2292,
+    2338,
+    2339,
+    2358,
+    2369
+  ],
+  "Humanities/Social Science|History|exactMatch|img": [
+    626,
+    2281
+  ],
+  "Other|Puzzle|exactMatch|text": [
+    646,
+    706,
+    709,
+    941
+  ],
+  "Biology/Medicine|Plastic Surgery|multipleChoice|text": [
+    653
+  ],
+  "Biology/Medicine|Physical Medicine And Rehabilitation|multipleChoice|text": [
+    654
+  ],
+  "Other|Movies|exactMatch|text": [
+    663
+  ],
+  "Other|Film Studies|exactMatch|text": [
+    666,
+    836,
+    1175
+  ],
+  "Engineering|Materials Science|multipleChoice|text": [
+    668,
+    937,
+    1276,
+    1630
+  ],
+  "Biology/Medicine|Neuroscience|multipleChoice|img": [
+    687,
+    2117,
+    2364
+  ],
+  "Humanities/Social Science|Archaeology|multipleChoice|img": [
+    688
+  ],
+  "Other|Puzzles|exactMatch|text": [
+    691,
+    702,
+    1470
+  ],
+  "Biology/Medicine|Bioengineering|exactMatch|text": [
+    703,
+    2377
+  ],
+  "Biology/Medicine|Genetics|exactMatch|img": [
+    720
+  ],
+  "Humanities/Social Science|Cultural Studies|exactMatch|text": [
+    723,
+    1829
+  ],
+  "Biology/Medicine|Environmental Contamination|exactMatch|text": [
+    725,
+    797,
+    913
+  ],
+  "Humanities/Social Science|Archaeology|exactMatch|img": [
+    726,
+    784,
+    1934
+  ],
+  "Other|Sports|exactMatch|text": [
+    741
+  ],
+  "Biology/Medicine|Public Health|exactMatch|text": [
+    744
+  ],
+  "Other|Heraldry|exactMatch|img": [
+    753
+  ],
+  "Engineering|Calculus Engineering|exactMatch|img": [
+    767
+  ],
+  "Humanities/Social Science|Archaeology|exactMatch|text": [
+    793,
+    1329
+  ],
+  "Math|Game Theory|exactMatch|text": [
+    794
+  ],
+  "Other|Trivia|multipleChoice|img": [
+    805,
+    807,
+    822,
+    825,
+    1137,
+    1462,
+    1513,
+    1569
+  ],
+  "Other|Trivia|multipleChoice|text": [
+    808,
+    834,
+    835,
+    1083,
+    1235,
+    1236,
+    1370,
+    1694,
+    2305
+  ],
+  "Humanities/Social Science|Epistemology|multipleChoice|text": [
+    812
+  ],
+  "Humanities/Social Science|Psychology|exactMatch|text": [
+    813
+  ],
+  "Humanities/Social Science|Religious Studies|exactMatch|text": [
+    842,
+    853
+  ],
+  "Engineering|Civil Engineering|exactMatch|img": [
+    844,
+    849,
+    1194,
+    1307,
+    1310,
+    1313
+  ],
+  "Engineering|Civil Engineering|exactMatch|text": [
+    846,
+    850,
+    1935
+  ],
+  "Physics|Astronomy|exactMatch|img": [
+    869,
+    1914,
+    2402,
+    2469,
+    2496
+  ],
+  "Humanities/Social Science|Comparative Literature|exactMatch|text": [
+    871,
+    1483,
+    1782
+  ],
+  "Humanities/Social Science|Linguistics|exactMatch|img": [
+    896,
+    1353,
+    1451,
+    1872,
+    1874
+  ],
+  "Other|Art|multipleChoice|text": [
+    917
+  ],
+  "Humanities/Social Science|Cultural Studies|multipleChoice|text": [
+    921
+  ],
+  "Biology/Medicine|Computational Biology|multipleChoice|img": [
+    942
+  ],
+  "Other|Classical Ballet|exactMatch|text": [
+    957,
+    996,
+    1122,
+    1250,
+    1566,
+    1704,
+    1708
+  ],
+  "Physics|Nuclear Science|exactMatch|text": [
+    963
+  ],
+  "Chemistry|Organic Chemistry|exactMatch|text": [
+    965
+  ],
+  "Physics|Nuclear Science|multipleChoice|text": [
+    967
+  ],
+  "Biology/Medicine|Health Sciences|exactMatch|text": [
+    972
+  ],
+  "Engineering|Remote Sensing|multipleChoice|text": [
+    1009
+  ],
+  "Biology/Medicine|Biochemistry|exactMatch|img": [
+    1016
+  ],
+  "Biology/Medicine|Pediatrics|multipleChoice|text": [
+    1022
+  ],
+  "Other|Contemporary Ballet|exactMatch|text": [
+    1034
+  ],
+  "Engineering|Electrical Engineering|multipleChoice|text": [
+    1045,
+    1047,
+    1048,
+    1049,
+    1051,
+    1052,
+    1054,
+    1057,
+    1108,
+    1109,
+    1126,
+    1128,
+    1130,
+    1207
+  ],
+  "Computer Science/AI|Graphics Programing|exactMatch|img": [
+    1082
+  ],
+  "Other|Classical Ballet|multipleChoice|text": [
+    1089,
+    1119,
+    1174,
+    1182,
+    1415,
+    1917
+  ],
+  "Biology/Medicine|Medicine|exactMatch|img": [
+    1092,
+    1093,
+    1882,
+    2350
+  ],
+  "Other|Interdisciplinary|multipleChoice|text": [
+    1120
+  ],
+  "Other|Film Studies|multipleChoice|text": [
+    1133,
+    1512
+  ],
+  "Engineering|Electrical Engineering|multipleChoice|img": [
+    1138,
+    1139,
+    1215
+  ],
+  "Other|Earth Science|multipleChoice|text": [
+    1159,
+    1234
+  ],
+  "Physics|Acoustics|exactMatch|text": [
+    1183
+  ],
+  "Other|Musicology|multipleChoice|img": [
+    1241,
+    1325
+  ],
+  "Other|Geology|multipleChoice|text": [
+    1246
+  ],
+  "Humanities/Social Science|Corporate Eco-Efficiency|exactMatch|text": [
+    1256
+  ],
+  "Engineering|Aerospace Engineering|multipleChoice|text": [
+    1263
+  ],
+  "Engineering|Lighting Design|exactMatch|text": [
+    1266
+  ],
+  "Computer Science/AI|Quantum Computing|exactMatch|text": [
+    1296
+  ],
+  "Math|Shape Rotation|multipleChoice|text": [
+    1308,
+    1683,
+    1705,
+    1890,
+    1926
+  ],
+  "Other|Design|exactMatch|img": [
+    1311
+  ],
+  "Humanities/Social Science|Literature|exactMatch|text": [
+    1328,
+    1830,
+    2254,
+    2446,
+    2488
+  ],
+  "Humanities/Social Science|Lojban|multipleChoice|text": [
+    1330
+  ],
+  "Biology/Medicine|Dentistry|exactMatch|text": [
+    1338
+  ],
+  "Physics|Physics|multipleChoice|img": [
+    1340,
+    1572,
+    1869
+  ],
+  "Physics|Astronomy|exactMatch|text": [
+    1348,
+    1580,
+    1764,
+    2052,
+    2205,
+    2388
+  ],
+  "Other|Geology|exactMatch|text": [
+    1364
+  ],
+  "Math|Graph Theory|exactMatch|img": [
+    1368
+  ],
+  "Engineering|Biomedical Engineering|multipleChoice|text": [
+    1396
+  ],
+  "Other|Go|exactMatch|text": [
+    1402,
+    1403
+  ],
+  "Computer Science/AI|Visual Reasoning|exactMatch|img": [
+    1471
+  ],
+  "Other|Geology|exactMatch|img": [
+    1510,
+    1525,
+    1529
+  ],
+  "Other|Earth Science|exactMatch|img": [
+    1515
+  ],
+  "Other|Earth Science|multipleChoice|img": [
+    1517
+  ],
+  "Biology/Medicine|Transmission Model|exactMatch|text": [
+    1552
+  ],
+  "Biology/Medicine|Orthopedics|multipleChoice|text": [
+    1553
+  ],
+  "Other|Ballroom Dancing|multipleChoice|text": [
+    1568
+  ],
+  "Computer Science/AI|Robotics|exactMatch|img": [
+    1573
+  ],
+  "Math|Applied Mathematics|exactMatch|img": [
+    1594,
+    1953,
+    2432,
+    2459,
+    2495
+  ],
+  "Biology/Medicine|Public Health|multipleChoice|text": [
+    1598
+  ],
+  "Humanities/Social Science|Poetry|exactMatch|img": [
+    1643,
+    1779
+  ],
+  "Other|Geography|exactMatch|img": [
+    1646,
+    1647,
+    2327,
+    2328,
+    2329,
+    2336,
+    2346,
+    2347
+  ],
+  "Humanities/Social Science|Paleography|multipleChoice|img": [
+    1651,
+    1827
+  ],
+  "Computer Science/AI|Path Finding|multipleChoice|text": [
+    1686
+  ],
+  "Chemistry|Computational Chemistry|multipleChoice|text": [
+    1690
+  ],
+  "Humanities/Social Science|Paleography|exactMatch|text": [
+    1691
+  ],
+  "Computer Science/AI|Cognitive Science|exactMatch|text": [
+    1713,
+    1976
+  ],
+  "Humanities/Social Science|Poetry|multipleChoice|text": [
+    1716,
+    1755,
+    1756,
+    1880,
+    1919,
+    2318,
+    2324
+  ],
+  "Computer Science/AI|Cypher|multipleChoice|text": [
+    1719
+  ],
+  "Humanities/Social Science|Religious Studies, Classics, Trivia|exactMatch|text": [
+    1722
+  ],
+  "Biology/Medicine|Anatomy|multipleChoice|text": [
+    1761,
+    1762,
+    2191
+  ],
+  "Biology/Medicine|Immunohistochemistry|multipleChoice|img": [
+    1766
+  ],
+  "Humanities/Social Science|Russian Literature|multipleChoice|text": [
+    1804
+  ],
+  "Physics|Photonics|multipleChoice|text": [
+    1810
+  ],
+  "Humanities/Social Science|Runology|exactMatch|img": [
+    1819
+  ],
+  "Other|Geography|exactMatch|text": [
+    1826
+  ],
+  "Computer Science/AI|Information Systems|exactMatch|text": [
+    1841
+  ],
+  "Humanities/Social Science|Poetry|multipleChoice|img": [
+    1847,
+    2003
+  ],
+  "Computer Science/AI|Information Theory|multipleChoice|text": [
+    1855
+  ],
+  "Engineering|Mechanical Engineering|multipleChoice|text": [
+    1871
+  ],
+  "Biology/Medicine|Veterinary Medicine|multipleChoice|img": [
+    1884
+  ],
+  "Humanities/Social Science|Russian Literature|exactMatch|text": [
+    1904
+  ],
+  "Engineering|Nanotechnology|exactMatch|text": [
+    1905,
+    1930
+  ],
+  "Biology/Medicine|Veterinary Medicine|exactMatch|img": [
+    1908
+  ],
+  "Computer Science/AI|Image Processing|multipleChoice|img": [
+    1909
+  ],
+  "Other|Visual Imagery|multipleChoice|img": [
+    1920
+  ],
+  "Humanities/Social Science|Education|exactMatch|text": [
+    1933
+  ],
+  "Biology/Medicine|Physiology|multipleChoice|text": [
+    1938
+  ],
+  "Computer Science/AI|Quantization Scheme|exactMatch|text": [
+    1944
+  ],
+  "Computer Science/AI|Cryptography|multipleChoice|text": [
+    1946
+  ],
+  "Other|Game Of Go|multipleChoice|text": [
+    1965
+  ],
+  "Math|Set Theory|exactMatch|text": [
+    1967
+  ],
+  "Math|Applied Mathematics|multipleChoice|img": [
+    1972
+  ],
+  "Other|Geophyics/Geodynamics|exactMatch|text": [
+    1987
+  ],
+  "Biology/Medicine|Biophysics|exactMatch|text": [
+    2013,
+    2178
+  ],
+  "Other|Stochastic Geometry|exactMatch|text": [
+    2020
+  ],
+  "Other|Games|multipleChoice|text": [
+    2022
+  ],
+  "Biology/Medicine|Biotechnology|exactMatch|text": [
+    2034
+  ],
+  "Biology/Medicine|Genomics|multipleChoice|text": [
+    2043
+  ],
+  "Computer Science/AI|Theoretical Computer Science|exactMatch|text": [
+    2044
+  ],
+  "Physics|High Energy Physics And Nuclear Physics|multipleChoice|text": [
+    2060
+  ],
+  "Engineering|Architecture|multipleChoice|img": [
+    2084,
+    2088
+  ],
+  "Engineering|Wireless Communication|exactMatch|text": [
+    2085
+  ],
+  "Biology/Medicine|Pathology|multipleChoice|text": [
+    2091
+  ],
+  "Biology/Medicine|Bioinformatics|exactMatch|img": [
+    2101,
+    2104
+  ],
+  "Math|Computational Combinatorics|exactMatch|text": [
+    2130,
+    2240
+  ],
+  "Other|Earth Science|exactMatch|text": [
+    2156
+  ],
+  "Computer Science/AI|Spatial Recognition|exactMatch|text": [
+    2167
+  ],
+  "Biology/Medicine|Molecular Biology|exactMatch|img": [
+    2176
+  ],
+  "Physics|Crystallography|exactMatch|text": [
+    2186
+  ],
+  "Math|Mathematical Logic|exactMatch|text": [
+    2204
+  ],
+  "Biology/Medicine|Microbiology|exactMatch|img": [
+    2207
+  ],
+  "Biology/Medicine|Dentistry|exactMatch|img": [
+    2209
+  ],
+  "Humanities/Social Science|Comparative Literature|multipleChoice|text": [
+    2248
+  ],
+  "Physics|Quantum Logic|exactMatch|text": [
+    2275
+  ],
+  "Math|Computational Mathematics|exactMatch|text": [
+    2279
+  ],
+  "Engineering|Bioeletronics|multipleChoice|text": [
+    2285
+  ],
+  "Other|Puzzle|exactMatch|img": [
+    2289
+  ],
+  "Other|Chess And Topology|exactMatch|text": [
+    2306
+  ],
+  "Humanities/Social Science|Poetry|exactMatch|text": [
+    2307
+  ],
+  "Other|Movies|multipleChoice|text": [
+    2367
+  ],
+  "Math|Complex Adaptive Systems|exactMatch|text": [
+    2374
+  ],
+  "Engineering|Computer Engineering|multipleChoice|img": [
+    2389
+  ],
+  "Other|League Of Legends|exactMatch|text": [
+    2392,
+    2393,
+    2394
+  ],
+  "Computer Science/AI|Handwriting Recognition|exactMatch|img": [
+    2397,
+    2399
+  ],
+  "Humanities/Social Science|Chinese Literature|exactMatch|text": [
+    2398
+  ],
+  "Math|Advanced Applied Math|exactMatch|img": [
+    2400,
+    2420
+  ],
+  "Humanities/Social Science|Historical Studies|exactMatch|img": [
+    2401
+  ],
+  "Other|Multidomain (Trivia)|exactMatch|text": [
+    2403,
+    2418,
+    2473
+  ],
+  "Physics|Quantum Physics|exactMatch|img": [
+    2404,
+    2462,
+    2480,
+    2491
+  ],
+  "Math|Advanced Multi-Equation Systems|exactMatch|text": [
+    2405,
+    2406,
+    2416,
+    2430,
+    2442,
+    2455
+  ],
+  "Chemistry|Combined Chemistry And Trivia|exactMatch|text": [
+    2407,
+    2487,
+    2492
+  ],
+  "Engineering|Engineering Physics|exactMatch|img": [
+    2408,
+    2449,
+    2452,
+    2463,
+    2476
+  ],
+  "Physics|Condensed Matter Physics|exactMatch|img": [
+    2409,
+    2421,
+    2424,
+    2457
+  ],
+  "Humanities/Social Science|Cultural Studies (General)|exactMatch|text": [
+    2410,
+    2439,
+    2479,
+    2484
+  ],
+  "Math|Geometric Reasoning|exactMatch|text": [
+    2411,
+    2454
+  ],
+  "Math|Advanced Applied Math|exactMatch|text": [
+    2412,
+    2431,
+    2435,
+    2464,
+    2499
+  ],
+  "Humanities/Social Science|Foremost Classical: Period Functions|exactMatch|text": [
+    2414,
+    2493
+  ],
+  "Engineering|Chemical Engineering|exactMatch|img": [
+    2417,
+    2453,
+    2481
+  ],
+  "Physics|Classical Physics|exactMatch|text": [
+    2419,
+    2458
+  ],
+  "Math|Mathematical Physics: Functional Equations|exactMatch|text": [
+    2422,
+    2427,
+    2437,
+    2441
+  ],
+  "Chemistry|Combined Chemistry And Trivia|exactMatch|img": [
+    2423
+  ],
+  "Physics|Foremost Quantum: Particle Physics|exactMatch|text": [
+    2425,
+    2447,
+    2485
+  ],
+  "Humanities/Social Science|Political And Social Studies|exactMatch|text": [
+    2426
+  ],
+  "Physics|Foremost Quantum: Particle Physics|exactMatch|img": [
+    2428
+  ],
+  "Math|Geometric Reasoning|exactMatch|img": [
+    2429,
+    2440
+  ],
+  "Math|Mathematical Physics: Pdes|exactMatch|text": [
+    2433,
+    2450,
+    2468,
+    2489
+  ],
+  "Biology/Medicine|Epidemiology|exactMatch|img": [
+    2436,
+    2444
+  ],
+  "Physics|Mathematical Physics: Odes|exactMatch|text": [
+    2443,
+    2460,
+    2467,
+    2472,
+    2478
+  ],
+  "Physics|Classical Physics|exactMatch|img": [
+    2445,
+    2497
+  ],
+  "Physics|Quantum Physics|exactMatch|text": [
+    2448
+  ],
+  "Physics|Quantum And Classical Physics Combined|exactMatch|img": [
+    2456
+  ],
+  "Humanities/Social Science|Foremost Classical: Period Functions|exactMatch|img": [
+    2465
+  ],
+  "Physics|Quantum And Classical Physics Combined|exactMatch|text": [
+    2466,
+    2474,
+    2490
+  ],
+  "Engineering|Chemical Engineering|multipleChoice|img": [
+    2486
+  ],
+  "Humanities/Social Science|Multidomain (Humanities)|exactMatch|text": [
+    2494
+  ]
+}

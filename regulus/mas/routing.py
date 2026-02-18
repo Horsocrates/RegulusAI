@@ -12,9 +12,9 @@ from dataclasses import dataclass, field
 class DomainRoute:
     """Routing config for a single domain at a given complexity."""
     domain: str = ""
-    model: str = "gpt-4o-mini"
+    model: str = "opus"
     temperature: float = 0.0
-    max_tokens: int = 4096
+    max_tokens: int = 64000
 
 
 @dataclass
@@ -33,7 +33,7 @@ class RoutingConfig:
         easy_route = easy_routes.get(domain)
         if easy_route:
             return easy_route.model
-        return "gpt-4o-mini"
+        return "opus"
 
     def get_route(self, complexity: str, domain: str) -> DomainRoute:
         """Get the full route for a domain at a given complexity."""
@@ -48,24 +48,19 @@ class RoutingConfig:
         """Default routing configuration."""
         domains = ["D1", "D2", "D3", "D4", "D5", "D6"]
 
-        # Easy: all gpt-4o-mini
-        easy = {d: DomainRoute(domain=d, model="gpt-4o-mini") for d in domains}
+        # Easy: all sonnet (cost-efficient Anthropic)
+        easy = {d: DomainRoute(domain=d, model="sonnet") for d in domains}
 
-        # Medium: D1+D5 get gpt-4o, rest gpt-4o-mini
+        # Medium: D1+D2 sonnet, D3-D6 opus (thinking)
         medium = {}
         for d in domains:
-            if d in ("D1", "D5"):
-                medium[d] = DomainRoute(domain=d, model="gpt-4o")
+            if d in ("D1", "D2"):
+                medium[d] = DomainRoute(domain=d, model="sonnet")
             else:
-                medium[d] = DomainRoute(domain=d, model="gpt-4o-mini")
+                medium[d] = DomainRoute(domain=d, model="opus")
 
-        # Hard: D4+D5 get deepseek-chat (reasoning-heavy), rest gpt-4o-mini
-        hard = {}
-        for d in domains:
-            if d in ("D4", "D5"):
-                hard[d] = DomainRoute(domain=d, model="deepseek")
-            else:
-                hard[d] = DomainRoute(domain=d, model="gpt-4o-mini")
+        # Hard: all opus (thinking) for maximum capability
+        hard = {d: DomainRoute(domain=d, model="opus") for d in domains}
 
         return cls(routes={"easy": easy, "medium": medium, "hard": hard})
 

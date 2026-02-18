@@ -46,7 +46,7 @@ class AgentConfigSchema(BaseModel):
     model: str = "gpt-4o-mini"
     instructions: str = ""
     temperature: float = Field(default=0.2, ge=0.0, le=2.0)
-    max_tokens: int = Field(default=2048, ge=1, le=32768)
+    max_tokens: int = Field(default=64000, ge=1, le=128000)
     enabled: bool = True
 
 

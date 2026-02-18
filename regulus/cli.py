@@ -57,7 +57,7 @@ def _create_client(provider: str) -> "LLMClient":
                        "Set it in .env or as an environment variable.", err=True)
             raise typer.Exit(1)
         from .llm.claude import ClaudeClient
-        model = os.environ.get("REGULUS_DEFAULT_MODEL", "claude-sonnet-4-20250514")
+        model = os.environ.get("REGULUS_DEFAULT_MODEL", "claude-opus-4-6")
         return ClaudeClient(api_key=api_key, model=model)
 
     elif provider == "openai":

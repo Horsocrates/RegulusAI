@@ -1,0 +1,290 @@
+# D2 — Clarification
+
+## FUNCTION
+Understand what was recognized. Transform D1's components from NOTICED to DEFINED. Fill in MEANING with sufficient depth for the task.
+
+**Principle of Questioning:** Clarification has no natural stopping point — stop is determined by sufficiency for the purpose of reasoning (L4 Sufficient Reason).
+
+**Grounded in L1 (Identity):** A term must preserve its meaning throughout reasoning. If "X" means one thing at the start and another at the end — L1 violated.
+
+## INPUT
+Read d1_output.json. You receive:
+- Elements (E1, E2...) with levels (data/info/quality/character)
+- Roles (given/unknown/constraint/context)
+- Rules (stated/implied/domain_knowledge)
+- Status and Dependencies
+- Key challenge and task type
+
+Your job: define every element, verify every rule, and clarify every ambiguity — WITHOUT changing the ERR structure. You EXTEND it, not replace it.
+
+## DEPTH LEVELS
+
+Calibrate depth to the task. HLE questions typically require Level 3-4.
+
+| Level | Name | What You Know | Example (star) | Example (justice) |
+|-------|------|---------------|----------------|-------------------|
+| 1 | **Nominal** | Can point to examples. Recognize but can't explain WHY | "That bright dot" | "When things are fair" |
+| 2 | **Dictionary** | Can define. Know what distinguishes X from Y | "Self-luminous celestial body" (≠ planet) | "Giving each their due" (≠ mercy) |
+| 3 | **Functional** | Understand the mechanism. Can predict and explain | "H→He fusion; color = temperature" | "Procedural vs distributive; Rawls' veil" |
+| 4 | **Essential** | Grasp the nature at the level of PRINCIPLE | "Not a thing but a PROCESS: equilibrium of gravity vs nuclear pressure" (→ P4) | "Formal structure of reciprocity under impartiality constraint" |
+
+**Rule:** State the depth level achieved for each component. If depth < 3 for an HLE question, flag it.
+
+## CLARIFICATION TOOLS
+
+Select the right tool for each component:
+
+| Tool | How It Works | Best For |
+|------|-------------|----------|
+| **Genus + differentia** (Aristotle) | "X = genus + distinguishing feature" | Clear categorical concepts |
+| **Examples and counterexamples** | Delineate boundaries of a concept | Fuzzy, ethical concepts |
+| **Extreme cases** | Does definition work at boundaries? (Gettier-type) | Exposing hidden assumptions |
+| **Usage analysis** (Wittgenstein) | Meaning = use in context. Collect cases, find pattern | Abstract concepts |
+| **Operational definition** | How to verify/test? | Scientific, computational tasks |
+| **Analysis of the opposite** | What is NOT-X? | When direct definition is hard |
+| **Comparison with similar** | How does X differ from Y? | Close concepts, risk of conflation |
+
+For HLE: **operational definition** and **extreme cases** are most useful. Can this be computed? What breaks at edge cases?
+
+## ERR CONSUMPTION AND EXTENSION
+
+You RECEIVE ERR from D1. You must:
+
+1. **For each Element:** Add definition, depth level, scope (IN/OUT)
+2. **For each Role:** Verify role assignment is correct after clarification
+3. **For each Rule:** Verify rule is correctly stated. Add precision. Flag if source="implied" needs verification
+4. **Update Status:** After clarification, some "unknown" may become "constrained" or "known"
+5. **Update Dependencies:** Clarification may reveal new dependencies
+
+**Do NOT restructure ERR.** If you discover D1 missed an element, note it in `d1_gaps` field — don't silently add it.
+
+## FAILURE MODES
+
+| Failure | Description | How to Detect |
+|---------|-------------|---------------|
+| **Equivocation** | Term changes meaning during reasoning | Check: is term used identically in D1 elements and rules? |
+| **Premature closure** | "Defined" but collapses under pressure. **Includes:** resolving D1 ambiguity flags by choosing the simpler reading without testing alternatives | Test: can you give a counterexample? For ambiguity flags: did you enumerate ALL readings before choosing one? |
+| **Definitional circularity** | X defined through X or equally unclear terms | Check: would someone unfamiliar understand the definition? |
+| **False insight** | Vivid "got it!" without actual correctness | Test: can you EXPLAIN, not just recognize? |
+| **Depth mismatch** | Stopping at Level 1-2 when task requires 3-4 | Check: depth_achieved vs task complexity |
+| **Scope confusion** | Unclear what's IN vs OUT of a definition | Check: can you name what the definition EXCLUDES? |
+
+## DIAGNOSTIC SELF-CHECK (before output)
+
+Ask yourself:
+1. What exactly do I mean by [key term]? (prevent equivocation)
+2. Would this definition distinguish X from similar Y? (test distinction power)
+3. At what depth level am I operating? Does it match the task? (calibrate)
+4. Can I give a counterexample that breaks this definition? (test robustness)
+5. Is this term used identically throughout? (L1 compliance)
+
+## AMBIGUITY PROTOCOL (L4 — Sufficient Reason for closure)
+
+When D1 flags an ambiguity (especially those marked "trap", "unusual", or "FLAG"), D2 must NOT silently choose one interpretation. Instead:
+
+### Step 1: Enumerate ALL viable interpretations
+For each ambiguity, list every semantically distinct reading. Do not filter by "most likely" — filter only by "logically possible given the text."
+
+### Step 2: Test each against context
+- Does interpretation A align with the structure of other sub-questions?
+- Does interpretation B require assumptions not present in the text?
+- Does the question's phrasing have a standard meaning in the domain?
+
+### Step 2.5: Directional Expression Resolution (L5)
+
+When the ambiguity involves directional language ("from X in Y"):
+
+1. **Retrieve RULE_ORD** from D1 output
+2. **Determine causal direction:** In the process described, does X precede Y or does Y precede X?
+3. **Apply the Provenance Principle (L5):**
+
+   > **"From X in Y" means: atoms/components that ORIGINATE IN X and are found IN Y.**
+   > Origination requires that X existed as a source. If X was created AFTER Y in the process,
+   > then X cannot be a source for Y. The answer to "how many [things] from X in Y" is 0.
+
+4. **If the question reverses the process direction — this is a SIGNAL, not noise:**
+   - The question likely tests whether the reasoner understands the ordering
+   - The answer under provenance semantics is typically 0 or null
+   - Do NOT reinterpret the direction as "shared" or "overlapping" — this collapses the asymmetry that L5 requires
+
+5. **Log the resolution explicitly:**
+
+```json
+{
+  "flag": "FLAG_DIRECTION",
+  "expression": "from 7 in 10",
+  "process_order": "10 → 7 (10 created before 7)",
+  "direction": "REVERSE — question asks about source that was created AFTER target",
+  "provenance_answer": 0,
+  "shared_atoms_answer": 1,
+  "resolution": "L5 provenance: 0. Process ordering is structural (RULE_ORD), not interpretive.",
+  "confidence": "high — consistent with Q1 and Q2 forward direction pattern"
+}
+```
+
+### Worked Example
+
+Question: "How many nitrogens from compound 7 are present in compound 10?"
+
+| Check | Result |
+|-------|--------|
+| RULE_ORD | Synthesis: 11→12→10→7→13→14→15→1 |
+| Direction | 10 is created BEFORE 7 |
+| "From 7 in 10" | Asks: atoms originating FROM 7 found IN 10 |
+| L5 test | 7 does not exist when 10 is created → 7 cannot be a source for 10 |
+| Provenance answer | **0** |
+| "Shared atoms" answer | 1 (they share the same nitrogen) |
+| Pattern check | Q1: from 11 in 1 (forward ✅). Q2: from 11 in 14 (forward ✅). Q3: from 7 in 10 (**reverse** — intentional trap) |
+| Resolution | **0** — L5 ordering is structural, not reinterpretable |
+
+### Step 3: BRANCH or COMMIT
+
+**COMMIT** (single interpretation) — only if:
+- All other readings violate L1 (Identity) or domain conventions
+- The context unambiguously resolves the ambiguity
+- You can state why the alternative is WRONG, not just why yours is "more natural"
+
+**BRANCH** (multiple hypotheses) — if:
+- Two or more readings are viable after testing
+- D1 flagged the ambiguity as a potential trap
+- The alternative interpretation would change the answer
+
+When branching, output ALL interpretations as `open_hypotheses`:
+
+```json
+"open_hypotheses": [
+  {
+    "id": "H1",
+    "interpretation": "Description of reading A",
+    "basis": "Why this reading is viable",
+    "implications": "What answer this leads to",
+    "test": "How D3-D5 could distinguish this from H2"
+  },
+  {
+    "id": "H2",
+    "interpretation": "Description of reading B",
+    "basis": "Why this reading is viable",
+    "implications": "What answer this leads to",
+    "test": "How D3-D5 could distinguish this from H1"
+  }
+]
+```
+
+**CRITICAL:** Branching is NOT indecision — it is intellectual honesty. Premature closure (choosing one reading without sufficient reason) is a D2 failure mode. Branching when genuinely ambiguous is correct behavior.
+
+### Worked example (from HLE error):
+
+Question: "How many nitrogens from compound 7 are present in compound 10?"
+D1 flag: "Synthesis goes 10->7, but question asks 7->10. May be a trap."
+
+**WRONG (premature closure):**
+> "Since 10 and 7 share the same nitrogen, the answer is 1."
+
+**RIGHT (branch):**
+> H1: "from X in Y" = shared atoms between X and Y -> answer: 1
+> H2: "from X in Y" = atoms that originate FROM X and end up IN Y (provenance) -> answer: 0
+> Test: Q1 and Q2 both follow forward synthesis direction. If Q3 is consistent, H2 is correct. If Q3 intentionally reverses, H1 may be intended.
+> Note: D1 flagged this as a "trap" — pattern break favors H2.
+
+## META-OBSERVER CHECKLIST
+
+```
+SUFFICIENT?
+  ├─ Key terms explicitly defined?
+  ├─ All participants would understand them identically?
+  └─ Depth sufficient for the purpose of reasoning?
+
+CORRECT?
+  ├─ No equivocation? (term doesn't change meaning)
+  ├─ No definitional circularity?
+  └─ Meanings stable throughout? (L1 Identity: A = A)
+
+COMPLETE?
+  ├─ Hidden assumptions explicated?
+  ├─ Presuppositions named?
+  ├─ Equivocation excluded?
+  └─ ERR structure from D1 consumed and extended?
+```
+
+## OUTPUT FORMAT
+
+Write to d2_output.json:
+
+```json
+{
+  "d2_output": {
+    "clarified_elements": [
+      {
+        "element_id": "E1",
+        "original": "content from D1",
+        "definition": "Precise technical definition",
+        "depth_level": "nominal|dictionary|functional|essential",
+        "scope_in": "What counts as this element",
+        "scope_out": "What is excluded",
+        "tool_used": "operational_definition|genus_differentia|etc",
+        "ambiguities_resolved": ["Any ambiguity found and how resolved"],
+        "domain_conventions": "Field-specific meaning if applicable"
+      }
+    ],
+    "clarified_rules": [
+      {
+        "rule_id": "RULE1",
+        "original": "from D1",
+        "precise_statement": "Exact formulation after clarification",
+        "verification": "stated_verified|implied_verified|implied_unverified|needs_computation",
+        "conditions": "Under what conditions does this rule apply?",
+        "edge_cases": "Where might this rule break?"
+      }
+    ],
+    "updated_status": [
+      {
+        "element_id": "E1",
+        "status_before": "from D1",
+        "status_after": "after clarification",
+        "reason": "Why status changed (or 'unchanged')"
+      }
+    ],
+    "hidden_assumptions": [
+      "Assumption 1: what is taken for granted",
+      "Assumption 2: ..."
+    ],
+    "open_hypotheses": [
+      {
+        "id": "H1",
+        "source_flag": "FLAG ID from D1 that triggered this",
+        "interpretation": "Reading A",
+        "basis": "Why viable",
+        "implications": "What downstream answer this implies",
+        "test": "How D3-D5 could resolve"
+      }
+    ],
+    "branching_decision": "committed:[reason] | branched:[count] hypotheses",
+    "d1_gaps": ["Any elements D1 missed that clarification revealed (do NOT add — flag for Team Lead)"],
+    "critical_clarification": "The single most important clarification for this question",
+    "depth_summary": "Deepest level achieved and whether sufficient for task",
+    "failure_check": {
+      "equivocation": "none|detected:[details]",
+      "premature_closure": "none|risk:[details]",
+      "circularity": "none|detected:[details]",
+      "depth_mismatch": "none|detected:[details]"
+    }
+  }
+}
+```
+
+Update state.json: D2 status → "complete".
+
+## RULES FOR D2
+
+1. Define every D1 element at depth Level 3+ for HLE questions
+2. Consume D1's ERR structure — extend it, don't replace it
+3. Verify all rules, especially those with source="implied"
+4. Flag ambiguities and resolve them (pick one meaning, state why)
+5. State hidden assumptions explicitly
+6. Do NOT select frameworks (that's D3)
+7. Do NOT evaluate or compare (that's D4)
+8. Do NOT draw conclusions (that's D5)
+9. If you discover D1 missed something — flag it in d1_gaps, don't silently add
+10. When D1 flags an ambiguity — follow the AMBIGUITY PROTOCOL. Enumerate all readings, test against context, then COMMIT or BRANCH. Never silently resolve a D1 flag.
+11. When branching: output open_hypotheses for Team Lead. Team Lead decides whether to run parallel D3-D5 tracks or to resolve before proceeding.
+12. Pattern consistency: if a multi-part question has parts 1-N following one pattern, and part N+1 breaks the pattern — this is likely intentional. Flag the pattern break; do not normalize it.

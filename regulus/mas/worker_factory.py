@@ -22,12 +22,15 @@ from regulus.mas.table import DOMAIN_CODES
 
 # Model string -> (provider, model_name)
 MODEL_REGISTRY = {
+    # Anthropic (default: Opus 4.6 with thinking)
+    "opus": ("anthropic", "claude-opus-4-6"),
+    "opus-4.6": ("anthropic", "claude-opus-4-6"),
+    "sonnet": ("anthropic", "claude-sonnet-4-5-20250929"),
+    "sonnet-4.5": ("anthropic", "claude-sonnet-4-5-20250929"),
+    "haiku": ("anthropic", "claude-haiku-4-5-20251001"),
     # OpenAI
     "gpt-4o": ("openai", "gpt-4o"),
     "gpt-4o-mini": ("openai", "gpt-4o-mini"),
-    # Anthropic
-    "sonnet": ("anthropic", "claude-sonnet-4-20250514"),
-    "haiku": ("anthropic", "claude-haiku-4-5-20251001"),
     # DeepSeek
     "deepseek": ("deepseek", "deepseek-chat"),
     "deepseek-chat": ("deepseek", "deepseek-chat"),

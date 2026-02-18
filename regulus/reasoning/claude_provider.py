@@ -22,9 +22,9 @@ class ClaudeThinkingProvider(ReasoningProvider):
     def __init__(
         self,
         api_key: str,
-        model: str = "claude-sonnet-4-5-20250929",
+        model: str = "claude-opus-4-6",
         budget_tokens: int = 10000,
-        max_tokens: int = 16000,
+        max_tokens: int = 64000,
         interleaved_thinking: bool = False,
         temperature: float = 1.0,
         use_tos_prompt: bool = False,
