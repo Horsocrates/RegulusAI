@@ -1,0 +1,11 @@
+{
+  "question_id": "676cc5d177aae7d3ee8caaeb",
+  "subject": "Physics (Quantum Many-Body)",
+  "answer_type": "exactMatch",
+  "regulus_answer": "4\\omega - 4J(\\cos(\\pi/7) + \\cos(3\\pi/7))",
+  "confidence": 85,
+  "domains_used": ["D1", "D2", "D3", "D4", "D5", "D6"],
+  "wall_time_minutes": 6,
+  "estimated_cost_usd": 1.20,
+  "reasoning_summary": "Bose-Hubbard N=7 ring, U->inf = hard-core bosons = spinless fermions. 4 fermions (even) use antiperiodic BC: k_n = pi(2n+1)/7. Fill 4 lowest: n=0,6 (degenerate) and n=1,5 (degenerate). E = 4w - 4J(cos(pi/7) + cos(3pi/7))."
+}

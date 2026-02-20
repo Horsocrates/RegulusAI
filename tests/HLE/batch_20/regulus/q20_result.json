@@ -1,0 +1,11 @@
+{
+  "question_id": "670fc6e308c7aaef3bd745e2",
+  "subject": "Mathematics (Polynomial Matrix Theory)",
+  "answer_type": "exactMatch",
+  "regulus_answer": "I",
+  "confidence": 55,
+  "domains_used": ["D1", "D2", "D3", "D4", "D5", "D6"],
+  "wall_time_minutes": 8,
+  "estimated_cost_usd": 1.60,
+  "reasoning_summary": "GCRD of P1=[s^2+s,-s;-(s^2+1),s^2] and P2=[s,0;-(s+1),1]. det(P1)=s(s-1)(s^2+s+1), det(P2)=s, gcd=s. At s=0: right null spaces differ ([0,1]^T vs [1,1]^T), so no common right factor with root at s=0. Right Euclidean algorithm: P1=Q*P2+R where R=[0,0;-1,0], then P2=Q'*R+R' where R'=[0,0;0,1]. Bezout identity: [0,-1;0,0]*R+[0,0;0,1]*R'=I, confirming X*P1+Y*P2=I exists. P1 and P2 are right coprime. GCRD = identity matrix I."
+}

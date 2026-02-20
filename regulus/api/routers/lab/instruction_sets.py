@@ -16,6 +16,7 @@ Endpoints:
 
 from __future__ import annotations
 
+import logging
 import os
 import shutil
 from datetime import datetime, timezone
@@ -24,6 +25,8 @@ from typing import Optional
 
 from fastapi import APIRouter, Body
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/lab/instruction-sets", tags=["lab-instruction-sets"])
 
@@ -177,6 +180,47 @@ async def list_instruction_sets():
     return sets
 
 
+@router.get("/resolve-preview")
+async def resolve_preview(
+    set_id: str = "default",
+    skill_type: Optional[str] = None,
+    paradigm_id: Optional[str] = None,
+):
+    """
+    Preview instruction resolution for all roles.
+
+    Shows how the 6-level fallback chain resolves for each D1-D6 role
+    given a specific instruction set, skill type, and paradigm.
+    """
+    results = {}
+    for role, filename in ROLE_TO_FILE.items():
+        content, trace = resolve_instruction(
+            set_id=set_id,
+            role=role,
+            skill_type=skill_type,
+            paradigm_id=paradigm_id,
+        )
+        resolved_level = "none"
+        for step in trace:
+            if step["hit"]:
+                resolved_level = step["level"]
+                break
+        results[role] = {
+            "filename": filename,
+            "resolved_level": resolved_level,
+            "has_content": bool(content),
+            "content_length": len(content),
+            "trace": trace,
+        }
+    return {
+        "set_id": set_id,
+        "skill_type": skill_type,
+        "paradigm_id": paradigm_id,
+        "roles": results,
+        "levels": RESOLUTION_LEVELS,
+    }
+
+
 @router.get("/{set_id}", response_model=InstructionSetDetail)
 async def get_instruction_set(set_id: str):
     """Get full detail of an instruction set with resolved file contents."""
@@ -300,6 +344,138 @@ async def delete_instruction_set(set_id: str):
 # Runtime helper — used by Team Lead at test execution time
 # ---------------------------------------------------------------------------
 
+# Role → filename mapping
+ROLE_TO_FILE = {
+    "team_lead": "analyze.md",
+    "d1": "d1-recognize.md",
+    "d2": "d2-clarify.md",
+    "d3": "d3-framework.md",
+    "d4": "d4-compare.md",
+    "d5": "d5-infer.md",
+    "d6": "d6-reflect.md",
+}
+
+# 6-level resolution chain (most specific → least specific)
+RESOLUTION_LEVELS = [
+    "specialist",       # L1: _specialist/{paradigm}_{skill}/{filename}
+    "paradigm_skill",   # L2: {set_id}/_skill/{skill}/{filename}
+    "paradigm_domain",  # L3: {set_id}/{filename}
+    "skill",            # L4: _skill/{skill}/{filename}
+    "default_skill",    # L5: default/_skill/{skill}/{filename}
+    "default",          # L6: default/{filename}
+]
+
+
+def resolve_instruction(
+    set_id: str,
+    role: str,
+    skill_type: str | None = None,
+    paradigm_id: str | None = None,
+    override_file: str | None = None,
+) -> tuple[str, list[dict]]:
+    """
+    Resolve instruction markdown for a role using 3D fallback chain.
+
+    Dimensions: Paradigm (instruction set) × Skill Type × Domain (role).
+
+    6-level fallback (most specific → least specific):
+        L1 specialist:      _specialist/{paradigm}_{skill}/{filename}
+        L2 paradigm_skill:  {set_id}/_skill/{skill}/{filename}
+        L3 paradigm_domain: {set_id}/{filename}
+        L4 skill:           _skill/{skill}/{filename}
+        L5 default_skill:   default/_skill/{skill}/{filename}
+        L6 default:         default/{filename}
+
+    Args:
+        set_id: The instruction set ID (directory name).
+        role: One of 'team_lead', 'd1', ..., 'd6', or subprocess IDs.
+        skill_type: Cognitive skill type (decomposition/verification/recall/
+                    computation/conceptual). Optional.
+        paradigm_id: Paradigm config ID used for specialist lookup. Optional.
+        override_file: Explicit filename override.
+
+    Returns:
+        (content, trace) where trace is a list of
+        {"level": str, "path": str, "hit": bool} dicts.
+    """
+    filename = override_file or ROLE_TO_FILE.get(role)
+    if not filename:
+        filename = f"subprocess_{role}.md"
+
+    skill = skill_type.lower().strip() if skill_type else None
+    paradigm = paradigm_id.lower().strip() if paradigm_id else None
+
+    # Build candidate paths
+    candidates: list[tuple[str, Path]] = []
+
+    # L1: specialist — paradigm × skill × domain
+    if paradigm and skill:
+        candidates.append((
+            "specialist",
+            INSTRUCTIONS_DIR / "_specialist" / f"{paradigm}_{skill}" / filename,
+        ))
+
+    # L2: paradigm_skill — instruction set's skill overlay
+    if set_id and set_id != "default" and skill:
+        candidates.append((
+            "paradigm_skill",
+            INSTRUCTIONS_DIR / set_id / "_skill" / skill / filename,
+        ))
+
+    # L3: paradigm_domain — instruction set's own domain file
+    if set_id and set_id != "default":
+        candidates.append((
+            "paradigm_domain",
+            INSTRUCTIONS_DIR / set_id / filename,
+        ))
+
+    # L4: skill — global skill overlay
+    if skill:
+        candidates.append((
+            "skill",
+            INSTRUCTIONS_DIR / "_skill" / skill / filename,
+        ))
+
+    # L5: default_skill — default set's skill overlay
+    if skill:
+        candidates.append((
+            "default_skill",
+            INSTRUCTIONS_DIR / "default" / "_skill" / skill / filename,
+        ))
+
+    # L6: default
+    candidates.append((
+        "default",
+        INSTRUCTIONS_DIR / "default" / filename,
+    ))
+
+    # Walk the chain
+    trace: list[dict] = []
+    content = ""
+
+    for level, path in candidates:
+        try:
+            rel_path = str(path.relative_to(INSTRUCTIONS_DIR))
+        except ValueError:
+            rel_path = str(path)
+        hit = path.exists()
+        trace.append({"level": level, "path": rel_path, "hit": hit})
+        if hit:
+            content = path.read_text(encoding="utf-8")
+            logger.info(
+                "Instruction resolved: role=%s level=%s path=%s",
+                role, level, rel_path,
+            )
+            break
+
+    if not content:
+        logger.warning(
+            "Instruction not found: role=%s set_id=%s skill=%s paradigm=%s",
+            role, set_id, skill_type, paradigm_id,
+        )
+
+    return content, trace
+
 
 def load_instructions(
     set_id: str,
@@ -309,41 +485,11 @@ def load_instructions(
     """
     Load instruction markdown for a role from a set, with default fallback.
 
-    Args:
-        set_id: The instruction set ID (directory name)
-        role: One of 'team_lead', 'd1', 'd2', ..., 'd6', or subprocess IDs
-        override_file: If provided, use this filename instead of the default
-                       role-to-file mapping. Set via paradigm config UI.
-
-    Returns:
-        The instruction text (markdown).
+    Backward-compatible wrapper around resolve_instruction().
     """
-    # Map role to filename
-    role_to_file = {
-        "team_lead": "analyze.md",
-        "d1": "d1-recognize.md",
-        "d2": "d2-clarify.md",
-        "d3": "d3-framework.md",
-        "d4": "d4-compare.md",
-        "d5": "d5-infer.md",
-        "d6": "d6-reflect.md",
-    }
-
-    filename = override_file or role_to_file.get(role)
-    if not filename:
-        # Try subprocess files
-        filename = f"subprocess_{role}.md"
-
-    set_dir = INSTRUCTIONS_DIR / set_id
-    default_dir = INSTRUCTIONS_DIR / "default"
-
-    # Try set-specific first, then default
-    filepath = set_dir / filename
-    if filepath.exists():
-        return filepath.read_text(encoding="utf-8")
-
-    default_path = default_dir / filename
-    if default_path.exists():
-        return default_path.read_text(encoding="utf-8")
-
-    return ""
+    content, _ = resolve_instruction(
+        set_id=set_id,
+        role=role,
+        override_file=override_file,
+    )
+    return content

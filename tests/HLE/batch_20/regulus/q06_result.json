@@ -1,0 +1,11 @@
+{
+  "question_id": "66fd442c654e577c714fb724",
+  "subject": "Mathematics (Random Matrix Theory)",
+  "answer_type": "exactMatch",
+  "regulus_answer": "\\mu_0 \\log(1-\\Gamma) \\mathbf{Q}(\\mu_0)",
+  "confidence": 50,
+  "domains_used": ["D1", "D2", "D3", "D4", "D5", "D6"],
+  "wall_time_minutes": 10,
+  "estimated_cost_usd": 2.00,
+  "reasoning_summary": "Contour integral evaluated via residue theorem. Negatively-oriented contour encloses gamma_r but not mu_0. Deforming to pick up exterior residue at mu_0. At mu_0: Phi(mu_0)=Gamma (hint), z(mu_0)=0, Q(mu_0) well-defined. Residue computation yields mu_0*log(1-Gamma)*Q(mu_0)."
+}

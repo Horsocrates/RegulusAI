@@ -1,0 +1,62 @@
+[
+  {
+    "question_id": "673722c82bfc8ab579ed111f",
+    "answer": "B",
+    "confidence": 99,
+    "method": "D1-D6 pipeline: Discrete IVT on incentive function f(k) proves every 2-action symmetric game has >=1 PSNE. Tight bound via strict dominance (exactly 1 achievable)."
+  },
+  {
+    "question_id": "672e08c20a85795d0ed2d36b",
+    "answer": "\\int_0^\\beta d\\tau \\int d^3x\\, \\phi(\\tau,\\mathbf{x})\\,(-\\partial_\\tau^2 - \\nabla^2 + m^2)\\,\\phi(\\tau,\\mathbf{x})",
+    "confidence": 67,
+    "method": "D1-D6 pipeline: Standard thermal field theory. (phi, D phi) is L2 bilinear form with Euclidean Klein-Gordon operator D = -d_E^2 + m^2 over compactified spacetime."
+  },
+  {
+    "question_id": "6734956467d2904eebed3a09",
+    "answer": "D",
+    "confidence": 95,
+    "method": "D1-D6 pipeline: Poloidal angle theta is 2pi-periodic in toroidal systems. Fourier series is the canonical spectral method for periodic coordinates. Standard in all MHD codes (VMEC, HELENA, PEST)."
+  },
+  {
+    "question_id": "6720e184a9e1d1cc990cc8e9",
+    "answer": "0.175 m",
+    "confidence": 88,
+    "method": "D1-D6 pipeline: CoM conservation on frictionless surface. h=R-mu*d=0.10m, delta_x_rel=R+d+sqrt(R^2-(mu*d)^2)=0.8732m, delta_x_guide=m*delta_x_rel/(m+M)=0.1746m."
+  },
+  {
+    "question_id": "6715f373a35b028a9e88c09f",
+    "answer": "4.914e5",
+    "confidence": 82,
+    "method": "D1-D6 pipeline: Basquin + Palmgren-Miner. N(k*sigma_e)/N_e = k^(-100/9). Miner sum = 0.70 + 0.20*2.884 + 0.10*7.582 = 2.035. N_total = 10^6/2.035 = 4.914e5."
+  },
+  {
+    "question_id": "67364d570965d02f400bb6d2",
+    "answer": "B",
+    "confidence": 82,
+    "method": "D1-D6 pipeline: Ontario Bill 27 (Working for Workers Act) sale-of-business exception applies to both Bryan and Ryan as sellers. New employees' non-comp banned. Truck = gratuitous promise."
+  },
+  {
+    "question_id": "66fc5e611f5f3f3b48ae9566",
+    "answer": "E",
+    "confidence": 78,
+    "method": "D1-D6 pipeline: Sweetman et al. (2020, Frontiers in Pediatrics) showed GM-CSF positively correlates with Barkovich BG/W scores in neonatal encephalopathy (p=0.03)."
+  },
+  {
+    "question_id": "673623f4975e3df10169bceb",
+    "answer": "B",
+    "confidence": 82,
+    "method": "D1-D6 pipeline: TMT-Cl LD50 (12-16 mg/kg) is ~6-15x lower than TBT-Cl (100-200 mg/kg). LD50 is the gold-standard metric for acute toxicity comparison."
+  },
+  {
+    "question_id": "672d33eb99799bd05725ea25",
+    "answer": "A",
+    "confidence": 88,
+    "method": "D1-D6 pipeline: Key=williamtellnightcaportiz (Byron Manfred->William Tell, Nickleby->nightcap, Tartar Steppe->Ortiz). Beaufort decryption asks for 31st US president repeated 4x = Hoover x4."
+  },
+  {
+    "question_id": "672338c7348c6cb89bd6a7a4",
+    "answer": "6.58e-06",
+    "confidence": 97,
+    "method": "D1-D6 pipeline: P = 1/100 - sin(pi/50)/(2pi) = 6.578e-6. Interval centered on n=2 node at x=0.5a."
+  }
+]

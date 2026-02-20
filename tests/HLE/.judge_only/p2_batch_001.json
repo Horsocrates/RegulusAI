@@ -1,0 +1,82 @@
+[
+  {
+    "question_id": "673722c82bfc8ab579ed111f",
+    "participant": "p2_opus_tools",
+    "answer": "B",
+    "explanation": "In any n-player symmetric game with 2 actions, at least 1 pure strategy Nash equilibrium always exists. Proof: Let f(k)=payoff from action 0 when k others play 1, g(k)=payoff from action 1 when k others play 1, h(k)=g(k)-f(k). If h(0)<=0, all-0 is NE. If h(n-1)>=0, all-1 is NE. Otherwise h(0)>0 and h(n-1)<0, so by discrete IVT there exists j with h(j-1)>=0 and h(j)<=0, making the profile with j players playing action 1 a NE. A game where one action strictly dominates achieves exactly 1 PSNE (all-0), so the minimum is 1.",
+    "confidence": 85,
+    "tools_used": ["reasoning"]
+  },
+  {
+    "question_id": "672e08c20a85795d0ed2d36b",
+    "participant": "p2_opus_tools",
+    "answer": "ω_n² + k² + m²",
+    "explanation": "In the Matsubara (imaginary time) formalism, the partition function for a free neutral scalar field is Z = ∫Dϕ exp(-½(ϕ,Dϕ)) where D = -∂_τ² - ∇² + m². Expanding in Matsubara frequencies ω_n = 2πnT and momenta k, the inner product (ϕ,Dϕ) = T Σ_n ∫d³k/(2π)³ (ω_n² + k² + m²)|ϕ̃(ω_n,k)|². The eigenvalue of D per mode is ω_n² + k² + m², which is the inverse propagator in Euclidean momentum space.",
+    "confidence": 20,
+    "tools_used": ["reasoning"]
+  },
+  {
+    "question_id": "6734956467d2904eebed3a09",
+    "participant": "p2_opus_tools",
+    "answer": "D",
+    "explanation": "In toroidal systems (tokamaks, stellarators), the poloidal angle θ is periodic with period 2π. The natural spectral expansion for periodic functions is the Fourier series. Standard MHD equilibrium and stability codes (VMEC, PEST, HELENA) use double Fourier series expansions in both toroidal and poloidal angles: f(θ,φ) = Σ_{m,n} f_{mn} exp(imθ - inφ). The Fourier series is the standard spectral technique adapted for poloidal dependence.",
+    "confidence": 75,
+    "tools_used": ["reasoning"]
+  },
+  {
+    "question_id": "6720e184a9e1d1cc990cc8e9",
+    "participant": "p2_opus_tools",
+    "answer": "17.5 cm",
+    "explanation": "The guide is U-shaped: two quarter arcs (R=0.20m) connected by a horizontal straight section (d=0.50m). Height lost to friction: μ_D×d = 0.10m, so h = R - μ_D×d = 0.10m. The mass's horizontal displacement relative to the guide (from point A to height h on the right arc): Δx = R + d + √(R² - (R-h)²) = 0.70 + √0.03 = 0.8732m. By center of mass conservation on a frictionless surface: |s_guide| = m×Δx/(m+M) = 0.20×0.8732/1.00 = (7+√3)/50 ≈ 0.1746m ≈ 17.5cm.",
+    "confidence": 70,
+    "tools_used": ["python", "reasoning"]
+  },
+  {
+    "question_id": "6715f373a35b028a9e88c09f",
+    "participant": "p2_opus_tools",
+    "answer": "4.914e5",
+    "explanation": "Using Basquin relation σ_a = C×N^b with b=-0.09 and σ_uts = C×(0.5)^b. Assuming endurance limit at N_e = 10^6 cycles. Palmgren-Miner: 0.70×N_total/N_e + 0.20×N_total/(N_e×1.1^(1/b)) + 0.10×N_total/(N_e×1.2^(1/b)) = 1. With 1.1^(1/b)=0.3468 and 1.2^(1/b)=0.1319, denominator = 0.70 + 0.577 + 0.758 = 2.035. N_total = 10^6/2.035 = 4.914×10^5.",
+    "confidence": 40,
+    "tools_used": ["python", "reasoning"]
+  },
+  {
+    "question_id": "67364d570965d02f400bb6d2",
+    "participant": "p2_opus_tools",
+    "answer": "A",
+    "explanation": "Under Ontario's Working for Workers Act, 2021: (1) Bryan (CEO) has both non-compete and non-solicitation enforceable - CEO is an 'executive' exempt from the non-compete ban, and non-solicitation is reasonable for a CEO. (2) Ryan (Shift Manager) is NOT an executive, and the sale-of-business exemption arguably doesn't apply since he wasn't 'transferred' but entered a new employment relationship. His non-compete is void under the ESA, and his non-solicitation is unreasonable for a shift manager who has no direct client relationships. (3) New employees' agreements are valid but non-compete clauses void (not executives, no sale context). (4) Bryan's truck promise is gratuitous (no consideration from Stan), so unenforceable.",
+    "confidence": 60,
+    "tools_used": ["reasoning"]
+  },
+  {
+    "question_id": "66fc5e611f5f3f3b48ae9566",
+    "participant": "p2_opus_tools",
+    "answer": "E",
+    "explanation": "Research indicates that in neonatal encephalopathy, infants with higher Barkovich scores (indicating more severe brain injury, grades 3/4) had elevated GM-CSF levels on day 3, establishing a positive linear relationship between GM-CSF and Barkovich score. This is supported by Jenkins et al. (2021) and related studies on cytokine profiles in HIE and MRI outcomes.",
+    "confidence": 30,
+    "tools_used": ["web_search", "reasoning"]
+  },
+  {
+    "question_id": "673623f4975e3df10169bceb",
+    "participant": "p2_opus_tools",
+    "answer": "A",
+    "explanation": "TBT-Cl (tributyltin chloride) has a significantly higher boiling point than TMT-Cl (trimethyltin chloride) due to its larger butyl groups. This means TBT-Cl is much less volatile and therefore less likely to be inhaled by humans. Inhalation is the primary route of acute exposure to organotin compounds, and TMT's higher volatility makes it far more dangerous in practical handling situations. Multiple cases of TMT poisoning have occurred through vapor inhalation.",
+    "confidence": 60,
+    "tools_used": ["reasoning"]
+  },
+  {
+    "question_id": "672d33eb99799bd05725ea25",
+    "participant": "p2_opus_tools",
+    "answer": "A",
+    "explanation": "Step 1: Literary answers - (1) William Tell (Manfred Act II, Chamois Hunter refuses fame of William Tell), (2) nightcap (Nicholas Nickleby Ch.30, Smike wears a woollen nightcap as a tailor), (3) Ortiz (The Tartar Steppe Ch.25, Lieutenant-Colonel Ortiz). Step 2: Key = 'williamtellnightcaportiz'. Step 3: Beaufort decryption with charset 'abcdefghijklmnopqrstuvwxyz ' yields: 'return the last name of the thirty first president of the united states repeated for the amount of times the unicode character square with lower right diagonal half black appears in the below array'. Step 4: 31st president = Herbert Hoover. U+25EA (◪) appears 4 times in the matrix. Answer: 'Hoover Hoover Hoover Hoover'.",
+    "confidence": 95,
+    "tools_used": ["python", "web_search", "reasoning"]
+  },
+  {
+    "question_id": "672338c7348c6cb89bd6a7a4",
+    "participant": "p2_opus_tools",
+    "answer": "6.58e-06",
+    "explanation": "For particle in 1D box, ψ_n(x) = √(2/a)sin(nπx/a). Probability P = (2/a)∫sin²(2πx/a)dx from 0.495a to 0.505a. Analytically: P = (x2-x1) - (1/(4π))(sin(4πx2) - sin(4πx1)) = 0.01 - sin(0.02π)/(2π) = 0.01 - 0.009993 = 6.578×10⁻⁶. This is very small because the interval is centered on the node at x=a/2 where ψ₂=0.",
+    "confidence": 85,
+    "tools_used": ["python", "reasoning"]
+  }
+]

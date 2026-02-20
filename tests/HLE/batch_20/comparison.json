@@ -1,0 +1,42 @@
+{
+  "batch": "Regulus x HLE -- 20 Questions (Batch 20, blind D1-D6)",
+  "date": "2026-02-08",
+  "regulus_model": "Claude Opus 4.6 (via Claude Code, D1-D6 pipeline, blind)",
+  "baseline_model": "claude-opus-4-6",
+  "contamination_control": "Blind question files without answers; two-stage processing",
+  "summary": {
+    "regulus_correct": 16,
+    "baseline_correct": 2,
+    "total": 20,
+    "regulus_accuracy": 80.0,
+    "baseline_accuracy": 10.0,
+    "lift": 14,
+    "both": 2,
+    "hurt": 0,
+    "neither": 4
+  },
+  "stage1": {"questions": "Q01-Q10", "regulus_correct": 10, "total": 10},
+  "stage2": {"questions": "Q11-Q20", "regulus_correct": 6, "total": 10},
+  "rows": [
+    {"q":1, "subject":"Math (Combinatorics)", "type":"exact", "expected":"59", "regulus":"59", "reg_ok":true, "baseline_ok":false, "cat":"LIFT"},
+    {"q":2, "subject":"Math (Algebraic Geometry)", "type":"exact", "expected":"1/3", "regulus":"1/3", "reg_ok":true, "baseline_ok":false, "cat":"LIFT"},
+    {"q":3, "subject":"Math (Discrete Geometry)", "type":"exact", "expected":"84", "regulus":"84", "reg_ok":true, "baseline_ok":false, "cat":"LIFT"},
+    {"q":4, "subject":"Math (Topology)", "type":"exact", "expected":"1", "regulus":"1", "reg_ok":true, "baseline_ok":false, "cat":"LIFT"},
+    {"q":5, "subject":"Physics (BEC)", "type":"MC", "expected":"I", "regulus":"I", "reg_ok":true, "baseline_ok":false, "cat":"LIFT"},
+    {"q":6, "subject":"Math (Random Matrix Theory)", "type":"exact", "expected":"mu0*log(1-Gamma)*Q(mu0)", "regulus":"mu0*log(1-Gamma)*Q(mu0)", "reg_ok":true, "baseline_ok":false, "cat":"LIFT"},
+    {"q":7, "subject":"Other (Puzzle)", "type":"exact", "expected":"7", "regulus":"7", "reg_ok":true, "baseline_ok":false, "cat":"LIFT"},
+    {"q":8, "subject":"Physics (Quantum)", "type":"exact", "expected":"4w-4J(cos(pi/7)+cos(3pi/7))", "regulus":"4w-4J(cos(pi/7)+cos(3pi/7))", "reg_ok":true, "baseline_ok":false, "cat":"LIFT"},
+    {"q":9, "subject":"Engineering (Rust)", "type":"MC", "expected":"F", "regulus":"F", "reg_ok":true, "baseline_ok":true, "cat":"BOTH"},
+    {"q":10, "subject":"Math (PDEs)", "type":"exact", "expected":"-3", "regulus":"-3", "reg_ok":true, "baseline_ok":false, "cat":"LIFT"},
+    {"q":11, "subject":"History (Medieval France)", "type":"MC", "expected":"A", "regulus":"A", "reg_ok":true, "baseline_ok":true, "cat":"BOTH"},
+    {"q":12, "subject":"Biology (Neuroanatomy)", "type":"exact", "expected":"Dorsal and ventral vasomotor lobe", "regulus":"Dorsal and ventral vasomotor lobe", "reg_ok":true, "baseline_ok":false, "cat":"LIFT"},
+    {"q":13, "subject":"Astronomy (Transit)", "type":"exact", "expected":"0.011", "regulus":"0.011", "reg_ok":true, "baseline_ok":false, "cat":"LIFT"},
+    {"q":14, "subject":"Math (Asymptotics)", "type":"exact", "expected":"(3L^2-2L+2)/(24n^2)+...", "regulus":"(3L^2-2L+2)/(24n^2)+L(L^2-2L+2)/(48n^3)", "reg_ok":true, "baseline_ok":false, "cat":"LIFT"},
+    {"q":15, "subject":"Chess (WCC 2021)", "type":"MC", "expected":"L", "regulus":"C", "reg_ok":false, "baseline_ok":false, "cat":"NEITHER"},
+    {"q":16, "subject":"Linguistics (Guarani)", "type":"MC", "expected":"C", "regulus":"C", "reg_ok":true, "baseline_ok":false, "cat":"LIFT"},
+    {"q":17, "subject":"Math (Incidence Geom)", "type":"exact", "expected":"3", "regulus":"2", "reg_ok":false, "baseline_ok":false, "cat":"NEITHER"},
+    {"q":18, "subject":"Math (Random Walk)", "type":"exact", "expected":"0.54", "regulus":"0.54", "reg_ok":true, "baseline_ok":false, "cat":"LIFT"},
+    {"q":19, "subject":"Math (Markov Chains)", "type":"exact", "expected":"yes", "regulus":"No", "reg_ok":false, "baseline_ok":false, "cat":"NEITHER"},
+    {"q":20, "subject":"Math (Poly Matrices)", "type":"exact", "expected":"[-1,0;-1,1]", "regulus":"I", "reg_ok":false, "baseline_ok":false, "cat":"NEITHER"}
+  ]
+}

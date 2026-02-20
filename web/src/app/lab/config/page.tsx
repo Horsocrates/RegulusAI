@@ -14,9 +14,11 @@ import {
   getInstructionSetDetail,
   createInstructionSetDir,
   updateInstructionFile,
+  getResolutionPreview,
   type ParadigmConfigResponse,
   type InstructionSetSummary,
   type InstructionSetDetail,
+  type ResolutionPreview,
 } from "@/lib/lab-api";
 import ModelSettingsPanel from "./ModelSettingsPanel";
 
@@ -416,6 +418,135 @@ function InstructionSetSelector({
       {value !== "default" && (
         <div className="mt-1.5 text-[10px] text-gray-600">
           Missing files fall back to <span className="text-gray-400">default/</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Instruction Resolution Preview
+// ---------------------------------------------------------------------------
+
+const LEVEL_LABELS: Record<string, { label: string; color: string }> = {
+  specialist: { label: "L1 SPECIALIST", color: "#ef4444" },
+  paradigm_skill: { label: "L2 PARADIGM+SKILL", color: "#f97316" },
+  paradigm_domain: { label: "L3 PARADIGM", color: "#f59e0b" },
+  skill: { label: "L4 SKILL", color: "#3b82f6" },
+  default_skill: { label: "L5 DEFAULT+SKILL", color: "#8b5cf6" },
+  default: { label: "L6 DEFAULT", color: "#64748b" },
+  none: { label: "NONE", color: "#374151" },
+};
+
+const SKILL_OPTIONS = [
+  { id: "", label: "No skill type" },
+  { id: "decomposition", label: "Decomposition" },
+  { id: "verification", label: "Verification" },
+  { id: "recall", label: "Recall" },
+  { id: "computation", label: "Computation" },
+  { id: "conceptual", label: "Conceptual" },
+];
+
+function InstructionResolutionPreview({
+  instructionSetId,
+  paradigmId,
+  paradigmColor,
+}: {
+  instructionSetId: string;
+  paradigmId: string;
+  paradigmColor: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [skillType, setSkillType] = useState("");
+
+  const { data: preview } = useQuery({
+    queryKey: ["resolution-preview", instructionSetId, skillType, paradigmId],
+    queryFn: () => getResolutionPreview({
+      set_id: instructionSetId,
+      skill_type: skillType || undefined,
+      paradigm_id: paradigmId || undefined,
+    }),
+    enabled: expanded,
+  });
+
+  return (
+    <div className="bg-white/[0.02] border border-white/[0.06] rounded-lg mb-4 overflow-hidden">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between px-3.5 py-2.5 hover:bg-white/[0.02] transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-gray-500 font-semibold tracking-widest">
+            INSTRUCTION RESOLUTION PREVIEW
+          </span>
+          {!expanded && preview && (
+            <span className="text-[10px] text-gray-600">
+              ({Object.values(preview.roles).filter(r => r.has_content).length}/{Object.keys(preview.roles).length} resolved)
+            </span>
+          )}
+        </div>
+        <ChevronDown className={`w-3.5 h-3.5 text-gray-600 transition-transform ${expanded ? "rotate-180" : ""}`} />
+      </button>
+
+      {expanded && (
+        <div className="px-3.5 pb-3.5 space-y-3">
+          {/* Skill type selector */}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-gray-500">Simulate skill type:</span>
+            <select
+              value={skillType}
+              onChange={(e) => setSkillType(e.target.value)}
+              className="px-2 py-0.5 bg-black/30 border border-white/[0.08] rounded text-gray-300 text-[11px] outline-none focus:border-white/20"
+            >
+              {SKILL_OPTIONS.map((s) => (
+                <option key={s.id} value={s.id}>{s.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Resolution table */}
+          {preview ? (
+            <div className="space-y-1">
+              {Object.entries(preview.roles).map(([role, info]) => {
+                const lvl = LEVEL_LABELS[info.resolved_level] || LEVEL_LABELS.none;
+                return (
+                  <div key={role} className="flex items-center gap-2 py-1 px-2 rounded hover:bg-white/[0.02]">
+                    <span className="text-[11px] text-gray-400 w-20 font-mono">{role}</span>
+                    <span
+                      className="text-[9px] font-bold px-1.5 py-0.5 rounded"
+                      style={{ background: `${lvl.color}20`, color: lvl.color }}
+                    >
+                      {lvl.label}
+                    </span>
+                    <span className="text-[10px] text-gray-600 font-mono flex-1 truncate">
+                      {info.trace.find(t => t.hit)?.path || "—"}
+                    </span>
+                    <span className="text-[10px] text-gray-600">
+                      {info.has_content ? `${(info.content_length / 1024).toFixed(1)}KB` : "—"}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 py-2 text-gray-600">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              <span className="text-[11px]">Loading resolution preview...</span>
+            </div>
+          )}
+
+          {/* Legend */}
+          <div className="flex flex-wrap gap-2 pt-1 border-t border-white/[0.04]">
+            {Object.entries(LEVEL_LABELS).filter(([k]) => k !== "none").map(([key, { label, color }]) => (
+              <span
+                key={key}
+                className="text-[8px] px-1.5 py-0.5 rounded"
+                style={{ background: `${color}15`, color: `${color}99` }}
+              >
+                {label}
+              </span>
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -936,6 +1067,13 @@ export default function TeamConfigPage() {
               onCreate={() => setShowCreateSetModal(true)}
             />
           )}
+
+          {/* Instruction Resolution Preview */}
+          <InstructionResolutionPreview
+            instructionSetId={current.instructionSetId}
+            paradigmId={current.id}
+            paradigmColor={current.color}
+          />
 
           {/* Classification signals */}
           <div className="bg-white/[0.02] border border-white/[0.06] rounded-lg p-3.5 mb-4">

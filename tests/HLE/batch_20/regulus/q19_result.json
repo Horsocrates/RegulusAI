@@ -1,0 +1,11 @@
+{
+  "question_id": "672f903de8305894b6cfdc7e",
+  "subject": "Mathematics (Probability / Markov Chains)",
+  "answer_type": "exactMatch",
+  "regulus_answer": "No",
+  "confidence": 40,
+  "domains_used": ["D1", "D2", "D3", "D4", "D5", "D6"],
+  "wall_time_minutes": 10,
+  "estimated_cost_usd": 2.00,
+  "reasoning_summary": "Doob h-transform of 2D SRW with h=a (potential kernel) is transient on Z^2\\{0}. For any distant point y, P_hat(visit y)=1/2 (from Green's function calculation). For infinite sets, sum P(A_k)=infinity, and quasi-independence from well-separated points enables second Borel-Cantelli => a.s. infinitely many visited. However, there exist infinite sets that are transient: consider points along a ray at super-exponential distances. The h-transformed walk's Green's function Ghat(x,y) grows as a(y)~ln|y|, so the capacity of sparse sets can vanish. By Wiener test adapted to the h-transformed chain, sufficiently sparse infinite sets have zero capacity and are transient. Answer: No."
+}

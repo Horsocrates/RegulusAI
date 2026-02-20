@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 from typing import AsyncGenerator, Callable, Optional
 
 from regulus.api.models.lab import (
-    LabNewDB, TestConfig, TestRun, QuestionResult, Team,
+    LabNewDB, TestConfig, TestRun, QuestionResult, Team, DomainOutputRecord,
 )
 from regulus.data.base import BenchmarkExample
 from regulus.data.bbeh import get_loader
@@ -46,6 +46,15 @@ class ExecutionEvent:
     total_questions: int = 0
     team_index: int = 0
     data: dict = field(default_factory=dict)
+
+
+@dataclass
+class OrchestratorOutput:
+    """Full output from orchestrator including domain data for training export."""
+    answer: str
+    tokens_in: int
+    tokens_out: int
+    agent_outputs: dict = field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------
@@ -177,19 +186,19 @@ class TestExecutor:
 
                 start_time = time.time()
                 try:
-                    answer, tokens_in, tokens_out = await self._run_orchestrator(
+                    orch_output = await self._run_orchestrator(
                         question, team, cfg
                     )
                     elapsed_ms = int((time.time() - start_time) * 1000)
 
                     # Judge
                     judgment = self._judge_answer(
-                        judge, answer, question.target, question.input
+                        judge, orch_output.answer, question.target, question.input
                     )
 
                     # Cost
                     provider = self._guess_provider(team)
-                    cost_est = calculate_cost(tokens_in, tokens_out, provider)
+                    cost_est = calculate_cost(orch_output.tokens_in, orch_output.tokens_out, provider)
 
                     # Build result
                     result = QuestionResult(
@@ -200,18 +209,21 @@ class TestExecutor:
                         input_text=question.input,
                         team_index=team_inst.index,
                         status="completed",
-                        final_answer=answer,
+                        final_answer=orch_output.answer,
+                        agent_outputs=orch_output.agent_outputs,
+                        correct_answer=question.target,
                         judgment_verdict=judgment.verdict,
                         judgment_confidence=judgment.confidence,
                         judgment_explanation=judgment.explanation,
                         judged_at=judgment.judged_at,
                         total_time_ms=elapsed_ms,
-                        total_tokens_in=tokens_in,
-                        total_tokens_out=tokens_out,
+                        total_tokens_in=orch_output.tokens_in,
+                        total_tokens_out=orch_output.tokens_out,
                         estimated_cost=cost_est.total_cost,
                     )
                 except Exception as e:
                     elapsed_ms = int((time.time() - start_time) * 1000)
+                    orch_output = None
                     result = QuestionResult(
                         run_id=run_id,
                         question_index=idx,
@@ -221,6 +233,7 @@ class TestExecutor:
                         team_index=team_inst.index,
                         status="error",
                         final_answer=None,
+                        correct_answer=question.target,
                         judgment_verdict="error",
                         judgment_explanation=f"Execution error: {e}",
                         total_time_ms=elapsed_ms,
@@ -228,6 +241,22 @@ class TestExecutor:
 
                 # Persist
                 self.db.create_question_result(result)
+
+                # Save domain output records for training export
+                if orch_output and orch_output.agent_outputs.get("domains"):
+                    domain_records = []
+                    pipeline = orch_output.agent_outputs.get("pipeline", "audit")
+                    for d_name, d_data in orch_output.agent_outputs["domains"].items():
+                        domain_records.append(DomainOutputRecord(
+                            domain=d_name,
+                            pipeline=pipeline,
+                            content=d_data.get("segment_summary", ""),
+                            weight=d_data.get("weight", 0),
+                            gate_passed=d_data.get("gate_passed", False),
+                            issues_json=json.dumps(d_data.get("issues", [])),
+                        ))
+                    if domain_records:
+                        self.db.create_domain_outputs(result.id, domain_records)
 
                 await queue.put(ExecutionEvent(
                     type="question_complete",
@@ -357,16 +386,16 @@ class TestExecutor:
         question: BenchmarkExample,
         team: Optional[Team],
         cfg: TestConfig,
-    ) -> tuple[str, int, int]:
+    ) -> OrchestratorOutput:
         """Run the reasoning orchestrator on a question.
 
-        Returns (answer, tokens_in, tokens_out).
+        Returns OrchestratorOutput with answer, tokens, and full domain data.
         """
         # Determine which orchestrator to use based on team config
         # Default: use AuditOrchestrator (v2) if available, else SocraticOrchestrator
         try:
             from regulus.audit.orchestrator import AuditOrchestrator
-            from regulus.audit.types import AuditConfig
+            from regulus.audit.types import AuditConfig, V2Response
             from regulus.reasoning.factory import get_provider as get_reasoning_provider
             from regulus.llm.openai import OpenAIClient
 
@@ -389,11 +418,45 @@ class TestExecutor:
                 config=AuditConfig(),
             )
 
-            output = await orchestrator.process_query(question.input)
-            return (
-                output.answer or "",
-                output.input_tokens,
-                output.output_tokens,
+            output: V2Response = await orchestrator.process_query(question.input)
+
+            # Build agent_outputs from V2Response
+            agent_outputs: dict = {
+                "pipeline": "audit",
+                "version": "2.0",
+                "reasoning_model": output.reasoning_model,
+                "trace_format": output.trace_format,
+                "thinking": output.thinking[:50000] if output.thinking else None,
+                "corrections": len(output.corrections),
+                "audit_rounds": output.audit_rounds,
+                "valid": output.valid,
+                "domains": {},
+            }
+            if output.final_audit:
+                for da in output.final_audit.domains:
+                    agent_outputs["domains"][da.domain] = {
+                        "present": da.present,
+                        "weight": da.weight,
+                        "gate_passed": da.gate_passed,
+                        "issues": da.issues,
+                        "segment_summary": da.segment_summary,
+                        "e_exists": da.e_exists,
+                        "r_exists": da.r_exists,
+                        "rule_exists": da.rule_exists,
+                        "s_exists": da.s_exists,
+                        "d1_depth": da.d1_depth,
+                        "d2_depth": da.d2_depth,
+                        "d3_objectivity_pass": da.d3_objectivity_pass,
+                        "d4_aristotle_ok": da.d4_aristotle_ok,
+                        "d5_certainty_type": da.d5_certainty_type,
+                        "d6_genuine": da.d6_genuine,
+                    }
+
+            return OrchestratorOutput(
+                answer=output.answer or "",
+                tokens_in=output.input_tokens,
+                tokens_out=output.output_tokens,
+                agent_outputs=agent_outputs,
             )
         except Exception:
             # Fallback: use SocraticOrchestrator
@@ -408,7 +471,24 @@ class TestExecutor:
             # Estimate tokens
             tokens_in = len(question.input) // 4 + 2000
             tokens_out = len(output.final_answer or "") // 4 + 3000
-            return (output.final_answer or "", tokens_in, tokens_out)
+
+            # Build agent_outputs from MAS pipeline
+            agent_outputs: dict = {
+                "pipeline": "mas",
+                "version": "1.0",
+            }
+            if hasattr(output, 'task_table_json') and output.task_table_json:
+                try:
+                    agent_outputs["task_table"] = json.loads(output.task_table_json)
+                except (json.JSONDecodeError, TypeError):
+                    agent_outputs["task_table"] = str(output.task_table_json)
+
+            return OrchestratorOutput(
+                answer=output.final_answer or "",
+                tokens_in=tokens_in,
+                tokens_out=tokens_out,
+                agent_outputs=agent_outputs,
+            )
 
     def _judge_answer(
         self,

@@ -481,6 +481,60 @@ export interface QuestionResultResponse {
   estimated_cost: number;
   has_analysis?: boolean;
   agent_outputs?: Record<string, unknown>;
+  skill_type?: string | null;
+  skill_confidence?: number | null;
+  instruction_resolution?: string | null;
+  correct_answer?: string | null;
+}
+
+export interface TrainingStats {
+  total_results: number;
+  with_agent_outputs: number;
+  correct_with_outputs: number;
+  with_domain_outputs: number;
+  by_domain: Record<string, number>;
+  by_skill_type: Record<string, number>;
+  export_ready: number;
+}
+
+export interface DomainOutputData {
+  present: boolean;
+  weight: number;
+  gate_passed: boolean;
+  issues: string[];
+  segment_summary?: string;
+  e_exists?: boolean;
+  r_exists?: boolean;
+  rule_exists?: boolean;
+  s_exists?: boolean;
+  d1_depth?: number | null;
+  d2_depth?: number | null;
+  d3_objectivity_pass?: boolean | null;
+  d4_aristotle_ok?: boolean | null;
+  d5_certainty_type?: string | null;
+  d6_genuine?: boolean | null;
+}
+
+export interface InstructionResolutionStep {
+  level: string;
+  path: string;
+  hit: boolean;
+}
+
+export interface RoleResolution {
+  filename: string;
+  resolved_level: string;
+  has_content: boolean;
+  content_length: number;
+  trace: InstructionResolutionStep[];
+}
+
+export interface ResolutionPreview {
+  set_id: string;
+  skill_type: string | null;
+  paradigm_id: string | null;
+  roles: Record<string, RoleResolution>;
+  levels: string[];
 }
 
 export interface AnalysisResponse {
@@ -526,6 +580,8 @@ export interface ResultsStats {
   pending: number;
   domains: string[];
   run_ids: string[];
+  by_skill_type: Record<string, { total: number; correct: number }>;
+  skill_types: string[];
 }
 
 export interface AnalysisStats {
@@ -538,6 +594,7 @@ export async function listAllResults(opts: {
   verdict?: string;
   domain?: string;
   run_id?: string;
+  skill_type?: string;
   limit?: number;
   offset?: number;
 } = {}): Promise<PaginatedResults> {
@@ -545,6 +602,7 @@ export async function listAllResults(opts: {
   if (opts.verdict) params.set("verdict", opts.verdict);
   if (opts.domain) params.set("domain", opts.domain);
   if (opts.run_id) params.set("run_id", opts.run_id);
+  if (opts.skill_type) params.set("skill_type", opts.skill_type);
   if (opts.limit) params.set("limit", String(opts.limit));
   if (opts.offset) params.set("offset", String(opts.offset));
   const res = await fetch(`${API_URL}/api/lab/v2/results?${params}`);
@@ -562,11 +620,13 @@ export async function getResultsStats(opts: {
   verdict?: string;
   domain?: string;
   run_id?: string;
+  skill_type?: string;
 } = {}): Promise<ResultsStats> {
   const params = new URLSearchParams();
   if (opts.verdict) params.set("verdict", opts.verdict);
   if (opts.domain) params.set("domain", opts.domain);
   if (opts.run_id) params.set("run_id", opts.run_id);
+  if (opts.skill_type) params.set("skill_type", opts.skill_type);
   const res = await fetch(`${API_URL}/api/lab/v2/results/stats?${params}`);
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
@@ -588,6 +648,22 @@ export async function getResultAnalysis(resultId: string): Promise<AnalysisRespo
 
 export async function getAnalysisStats(): Promise<AnalysisStats> {
   const res = await fetch(`${API_URL}/api/lab/v2/results/analysis-stats`);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+// === Instruction Resolution Preview ===
+
+export async function getResolutionPreview(opts: {
+  set_id?: string;
+  skill_type?: string;
+  paradigm_id?: string;
+} = {}): Promise<ResolutionPreview> {
+  const params = new URLSearchParams();
+  if (opts.set_id) params.set("set_id", opts.set_id);
+  if (opts.skill_type) params.set("skill_type", opts.skill_type);
+  if (opts.paradigm_id) params.set("paradigm_id", opts.paradigm_id);
+  const res = await fetch(`${API_URL}/api/lab/instruction-sets/resolve-preview?${params}`);
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 }
@@ -1302,6 +1378,38 @@ export async function upsertModelSettings(data: ModelSettingsUpsert): Promise<Mo
 export async function deleteModelSettings(id: string): Promise<void> {
   const res = await fetch(`${API_URL}/api/lab/model-settings/${id}`, { method: "DELETE" });
   if (!res.ok) throw new Error(`API error: ${res.status}`);
+}
+
+// === Training Export API ===
+
+export async function getTrainingStats(): Promise<TrainingStats> {
+  const res = await fetch(`${API_URL}/api/lab/v2/export/training-stats`);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function exportTrainingData(opts: {
+  format?: "jsonl" | "csv" | "json";
+  domain?: string;
+  skill_type?: string;
+  verdict?: "correct" | "wrong" | "all";
+  run_id?: string;
+  include_thinking?: boolean;
+  include_domain_outputs?: boolean;
+  limit?: number;
+} = {}): Promise<Blob> {
+  const params = new URLSearchParams();
+  if (opts.format) params.set("format", opts.format);
+  if (opts.domain) params.set("domain", opts.domain);
+  if (opts.skill_type) params.set("skill_type", opts.skill_type);
+  if (opts.verdict) params.set("verdict", opts.verdict);
+  if (opts.run_id) params.set("run_id", opts.run_id);
+  if (opts.include_thinking !== undefined) params.set("include_thinking", String(opts.include_thinking));
+  if (opts.include_domain_outputs !== undefined) params.set("include_domain_outputs", String(opts.include_domain_outputs));
+  if (opts.limit) params.set("limit", String(opts.limit));
+  const res = await fetch(`${API_URL}/api/lab/v2/export/training-data?${params}`);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.blob();
 }
 
 // === Helpers ===

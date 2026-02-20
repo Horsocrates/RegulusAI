@@ -1,0 +1,18 @@
+{
+  "question_id": "672072c945e7bc8f5c2dd1ba",
+  "subject": "Physics",
+  "answer_type": "exactMatch",
+  "expected": "-√2",
+  "regulus_answer": "2-√2",
+  "correct": false,
+  "confidence": 50,
+  "domains_used": ["D1", "D2", "D3", "D4", "D5", "D6"],
+  "retries": 0,
+  "wall_time_minutes": 8,
+  "estimated_cost_usd": 1.80,
+  "cost_breakdown": "Complex computation, large D4. ~60K input + ~15K output tokens",
+  "reasoning_summary": "Derived that for regular tetrahedron under aberration, 1-cos θ'_ij = 4/[3γ²(1-βμ_i)(1-βμ_j)]. Ratio simplifies to (1-βμ_3)/(1-βμ_1) = 2-√2. Disagrees with expected -√2.",
+  "where_regulus_helped": "D2 correctly identified the regular tetrahedron geometry. D4 derived an elegant general formula. D6 flagged the discrepancy and noted that 1-cos is always non-negative, making -√2 suspicious.",
+  "where_regulus_hurt": "Pipeline couldn't verify computation numerically. The structured approach didn't prevent the likely algebraic error. For hard physics computations, code execution would be more reliable.",
+  "notes": "Need code execution for verification of complex algebra. The discrepancy between my 2-√2 and expected -√2 remains unresolved. Interesting that 1-cos θ ≥ 0 always, so the ratio should be positive."
+}

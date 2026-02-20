@@ -1419,6 +1419,7 @@ from regulus.api.routers.lab.paradigms import router as paradigms_router
 from regulus.api.routers.lab.paradigm_config import router as paradigm_config_router
 from regulus.api.routers.lab.instruction_sets import router as instruction_sets_router
 from regulus.api.routers.lab.model_settings import router as model_settings_router
+from regulus.api.routers.lab.training_export import router as training_export_router
 
 app.include_router(teams_router)
 app.include_router(tests_router)
@@ -1430,6 +1431,7 @@ app.include_router(paradigms_router)
 app.include_router(paradigm_config_router)
 app.include_router(instruction_sets_router)
 app.include_router(model_settings_router)
+app.include_router(training_export_router)
 
 
 from regulus.lab.archive import ArchiveManager

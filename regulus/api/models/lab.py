@@ -136,6 +136,33 @@ class QuestionResult:
     total_tokens_in: int = 0
     total_tokens_out: int = 0
     estimated_cost: float = 0.0
+    skill_type: Optional[str] = None
+    skill_confidence: Optional[float] = None
+    instruction_resolution: Optional[str] = None  # JSON: resolution trace per domain
+    correct_answer: Optional[str] = None  # Expected answer from benchmark
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass
+class DomainOutputRecord:
+    """Per-domain reasoning output for training data export."""
+    id: str = ""
+    question_result_id: str = ""
+    domain: str = ""          # "D1" through "D6"
+    pipeline: str = ""        # "mas", "audit"
+    content: str = ""         # Full text output / segment summary
+    weight: int = 0
+    gate_passed: bool = False
+    model_used: str = ""
+    input_tokens: int = 0
+    output_tokens: int = 0
+    reasoning_tokens: int = 0
+    time_seconds: float = 0.0
+    thinking_trace: Optional[str] = None
+    issues_json: str = "[]"
+    created_at: str = ""
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -359,11 +386,36 @@ class LabNewDB:
                 total_tokens_in INTEGER NOT NULL DEFAULT 0,
                 total_tokens_out INTEGER NOT NULL DEFAULT 0,
                 estimated_cost REAL NOT NULL DEFAULT 0.0,
+                skill_type TEXT,
+                skill_confidence REAL,
+                instruction_resolution TEXT,
+                correct_answer TEXT,
                 FOREIGN KEY (run_id) REFERENCES test_runs(id) ON DELETE CASCADE
             );
 
             CREATE INDEX IF NOT EXISTS idx_test_runs_config_id ON test_runs(config_id);
             CREATE INDEX IF NOT EXISTS idx_question_results_run_id ON question_results(run_id);
+
+            CREATE TABLE IF NOT EXISTS domain_outputs (
+                id TEXT PRIMARY KEY,
+                question_result_id TEXT NOT NULL,
+                domain TEXT NOT NULL,
+                pipeline TEXT NOT NULL,
+                content TEXT NOT NULL DEFAULT '',
+                weight INTEGER NOT NULL DEFAULT 0,
+                gate_passed INTEGER NOT NULL DEFAULT 0,
+                model_used TEXT NOT NULL DEFAULT '',
+                input_tokens INTEGER NOT NULL DEFAULT 0,
+                output_tokens INTEGER NOT NULL DEFAULT 0,
+                reasoning_tokens INTEGER NOT NULL DEFAULT 0,
+                time_seconds REAL NOT NULL DEFAULT 0.0,
+                thinking_trace TEXT,
+                issues_json TEXT NOT NULL DEFAULT '[]',
+                created_at TEXT NOT NULL DEFAULT '',
+                FOREIGN KEY (question_result_id) REFERENCES question_results(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_domain_outputs_qr ON domain_outputs(question_result_id);
+            CREATE INDEX IF NOT EXISTS idx_domain_outputs_domain ON domain_outputs(domain);
 
             CREATE TABLE IF NOT EXISTS paradigm_instruction_sets (
                 id TEXT PRIMARY KEY,
@@ -549,6 +601,22 @@ class LabNewDB:
                 )
             except sqlite3.OperationalError:
                 pass
+        # Migration: add skill_type/skill_confidence to question_results
+        try:
+            conn.execute("SELECT skill_type FROM question_results LIMIT 1")
+        except sqlite3.OperationalError:
+            conn.execute("ALTER TABLE question_results ADD COLUMN skill_type TEXT")
+            conn.execute("ALTER TABLE question_results ADD COLUMN skill_confidence REAL")
+        # Migration: add instruction_resolution to question_results
+        try:
+            conn.execute("SELECT instruction_resolution FROM question_results LIMIT 1")
+        except sqlite3.OperationalError:
+            conn.execute("ALTER TABLE question_results ADD COLUMN instruction_resolution TEXT")
+        # Migration: add correct_answer to question_results
+        try:
+            conn.execute("SELECT correct_answer FROM question_results LIMIT 1")
+        except sqlite3.OperationalError:
+            conn.execute("ALTER TABLE question_results ADD COLUMN correct_answer TEXT")
         conn.commit()
         conn.close()
 
@@ -1032,8 +1100,9 @@ class LabNewDB:
                 team_index, status, agent_outputs, final_answer,
                 judgment_verdict, judgment_confidence, judgment_explanation,
                 judged_at, total_time_ms, total_tokens_in, total_tokens_out,
-                estimated_cost)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                estimated_cost, skill_type, skill_confidence,
+                instruction_resolution, correct_answer)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 result.id,
                 result.run_id,
@@ -1053,6 +1122,10 @@ class LabNewDB:
                 result.total_tokens_in,
                 result.total_tokens_out,
                 result.estimated_cost,
+                result.skill_type,
+                result.skill_confidence,
+                result.instruction_resolution,
+                result.correct_answer,
             ),
         )
         conn.commit()
@@ -1140,6 +1213,7 @@ class LabNewDB:
         verdict: Optional[str] = None,
         domain: Optional[str] = None,
         run_id: Optional[str] = None,
+        skill_type: Optional[str] = None,
         limit: int = 100,
         offset: int = 0,
     ) -> list[QuestionResult]:
@@ -1156,6 +1230,9 @@ class LabNewDB:
         if run_id:
             query += " AND run_id = ?"
             params.append(run_id)
+        if skill_type:
+            query += " AND skill_type = ?"
+            params.append(skill_type)
         query += " ORDER BY rowid DESC LIMIT ? OFFSET ?"
         params.extend([limit, offset])
         rows = conn.execute(query, params).fetchall()
@@ -1167,6 +1244,7 @@ class LabNewDB:
         verdict: Optional[str] = None,
         domain: Optional[str] = None,
         run_id: Optional[str] = None,
+        skill_type: Optional[str] = None,
     ) -> int:
         """Count results across all runs."""
         conn = self._get_conn()
@@ -1181,6 +1259,9 @@ class LabNewDB:
         if run_id:
             query += " AND run_id = ?"
             params.append(run_id)
+        if skill_type:
+            query += " AND skill_type = ?"
+            params.append(skill_type)
         row = conn.execute(query, params).fetchone()
         conn.close()
         return row["cnt"]
@@ -1190,6 +1271,7 @@ class LabNewDB:
         verdict: Optional[str] = None,
         domain: Optional[str] = None,
         run_id: Optional[str] = None,
+        skill_type: Optional[str] = None,
     ) -> dict:
         """Aggregate stats for results across all runs."""
         conn = self._get_conn()
@@ -1204,6 +1286,9 @@ class LabNewDB:
         if run_id:
             where += " AND run_id = ?"
             params.append(run_id)
+        if skill_type:
+            where += " AND skill_type = ?"
+            params.append(skill_type)
 
         row = conn.execute(
             f"""SELECT
@@ -1227,6 +1312,21 @@ class LabNewDB:
             params,
         ).fetchall()
 
+        # Skill type breakdown
+        skill_rows = conn.execute(
+            f"""SELECT skill_type,
+                       COUNT(*) as total,
+                       SUM(CASE WHEN judgment_verdict = 'correct' THEN 1 ELSE 0 END) as correct
+                FROM question_results {where} AND skill_type IS NOT NULL
+                GROUP BY skill_type ORDER BY skill_type""",
+            params,
+        ).fetchall()
+
+        skill_type_rows = conn.execute(
+            f"SELECT DISTINCT skill_type FROM question_results {where} AND skill_type IS NOT NULL ORDER BY skill_type",
+            params,
+        ).fetchall()
+
         conn.close()
         return {
             "total": row["total"],
@@ -1237,6 +1337,11 @@ class LabNewDB:
             "pending": row["pending"],
             "domains": [r["domain"] for r in domains_rows],
             "run_ids": [r["run_id"] for r in run_rows],
+            "by_skill_type": {
+                r["skill_type"]: {"total": r["total"], "correct": r["correct"]}
+                for r in skill_rows
+            },
+            "skill_types": [r["skill_type"] for r in skill_type_rows],
         }
 
     def get_domain_breakdown(self) -> list[dict]:
@@ -1255,6 +1360,123 @@ class LabNewDB:
             {"domain": r["domain"], "total": r["total"], "correct": r["correct"]}
             for r in rows
         ]
+
+    # ------------------------------------------------------------------
+    # Domain Outputs CRUD
+    # ------------------------------------------------------------------
+
+    def create_domain_outputs(
+        self, question_result_id: str, records: list[DomainOutputRecord]
+    ) -> list[DomainOutputRecord]:
+        """Bulk-insert domain output records for a question result."""
+        if not records:
+            return []
+        now = datetime.now(timezone.utc).isoformat()
+        conn = self._get_conn()
+        for rec in records:
+            if not rec.id:
+                rec.id = str(uuid.uuid4())
+            rec.question_result_id = question_result_id
+            if not rec.created_at:
+                rec.created_at = now
+            conn.execute(
+                """INSERT INTO domain_outputs
+                   (id, question_result_id, domain, pipeline, content, weight,
+                    gate_passed, model_used, input_tokens, output_tokens,
+                    reasoning_tokens, time_seconds, thinking_trace, issues_json,
+                    created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    rec.id,
+                    rec.question_result_id,
+                    rec.domain,
+                    rec.pipeline,
+                    rec.content,
+                    rec.weight,
+                    int(rec.gate_passed),
+                    rec.model_used,
+                    rec.input_tokens,
+                    rec.output_tokens,
+                    rec.reasoning_tokens,
+                    rec.time_seconds,
+                    rec.thinking_trace,
+                    rec.issues_json,
+                    rec.created_at,
+                ),
+            )
+        conn.commit()
+        conn.close()
+        return records
+
+    def get_domain_outputs(self, question_result_id: str) -> list[DomainOutputRecord]:
+        """Get all domain outputs for a question result."""
+        conn = self._get_conn()
+        rows = conn.execute(
+            "SELECT * FROM domain_outputs WHERE question_result_id = ? ORDER BY domain",
+            (question_result_id,),
+        ).fetchall()
+        conn.close()
+        return [self._row_to_domain_output(r) for r in rows]
+
+    @staticmethod
+    def _row_to_domain_output(row: sqlite3.Row) -> DomainOutputRecord:
+        return DomainOutputRecord(
+            id=row["id"],
+            question_result_id=row["question_result_id"],
+            domain=row["domain"],
+            pipeline=row["pipeline"],
+            content=row["content"],
+            weight=row["weight"],
+            gate_passed=bool(row["gate_passed"]),
+            model_used=row["model_used"],
+            input_tokens=row["input_tokens"],
+            output_tokens=row["output_tokens"],
+            reasoning_tokens=row["reasoning_tokens"],
+            time_seconds=row["time_seconds"],
+            thinking_trace=row["thinking_trace"],
+            issues_json=row["issues_json"],
+            created_at=row["created_at"],
+        )
+
+    def get_training_stats(self) -> dict:
+        """Get stats for training data export readiness."""
+        conn = self._get_conn()
+        row = conn.execute("""
+            SELECT
+                COUNT(*) as total_results,
+                COALESCE(SUM(CASE WHEN agent_outputs != '{}' AND agent_outputs != '' THEN 1 ELSE 0 END), 0) as with_agent_outputs,
+                COALESCE(SUM(CASE WHEN judgment_verdict = 'correct'
+                         AND agent_outputs != '{}' AND agent_outputs != '' THEN 1 ELSE 0 END), 0) as correct_with_outputs
+            FROM question_results
+        """).fetchone()
+        domain_row = conn.execute(
+            "SELECT COUNT(DISTINCT question_result_id) as cnt FROM domain_outputs"
+        ).fetchone()
+        by_domain = {}
+        domain_rows = conn.execute(
+            "SELECT domain, COUNT(*) as cnt FROM domain_outputs GROUP BY domain ORDER BY domain"
+        ).fetchall()
+        for dr in domain_rows:
+            by_domain[dr["domain"]] = dr["cnt"]
+        by_skill = {}
+        skill_rows = conn.execute("""
+            SELECT skill_type, COUNT(*) as cnt
+            FROM question_results
+            WHERE agent_outputs != '{}' AND agent_outputs != '' AND skill_type IS NOT NULL
+            GROUP BY skill_type ORDER BY skill_type
+        """).fetchall()
+        for sr in skill_rows:
+            by_skill[sr["skill_type"]] = sr["cnt"]
+        conn.close()
+        return {
+            "total_results": row["total_results"] or 0,
+            "with_agent_outputs": row["with_agent_outputs"] or 0,
+            "correct_with_outputs": row["correct_with_outputs"] or 0,
+            "with_domain_outputs": domain_row["cnt"] or 0,
+            "by_domain": by_domain,
+            "by_skill_type": by_skill,
+            "export_ready": row["with_agent_outputs"] or 0,
+        }
 
     def get_results_tree(self) -> list[dict]:
         """Return hierarchical tree: participant → domain → question counts.
@@ -1824,6 +2046,10 @@ class LabNewDB:
             total_tokens_in=row["total_tokens_in"],
             total_tokens_out=row["total_tokens_out"],
             estimated_cost=row["estimated_cost"],
+            skill_type=row["skill_type"],
+            skill_confidence=row["skill_confidence"],
+            instruction_resolution=row["instruction_resolution"],
+            correct_answer=row["correct_answer"],
         )
 
     @staticmethod

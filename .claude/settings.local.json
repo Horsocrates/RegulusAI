@@ -20,7 +20,20 @@
       "Bash(curl:*)",
       "Bash(npx create-next-app@latest web --typescript --tailwind --eslint --app --src-dir --no-import-alias)",
       "Bash(where:*)",
-      "Bash(cmd /c \"where npm 2>nul & where npx 2>nul & where node 2>nul\")"
+      "Bash(cmd /c \"where npm 2>nul & where npx 2>nul & where node 2>nul\")",
+      "Bash(git show:*)",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(python3:*)",
+      "Bash(REGULUS_STOP_AFTER_D3=1 uv run python:*)",
+      "Bash(REGULUS_STOP_AFTER=D1 uv run python:*)",
+      "Bash(REGULUS_STOP_AFTER=D2 uv run python:*)",
+      "Bash(REGULUS_STOP_AFTER=D3 uv run python:*)",
+      "Bash(REGULUS_STOP_AFTER=D4 uv run python:*)",
+      "Bash(wmic process:*)",
+      "Bash(tasklist:*)",
+      "Bash(powershell:*)",
+      "Bash(git add:*)"
     ]
   }
 }

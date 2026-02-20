@@ -1,0 +1,11 @@
+{
+  "question_id": "671702c1e5b9112a7699686f",
+  "subject": "Chess (World Championship 2021)",
+  "answer_type": "multipleChoice",
+  "regulus_answer": "C",
+  "confidence": 25,
+  "domains_used": ["D1", "D2", "D3", "D4", "D5", "D6"],
+  "wall_time_minutes": 8,
+  "estimated_cost_usd": 1.60,
+  "reasoning_summary": "Game 6 Carlsen-Nepo 2021, 136-move marathon. After 130.Kh3, position: W: Kh3, Ng3, Rf5, Pe5, Pf4. B: Ke8, Qa2. Qe6 was losing blunder (blocks e-pawn but queen gets tied down). Qg2 (choice C) gives immediate check via diagonal g2-h3, leading to perpetual check patterns: 130...Qg2+ 131.Kh4 Qh2+ 132.Kg5 Qh6+ etc. Low confidence — requires engine verification."
+}

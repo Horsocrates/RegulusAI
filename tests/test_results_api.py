@@ -3,12 +3,13 @@
 import csv
 import io
 import json
+import os
 
 import pytest
 from fastapi.testclient import TestClient
 
 from regulus.api.main import app
-from regulus.api.models.lab import LabNewDB, QuestionResult
+from regulus.api.models.lab import LabNewDB, QuestionResult, DomainOutputRecord
 
 
 @pytest.fixture(autouse=True)
@@ -18,13 +19,25 @@ def _fresh_db(tmp_path):
     from regulus.api.routers.lab import tests as tests_mod
     from regulus.api.routers.lab import runs as runs_mod
     from regulus.api.routers.lab import results as results_mod
+    from regulus.api.routers.lab import training_export as training_export_mod
+
+    # Disable rate limiter for tests
+    old_val = os.environ.get("LAB_RATE_LIMIT_RPM")
+    os.environ["LAB_RATE_LIMIT_RPM"] = "0"
 
     db = LabNewDB(db_path=tmp_path / "test.db")
     teams_mod._db = db
     tests_mod._db = db
     runs_mod._db = db
     results_mod._db = db
+    training_export_mod._db = db
     yield db
+
+    # Restore rate limiter setting
+    if old_val is None:
+        os.environ.pop("LAB_RATE_LIMIT_RPM", None)
+    else:
+        os.environ["LAB_RATE_LIMIT_RPM"] = old_val
 
 
 @pytest.fixture
@@ -63,6 +76,9 @@ def _make_run(client, config_id):
     return client.post(f"/api/lab/tests/{config_id}/run").json()
 
 
+SKILL_TYPES = ["decomposition", "verification", "recall", "computation", "conceptual"]
+
+
 def _add_results(db, run_id, count=5, domain="boolean_expressions"):
     """Insert fake question results directly into DB."""
     for i in range(count):
@@ -82,6 +98,8 @@ def _add_results(db, run_id, count=5, domain="boolean_expressions"):
             total_tokens_in=200 + i * 10,
             total_tokens_out=100 + i * 5,
             estimated_cost=0.01 + i * 0.001,
+            skill_type=SKILL_TYPES[i % len(SKILL_TYPES)],
+            skill_confidence=0.85,
         ))
 
 
@@ -438,3 +456,534 @@ class TestPaginatedResults:
         r = client.get("/api/lab/v2/results")
         data = r.json()
         assert data["total"] == 7
+
+
+# ===================================================================
+# Skill Type Classification
+# ===================================================================
+
+
+class TestSkillType:
+    def test_filter_by_skill_type(self, client, _fresh_db):
+        team = _make_team(client)
+        cfg = _make_config(client, team["id"])
+        run = _make_run(client, cfg["id"])
+        _add_results(_fresh_db, run["id"], count=10)
+
+        r = client.get("/api/lab/v2/results?skill_type=computation")
+        data = r.json()
+        # indices 3, 8 are "computation" (i % 5 == 3)
+        assert data["total"] == 2
+        assert all(
+            item["skill_type"] == "computation" for item in data["results"]
+        )
+
+    def test_stats_include_skill_breakdown(self, client, _fresh_db):
+        team = _make_team(client)
+        cfg = _make_config(client, team["id"])
+        run = _make_run(client, cfg["id"])
+        _add_results(_fresh_db, run["id"], count=5)
+
+        r = client.get("/api/lab/v2/results/stats")
+        assert r.status_code == 200
+        stats = r.json()
+        assert "by_skill_type" in stats
+        assert "skill_types" in stats
+        assert len(stats["skill_types"]) == 5
+        assert "decomposition" in stats["by_skill_type"]
+        assert stats["by_skill_type"]["decomposition"]["total"] == 1
+
+    def test_update_skill_type(self, client, _fresh_db):
+        team = _make_team(client)
+        cfg = _make_config(client, team["id"])
+        run = _make_run(client, cfg["id"])
+        _add_results(_fresh_db, run["id"], count=1)
+
+        # Get the result id
+        r = client.get("/api/lab/v2/results")
+        result_id = r.json()["results"][0]["id"]
+
+        # PATCH skill_type
+        r = client.patch(
+            f"/api/lab/v2/results/{result_id}/skill-type",
+            json={"skill_type": "verification", "skill_confidence": 0.95},
+        )
+        assert r.status_code == 200
+        data = r.json()
+        assert data["skill_type"] == "verification"
+        assert data["skill_confidence"] == 0.95
+
+    def test_skill_type_in_export(self, client, _fresh_db):
+        team = _make_team(client)
+        cfg = _make_config(client, team["id"])
+        run = _make_run(client, cfg["id"])
+        _add_results(_fresh_db, run["id"], count=3)
+
+        r = client.get(f"/api/lab/v2/runs/{run['id']}/export?format=csv")
+        assert r.status_code == 200
+        reader = csv.reader(io.StringIO(r.text))
+        rows = list(reader)
+        header = rows[0]
+        assert "skill_type" in header
+        assert "skill_confidence" in header
+        # Data rows should have skill_type values
+        skill_type_idx = header.index("skill_type")
+        assert rows[1][skill_type_idx] != ""
+
+    def test_skill_type_in_json_export(self, client, _fresh_db):
+        team = _make_team(client)
+        cfg = _make_config(client, team["id"])
+        run = _make_run(client, cfg["id"])
+        _add_results(_fresh_db, run["id"], count=2)
+
+        r = client.get(f"/api/lab/v2/runs/{run['id']}/export?format=json")
+        data = r.json()
+        assert "skill_type" in data["results"][0]
+        assert data["results"][0]["skill_type"] is not None
+
+    def test_question_detail_includes_skill_type(self, client, _fresh_db):
+        team = _make_team(client)
+        cfg = _make_config(client, team["id"])
+        run = _make_run(client, cfg["id"])
+        _add_results(_fresh_db, run["id"], count=1)
+
+        r = client.get(f"/api/lab/v2/runs/{run['id']}/question/0")
+        assert r.status_code == 200
+        q = r.json()
+        assert "skill_type" in q
+        assert q["skill_type"] == "decomposition"
+        assert q["skill_confidence"] == 0.85
+
+
+# ===================================================================
+# Instruction Resolution
+# ===================================================================
+
+
+class TestInstructionResolution:
+    def test_instruction_resolution_in_result(self, client, _fresh_db):
+        """instruction_resolution field stored and returned."""
+        team = _make_team(client)
+        cfg = _make_config(client, team["id"])
+        run = _make_run(client, cfg["id"])
+
+        trace = json.dumps({"d1": [{"level": "skill", "path": "_skill/decomposition/d1-recognize.md", "hit": True}]})
+        _fresh_db.create_question_result(QuestionResult(
+            run_id=run["id"],
+            question_index=0,
+            question_id="q-0",
+            domain="test",
+            input_text="Test?",
+            status="completed",
+            final_answer="42",
+            judgment_verdict="correct",
+            skill_type="decomposition",
+            instruction_resolution=trace,
+        ))
+
+        r = client.get("/api/lab/v2/results")
+        data = r.json()
+        assert data["total"] == 1
+        item = data["results"][0]
+        assert item["instruction_resolution"] == trace
+
+    def test_instruction_resolution_in_question_detail(self, client, _fresh_db):
+        """instruction_resolution shows in question detail endpoint."""
+        team = _make_team(client)
+        cfg = _make_config(client, team["id"])
+        run = _make_run(client, cfg["id"])
+
+        trace = json.dumps({"d4": [{"level": "default", "path": "default/d4-compare.md", "hit": True}]})
+        _fresh_db.create_question_result(QuestionResult(
+            run_id=run["id"],
+            question_index=0,
+            question_id="q-0",
+            domain="test",
+            input_text="Test?",
+            status="completed",
+            instruction_resolution=trace,
+        ))
+
+        r = client.get(f"/api/lab/v2/runs/{run['id']}/question/0")
+        assert r.status_code == 200
+        q = r.json()
+        assert "instruction_resolution" in q
+        assert q["instruction_resolution"] == trace
+
+    def test_instruction_resolution_in_export(self, client, _fresh_db):
+        """instruction_resolution appears in CSV export."""
+        team = _make_team(client)
+        cfg = _make_config(client, team["id"])
+        run = _make_run(client, cfg["id"])
+
+        trace = json.dumps({"d1": [{"level": "default", "path": "default/d1-recognize.md", "hit": True}]})
+        _fresh_db.create_question_result(QuestionResult(
+            run_id=run["id"],
+            question_index=0,
+            question_id="q-0",
+            domain="test",
+            input_text="Test?",
+            status="completed",
+            instruction_resolution=trace,
+        ))
+
+        r = client.get(f"/api/lab/v2/runs/{run['id']}/export?format=csv")
+        assert r.status_code == 200
+        reader = csv.reader(io.StringIO(r.text))
+        rows = list(reader)
+        header = rows[0]
+        assert "instruction_resolution" in header
+
+    def test_instruction_resolution_null_by_default(self, client, _fresh_db):
+        """Results without instruction_resolution have null."""
+        team = _make_team(client)
+        cfg = _make_config(client, team["id"])
+        run = _make_run(client, cfg["id"])
+        _add_results(_fresh_db, run["id"], count=1)
+
+        r = client.get("/api/lab/v2/results")
+        item = r.json()["results"][0]
+        assert item["instruction_resolution"] is None
+
+    def test_resolve_preview_endpoint(self, client):
+        """GET /resolve-preview returns resolution for all roles."""
+        r = client.get("/api/lab/instruction-sets/resolve-preview?set_id=default")
+        assert r.status_code == 200
+        data = r.json()
+        assert "roles" in data
+        assert "levels" in data
+        assert "set_id" in data
+        assert data["set_id"] == "default"
+        # Should have entries for each role
+        assert "d1" in data["roles"]
+        assert "team_lead" in data["roles"]
+        assert "resolved_level" in data["roles"]["d1"]
+        assert "trace" in data["roles"]["d1"]
+
+    def test_resolve_preview_with_skill_type(self, client):
+        """Resolve preview with skill_type shows skill levels in trace."""
+        r = client.get(
+            "/api/lab/instruction-sets/resolve-preview"
+            "?set_id=default&skill_type=decomposition"
+        )
+        assert r.status_code == 200
+        data = r.json()
+        assert data["skill_type"] == "decomposition"
+        # d1 trace should include skill-level lookups
+        d1_trace = data["roles"]["d1"]["trace"]
+        levels = [step["level"] for step in d1_trace]
+        assert "skill" in levels or "default_skill" in levels or "default" in levels
+
+
+# ===================================================================
+# Correct Answer
+# ===================================================================
+
+
+class TestCorrectAnswer:
+    def test_correct_answer_stored(self, client, _fresh_db):
+        """correct_answer is stored and returned."""
+        team = _make_team(client)
+        cfg = _make_config(client, team["id"])
+        run = _make_run(client, cfg["id"])
+
+        _fresh_db.create_question_result(QuestionResult(
+            run_id=run["id"],
+            question_index=0,
+            question_id="q-0",
+            domain="test",
+            input_text="What is 2+2?",
+            status="completed",
+            final_answer="4",
+            correct_answer="4",
+            judgment_verdict="correct",
+        ))
+
+        r = client.get("/api/lab/v2/results")
+        data = r.json()
+        assert data["total"] == 1
+        assert data["results"][0]["correct_answer"] == "4"
+
+    def test_correct_answer_in_question_detail(self, client, _fresh_db):
+        """correct_answer appears in question detail endpoint."""
+        team = _make_team(client)
+        cfg = _make_config(client, team["id"])
+        run = _make_run(client, cfg["id"])
+
+        _fresh_db.create_question_result(QuestionResult(
+            run_id=run["id"],
+            question_index=0,
+            question_id="q-0",
+            domain="test",
+            input_text="What is 2+2?",
+            status="completed",
+            final_answer="5",
+            correct_answer="4",
+            judgment_verdict="wrong",
+        ))
+
+        r = client.get(f"/api/lab/v2/runs/{run['id']}/question/0")
+        assert r.status_code == 200
+        q = r.json()
+        assert q["correct_answer"] == "4"
+
+    def test_correct_answer_null_by_default(self, client, _fresh_db):
+        """Results without correct_answer have null."""
+        team = _make_team(client)
+        cfg = _make_config(client, team["id"])
+        run = _make_run(client, cfg["id"])
+        _add_results(_fresh_db, run["id"], count=1)
+
+        r = client.get("/api/lab/v2/results")
+        item = r.json()["results"][0]
+        assert item["correct_answer"] is None
+
+    def test_correct_answer_in_json_export(self, client, _fresh_db):
+        """correct_answer appears in JSON export."""
+        team = _make_team(client)
+        cfg = _make_config(client, team["id"])
+        run = _make_run(client, cfg["id"])
+
+        _fresh_db.create_question_result(QuestionResult(
+            run_id=run["id"],
+            question_index=0,
+            question_id="q-0",
+            domain="test",
+            input_text="Test?",
+            status="completed",
+            correct_answer="42",
+        ))
+
+        r = client.get(f"/api/lab/v2/runs/{run['id']}/export?format=json")
+        data = r.json()
+        assert data["results"][0]["correct_answer"] == "42"
+
+    def test_correct_answer_in_csv_export(self, client, _fresh_db):
+        """correct_answer appears in CSV export."""
+        team = _make_team(client)
+        cfg = _make_config(client, team["id"])
+        run = _make_run(client, cfg["id"])
+
+        _fresh_db.create_question_result(QuestionResult(
+            run_id=run["id"],
+            question_index=0,
+            question_id="q-0",
+            domain="test",
+            input_text="Test?",
+            status="completed",
+            correct_answer="42",
+        ))
+
+        r = client.get(f"/api/lab/v2/runs/{run['id']}/export?format=csv")
+        reader = csv.reader(io.StringIO(r.text))
+        rows = list(reader)
+        header = rows[0]
+        assert "correct_answer" in header
+
+
+# ===================================================================
+# Domain Outputs
+# ===================================================================
+
+
+class TestDomainOutputs:
+    def test_create_and_get_domain_outputs(self, _fresh_db):
+        """Domain outputs can be created and retrieved."""
+        team_data = {"name": "Test", "team_lead_config": {}, "agent_configs": {}}
+        from regulus.api.models.lab import Team, TestConfig, TestRun
+        team = _fresh_db.create_team(Team(name="T"))
+        cfg = _fresh_db.create_test_config(TestConfig(name="C", team_id=team.id))
+        run = _fresh_db.create_test_run(TestRun(config_id=cfg.id))
+
+        qr = _fresh_db.create_question_result(QuestionResult(
+            run_id=run.id,
+            question_index=0,
+            question_id="q-0",
+            domain="test",
+            input_text="Test?",
+            status="completed",
+        ))
+
+        records = [
+            DomainOutputRecord(domain="D1", pipeline="audit", weight=85, gate_passed=True, content="Recognition ok"),
+            DomainOutputRecord(domain="D2", pipeline="audit", weight=70, gate_passed=True, content="Clarification ok"),
+            DomainOutputRecord(domain="D3", pipeline="audit", weight=0, gate_passed=False, issues_json='["Missing framework"]'),
+        ]
+        _fresh_db.create_domain_outputs(qr.id, records)
+
+        outputs = _fresh_db.get_domain_outputs(qr.id)
+        assert len(outputs) == 3
+        assert outputs[0].domain == "D1"
+        assert outputs[0].weight == 85
+        assert outputs[0].gate_passed is True
+        assert outputs[2].domain == "D3"
+        assert outputs[2].gate_passed is False
+
+    def test_domain_outputs_empty(self, _fresh_db):
+        """No domain outputs returns empty list."""
+        outputs = _fresh_db.get_domain_outputs("nonexistent")
+        assert outputs == []
+
+
+# ===================================================================
+# Training Export
+# ===================================================================
+
+
+AGENT_OUTPUTS_WITH_DOMAINS = {
+    "pipeline": "audit",
+    "version": "2.0",
+    "reasoning_model": "deepseek",
+    "thinking": "Let me think about this...",
+    "domains": {
+        "D1": {"present": True, "weight": 85, "gate_passed": True, "issues": []},
+        "D2": {"present": True, "weight": 70, "gate_passed": True, "issues": []},
+    },
+}
+
+
+def _add_training_results(db, run_id, count=3):
+    """Insert results with agent_outputs for training export tests."""
+    for i in range(count):
+        db.create_question_result(QuestionResult(
+            run_id=run_id,
+            question_index=i,
+            question_id=f"q-{i}",
+            domain="test",
+            input_text=f"Question {i}?",
+            status="completed",
+            final_answer=f"Answer {i}",
+            correct_answer=f"Expected {i}",
+            judgment_verdict="correct" if i % 2 == 0 else "wrong",
+            judgment_confidence=1.0,
+            total_time_ms=1000,
+            total_tokens_in=200,
+            total_tokens_out=100,
+            estimated_cost=0.01,
+            skill_type="decomposition",
+            agent_outputs=AGENT_OUTPUTS_WITH_DOMAINS,
+        ))
+
+
+class TestTrainingExport:
+    def test_training_stats_empty(self, client, _fresh_db):
+        r = client.get("/api/lab/v2/export/training-stats")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["total_results"] == 0
+        assert data["with_agent_outputs"] == 0
+
+    def test_training_stats_with_data(self, client, _fresh_db):
+        team = _make_team(client)
+        cfg = _make_config(client, team["id"])
+        run = _make_run(client, cfg["id"])
+        _add_training_results(_fresh_db, run["id"], count=4)
+
+        r = client.get("/api/lab/v2/export/training-stats")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["total_results"] == 4
+        assert data["with_agent_outputs"] == 4
+        # indices 0, 2 are correct
+        assert data["correct_with_outputs"] == 2
+
+    def test_export_jsonl(self, client, _fresh_db):
+        team = _make_team(client)
+        cfg = _make_config(client, team["id"])
+        run = _make_run(client, cfg["id"])
+        _add_training_results(_fresh_db, run["id"], count=3)
+
+        r = client.get("/api/lab/v2/export/training-data?format=jsonl")
+        assert r.status_code == 200
+        lines = r.text.strip().split("\n")
+        assert len(lines) == 3
+
+        # Each line should be valid JSON
+        for line in lines:
+            obj = json.loads(line)
+            assert "messages" in obj
+            assert "metadata" in obj
+            assert len(obj["messages"]) == 3
+            assert obj["messages"][0]["role"] == "system"
+            assert obj["messages"][1]["role"] == "user"
+            assert obj["messages"][2]["role"] == "assistant"
+
+    def test_export_csv(self, client, _fresh_db):
+        team = _make_team(client)
+        cfg = _make_config(client, team["id"])
+        run = _make_run(client, cfg["id"])
+        _add_training_results(_fresh_db, run["id"], count=2)
+
+        r = client.get("/api/lab/v2/export/training-data?format=csv")
+        assert r.status_code == 200
+        reader = csv.reader(io.StringIO(r.text))
+        rows = list(reader)
+        header = rows[0]
+        assert "question_id" in header
+        assert "correct_answer" in header
+        assert "d1_weight" in header
+        assert "d6_gate" in header
+        assert len(rows) == 3  # header + 2 data rows
+
+    def test_export_json(self, client, _fresh_db):
+        team = _make_team(client)
+        cfg = _make_config(client, team["id"])
+        run = _make_run(client, cfg["id"])
+        _add_training_results(_fresh_db, run["id"], count=2)
+
+        r = client.get("/api/lab/v2/export/training-data?format=json")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["export_format"] == "training_data"
+        assert data["total_records"] == 2
+        assert len(data["records"]) == 2
+        assert data["records"][0]["correct_answer"] is not None
+        assert "domains" in data["records"][0]
+
+    def test_export_filter_by_verdict(self, client, _fresh_db):
+        team = _make_team(client)
+        cfg = _make_config(client, team["id"])
+        run = _make_run(client, cfg["id"])
+        _add_training_results(_fresh_db, run["id"], count=4)
+
+        r = client.get("/api/lab/v2/export/training-data?format=json&verdict=correct")
+        data = r.json()
+        # indices 0, 2 are correct
+        assert data["total_records"] == 2
+
+    def test_export_only_logged_results(self, client, _fresh_db):
+        """Export only returns results with agent_outputs."""
+        team = _make_team(client)
+        cfg = _make_config(client, team["id"])
+        run = _make_run(client, cfg["id"])
+
+        # Add one with agent_outputs
+        _add_training_results(_fresh_db, run["id"], count=1)
+        # Add one without agent_outputs
+        _add_results(_fresh_db, run["id"], count=1)
+
+        r = client.get("/api/lab/v2/export/training-data?format=json")
+        data = r.json()
+        assert data["total_records"] == 1
+
+    def test_export_jsonl_includes_thinking(self, client, _fresh_db):
+        """JSONL export includes thinking traces when requested."""
+        team = _make_team(client)
+        cfg = _make_config(client, team["id"])
+        run = _make_run(client, cfg["id"])
+        _add_training_results(_fresh_db, run["id"], count=1)
+
+        r = client.get("/api/lab/v2/export/training-data?format=jsonl&include_thinking=true")
+        obj = json.loads(r.text.strip())
+        assert "<thinking>" in obj["messages"][2]["content"]
+
+    def test_export_jsonl_excludes_thinking(self, client, _fresh_db):
+        """JSONL export excludes thinking traces when not requested."""
+        team = _make_team(client)
+        cfg = _make_config(client, team["id"])
+        run = _make_run(client, cfg["id"])
+        _add_training_results(_fresh_db, run["id"], count=1)
+
+        r = client.get("/api/lab/v2/export/training-data?format=jsonl&include_thinking=false")
+        obj = json.loads(r.text.strip())
+        assert "<thinking>" not in obj["messages"][2]["content"]

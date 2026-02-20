@@ -12,6 +12,7 @@ ANALYZE the query and produce:
    - hard: complex reasoning, multiple interacting concepts, judgment needed
 3. COMPONENTS: Hierarchical breakdown of what's in the query
 4. TASK_TYPE: factual / analytical / evaluative / creative / procedural
+5. SKILL_TYPE: Primary cognitive skill needed (decomposition/verification/recall/computation/conceptual)
 
 Respond with ONLY valid JSON. No preamble.
 
@@ -19,6 +20,8 @@ Respond with ONLY valid JSON. No preamble.
   "goal": "What the user needs to achieve",
   "complexity": "easy|medium|hard",
   "task_type": "factual|analytical|evaluative|creative|procedural",
+  "skill_type": "decomposition|verification|recall|computation|conceptual",
+  "skill_confidence": 0.85,
   "components": [
     {
       "id": "C1",

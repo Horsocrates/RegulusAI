@@ -37,6 +37,8 @@ class D1Input(DomainInput):
 class D1Output:
     components: list = field(default_factory=list)  # list of component dicts
     task_type: str = ""  # factual | analytical | evaluative | creative | procedural
+    skill_type: str = ""  # decomposition | verification | recall | computation | conceptual
+    skill_confidence: float = 0.0
     content: str = ""
     internal_log: str = ""
     input_tokens: int = 0

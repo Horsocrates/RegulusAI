@@ -1,0 +1,11 @@
+{
+  "question_id": "66ff68bec7e8ec38a6188f9c",
+  "subject": "Mathematics (Algebraic Geometry / Incidence Geometry)",
+  "answer_type": "exactMatch",
+  "regulus_answer": "2",
+  "confidence": 40,
+  "domains_used": ["D1", "D2", "D3", "D4", "D5", "D6"],
+  "wall_time_minutes": 8,
+  "estimated_cost_usd": 1.60,
+  "reasoning_summary": "Degree D nonsingular polynomial in R^3, unit cylinder T, transverse portion Z(P,T) with tangent plane angle >1/10 to tube axis. By Bezout, each line parallel to tube hits at most D points of Z(P). Transversality bounds gradient, giving O(1) extent per sheet in cross-section. With D sheets and possible O(D) extent along tube direction from oscillation, covering requires O(D^2) unit balls. Related to Guth's polynomial partitioning results. Answer k=2."
+}

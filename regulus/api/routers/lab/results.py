@@ -115,6 +115,10 @@ class QuestionDetailResponse(BaseModel):
     total_tokens_in: int
     total_tokens_out: int
     estimated_cost: float
+    skill_type: Optional[str] = None
+    skill_confidence: Optional[float] = None
+    instruction_resolution: Optional[str] = None
+    correct_answer: Optional[str] = None
 
 
 class AnalysisResponse(BaseModel):
@@ -141,12 +145,19 @@ class ResultsStatsResponse(BaseModel):
     pending: int
     domains: list[str]
     run_ids: list[str]
+    by_skill_type: dict = {}
+    skill_types: list[str] = []
 
 
 class AnalysisStatsResponse(BaseModel):
     total: int
     completed: int
     by_category: dict[str, int]
+
+
+class SkillTypeUpdate(BaseModel):
+    skill_type: str
+    skill_confidence: Optional[float] = None
 
 
 class DomainNode(BaseModel):
@@ -266,6 +277,10 @@ async def get_question_detail(run_id: str, question_index: int):
         total_tokens_in=result.total_tokens_in,
         total_tokens_out=result.total_tokens_out,
         estimated_cost=result.estimated_cost,
+        skill_type=result.skill_type,
+        skill_confidence=result.skill_confidence,
+        instruction_resolution=result.instruction_resolution,
+        correct_answer=result.correct_answer,
     )
 
 
@@ -365,10 +380,11 @@ async def get_results_stats(
     verdict: Optional[str] = Query(default=None),
     domain: Optional[str] = Query(default=None),
     run_id: Optional[str] = Query(default=None),
+    skill_type: Optional[str] = Query(default=None),
 ):
     """Aggregated stats across all results."""
     db = get_db()
-    stats = db.get_results_stats(verdict=verdict, domain=domain, run_id=run_id)
+    stats = db.get_results_stats(verdict=verdict, domain=domain, run_id=run_id, skill_type=skill_type)
     return ResultsStatsResponse(**stats)
 
 
@@ -385,6 +401,7 @@ async def list_all_results(
     verdict: Optional[str] = Query(default=None),
     domain: Optional[str] = Query(default=None),
     run_id: Optional[str] = Query(default=None),
+    skill_type: Optional[str] = Query(default=None),
     limit: int = Query(default=50, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
 ):
@@ -392,9 +409,9 @@ async def list_all_results(
     db = get_db()
     results = db.list_all_results(
         verdict=verdict, domain=domain, run_id=run_id,
-        limit=limit, offset=offset,
+        skill_type=skill_type, limit=limit, offset=offset,
     )
-    total = db.count_all_results(verdict=verdict, domain=domain, run_id=run_id)
+    total = db.count_all_results(verdict=verdict, domain=domain, run_id=run_id, skill_type=skill_type)
 
     items = []
     for r in results:
@@ -418,6 +435,10 @@ async def list_all_results(
             "estimated_cost": r.estimated_cost,
             "has_analysis": analysis is not None,
             "agent_outputs": r.agent_outputs,
+            "skill_type": r.skill_type,
+            "skill_confidence": r.skill_confidence,
+            "instruction_resolution": r.instruction_resolution,
+            "correct_answer": r.correct_answer,
         })
 
     return {
@@ -507,6 +528,25 @@ async def get_result_analysis(result_id: str):
     )
 
 
+@router.patch("/api/lab/v2/results/{result_id}/skill-type")
+async def update_skill_type(result_id: str, body: SkillTypeUpdate):
+    """Update skill_type classification for a question result."""
+    db = get_db()
+    qr = db.get_question_result(result_id)
+    if not qr:
+        raise lab_error(LabErrorCode.RUN_NOT_FOUND, id=result_id)
+
+    kwargs: dict = {"skill_type": body.skill_type}
+    if body.skill_confidence is not None:
+        kwargs["skill_confidence"] = body.skill_confidence
+    updated = db.update_question_result(result_id, **kwargs)
+    return {
+        "id": updated.id,
+        "skill_type": updated.skill_type,
+        "skill_confidence": updated.skill_confidence,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Export helpers
 # ---------------------------------------------------------------------------
@@ -533,6 +573,10 @@ def _export_json(run_id: str, results, metrics):
                 "total_tokens_in": r.total_tokens_in,
                 "total_tokens_out": r.total_tokens_out,
                 "estimated_cost": r.estimated_cost,
+                "skill_type": r.skill_type,
+                "skill_confidence": r.skill_confidence,
+                "instruction_resolution": r.instruction_resolution,
+                "correct_answer": r.correct_answer,
             }
             for r in results
         ],
@@ -557,9 +601,11 @@ def _export_csv(run_id: str, results, metrics):
     # Header
     writer.writerow([
         "question_index", "question_id", "domain", "team_index",
-        "status", "final_answer", "judgment_verdict", "judgment_confidence",
+        "status", "final_answer", "correct_answer",
+        "judgment_verdict", "judgment_confidence",
         "judgment_explanation", "total_time_ms",
         "total_tokens_in", "total_tokens_out", "estimated_cost",
+        "skill_type", "skill_confidence", "instruction_resolution",
     ])
 
     for r in results:
@@ -570,6 +616,7 @@ def _export_csv(run_id: str, results, metrics):
             r.team_index,
             r.status,
             r.final_answer or "",
+            r.correct_answer or "",
             r.judgment_verdict or "",
             r.judgment_confidence or "",
             r.judgment_explanation or "",
@@ -577,6 +624,9 @@ def _export_csv(run_id: str, results, metrics):
             r.total_tokens_in,
             r.total_tokens_out,
             r.estimated_cost,
+            r.skill_type or "",
+            r.skill_confidence or "",
+            r.instruction_resolution or "",
         ])
 
     content = output.getvalue()
