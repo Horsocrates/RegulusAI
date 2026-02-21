@@ -450,6 +450,14 @@ def normalize_answer(text: str) -> str:
     s = re.sub(r'\\text\{([^}]*)\}', r'\1', s)
     s = re.sub(r'\\mathrm\{([^}]*)\}', r'\1', s)
     s = re.sub(r'\\textbf\{([^}]*)\}', r'\1', s)
+    # Chemistry normalization (P7 fix)
+    # Strip state annotations: (s), (aq), (l), (g)
+    s = re.sub(r'\((?:s|aq|l|g)\)', '', s)
+    # Normalize reaction arrows → = (all variants)
+    s = re.sub(r'\\(?:rightarrow|longrightarrow|to)\b', '=', s)
+    s = re.sub(r'[→⟶⟹]', '=', s)
+    # Remove LaTeX spacing commands
+    s = re.sub(r'\\[;:!,]', '', s)
     # Normalize subscripts: ₂ → 2, ₃ → 3, etc.
     sub_map = str.maketrans('₀₁₂₃₄₅₆₇₈₉', '0123456789')
     s = s.translate(sub_map)
@@ -483,6 +491,18 @@ def extract_core_answer(model_answer: str) -> str:
     if md_match:
         ans_line = md_match.group(1).strip()
         ans_line = re.sub(r'\*+$', '', ans_line).strip()
+        # P7 fix: If answer contains a LaTeX equation ($$...$$), extract just the equation
+        chem_eq = re.search(r'\$\$(.*?)\$\$', ans_line, re.DOTALL)
+        if chem_eq:
+            ans_line = chem_eq.group(1).strip()
+        else:
+            # Check for "The reaction/equation is: X" pattern
+            reaction_match = re.search(
+                r'(?:reaction|equation)\s+is[:\s]+(.+)',
+                ans_line, re.IGNORECASE
+            )
+            if reaction_match:
+                ans_line = reaction_match.group(1).strip()
         return ans_line
 
     # Try "answer: VALUE" at start of a line (YAML-like from structured output)
@@ -1656,6 +1676,45 @@ Before accepting ANY claim used in D4's computation:
 
 3. For MC questions: if D4 eliminates an answer option based on an IMPORTED/ASSUMED claim,
    that elimination is CONDITIONAL — the eliminated option must remain as a candidate.
+
+**CONSTRUCTIVE SANITY CHECK (Anti-Tautological Verification — P7):**
+After D4 computation, verify the result is PHYSICALLY/GEOMETRICALLY/LOGICALLY PLAUSIBLE:
+
+1. SCALE CHECK: Are computed quantities the right order of magnitude?
+   - A "small sphere inside object X" must have radius << size of X
+   - A probability must be in [0,1]
+   - A count must be a non-negative integer
+   - If computed value is ABSURDLY large/small vs problem scale → RED FLAG
+   - Example: r_small = 21 inside cone of height 3 → ABSURD → formula is WRONG
+
+2. CONSTRUCTIVE EXAMPLE CHECK (mandatory when answer involves derived formulas):
+   - Pick ONE concrete set of input values (from the problem or simple integers)
+   - Compute the answer using your formula
+   - Then INDEPENDENTLY verify from FIRST PRINCIPLES (NOT from the same formula chain):
+     * Go back to ORIGINAL definitions (geometric distances, physical constraints)
+     * Check: does the computed object actually satisfy ALL stated conditions?
+     * Example: formula gives r₂=21 → can a sphere of radius 21 fit inside a cone of height 3?
+       Obviously NO → formula is WRONG, regardless of algebra
+   - If constructive check FAILS → formula is WRONG → domain_confidence ≤ 25%
+   - Record: "CONSTRUCTIVE CHECK: [PASS/FAIL] — [details]"
+
+3. TAUTOLOGICAL VERIFICATION TRAP (detect and reject):
+   - If D4's "verification" consists of:
+     a) Computing value X from formula F
+     b) Checking that X satisfies relation R that is ALGEBRAICALLY EQUIVALENT to F
+   - Then verification proves NOTHING — it is circular
+   - REAL verification must use an INDEPENDENT constraint NOT derivable from F
+   - TAUTOLOGICAL example: derive r₂ from formula, check r₂/d = cot(α/2) — this IS the formula
+   - REAL example: derive r₂ from formula, verify sphere of radius r₂ fits inside cone at position d
+
+4. IMPOSSIBILITY CLAIMS require EXTRA scrutiny:
+   - If D4 concludes "impossible / no solution / does not exist":
+     * EXTRAORDINARY claim needs extraordinary evidence
+     * Could the formula itself be WRONG? What if derivation had an error?
+     * Try to CONSTRUCT a counterexample with concrete numbers
+     * If you can build one → "impossibility" is WRONG → iterate with revised formula
+     * Require 2+ INDEPENDENT derivation paths both showing impossible
+   - Record: "IMPOSSIBILITY AUDIT: [confirmed by N methods / REFUTED by example]"
 """
 
     w_text, tl_text, verdict, d4_conf, d4_history = iterate_domain(
@@ -1937,7 +1996,7 @@ For each claim that distinguishes your answer from the runner-up:
 {conspectus[:3000]}
 """
 
-        w_devil, tl_devil, v_devil, d4_devil_conf, _ = _run_domain_once(
+        w_devil, tl_devil, v_devil, d4_devil_conf = _run_domain_once(
             "D4", devil_instruction, tl_reflect_extra=d4_tl_extra,
             label="D4_devil_advocate")
 
@@ -2096,10 +2155,29 @@ For each claim that distinguishes your answer from the runner-up:
         return checkpoints
 
     # ── Iteration loop ──
+    prev_c_approach = None  # P7: track for stagnation detection
+    TOKEN_BUDGET = 600_000  # P7: max tokens per question before aborting iteration
     for iteration in range(MAX_CONFIDENCE_ITERATIONS):
         if c_computation is None or c_approach is None:
             print(f"  [Confidence] Could not extract — skipping iteration")
             break
+
+        # P7: Token budget guard
+        current_tokens = ((tl.total_input or 0) + (tl.total_output or 0) +
+                          (worker.total_input or 0) + (worker.total_output or 0))
+        if current_tokens > TOKEN_BUDGET:
+            print(f"  [Confidence] TOKEN BUDGET exceeded ({current_tokens:,} > {TOKEN_BUDGET:,}) — "
+                  f"accepting current confidence")
+            break
+
+        # P7: Stagnation detection (skip on first iteration)
+        if prev_c_approach is not None:
+            improvement = (c_approach or 0) - (prev_c_approach or 0)
+            if improvement < 5:
+                print(f"  [Confidence] STAGNATION: c_approach improved only {improvement:+d}pp "
+                      f"({prev_c_approach}% -> {c_approach}%) — stopping iterations")
+                break
+        prev_c_approach = c_approach
 
         gap = abs(c_computation - c_approach)
         final_conf = min(c_computation, c_approach)
