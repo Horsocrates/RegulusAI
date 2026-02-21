@@ -980,9 +980,34 @@ def run_question(question: dict, run_dir: Path) -> dict:
                         continue
 
                     elif not paradigm_attempted:
-                        # ── Paradigm shift: try fundamentally different approach ──
+                        # ── Paradigm shift: use METHOD_MENU fallback if available ──
                         print(f"  [ITER] Still stagnant after feedback — attempting PARADIGM SHIFT")
                         paradigm_attempted = True
+
+                        # Extract METHOD_MENU from conspectus to guide the shift
+                        method_menu_match = re.search(
+                            r'METHOD_MENU:?\s*\n((?:\s+M\d:.+\n)+)',
+                            conspectus, re.MULTILINE
+                        )
+                        if method_menu_match:
+                            menu_text = method_menu_match.group(1).strip()
+                            # Parse method entries
+                            methods = re.findall(r'M(\d+):\s*(.+?)(?:\n|$)', menu_text)
+                            fallback_text = ""
+                            if len(methods) > 1:
+                                fallback_text = (
+                                    f"\n\nMETHOD_MENU from D3 (use NEXT method in fallback order):\n"
+                                    f"{menu_text}\n\n"
+                                    f"Your current method (M1: {methods[0][1].strip()}) has stagnated.\n"
+                                    f"Switch to the NEXT method: M2: {methods[1][1].strip()}\n"
+                                    f"DO NOT reuse intermediate results from the previous method.\n"
+                                )
+                            print(f"  [ITER] METHOD_MENU found with {len(methods)} methods — "
+                                  f"shifting to M{methods[1][0] if len(methods) > 1 else '?'}")
+                        else:
+                            fallback_text = ""
+                            print(f"  [ITER] No METHOD_MENU found — generic paradigm shift")
+
                         paradigm_inst = (
                             f"## PARADIGM SHIFT — ABANDON CURRENT APPROACH\n\n"
                             f"Confidence history: {conf_history} — no progress despite feedback.\n\n"
@@ -992,7 +1017,8 @@ def run_question(question: dict, run_dir: Path) -> dict:
                             f"(not a variation of the same method)\n"
                             f"3. Solve from scratch using only the new approach\n"
                             f"4. Compare: does the new approach give a different answer?\n\n"
-                            f"This is not 'try harder' — this is 'try DIFFERENTLY'.\n\n"
+                            f"This is not 'try harder' — this is 'try DIFFERENTLY'.\n"
+                            f"{fallback_text}\n"
                             f"## FULL QUESTION:\n{q_text}\n\nContext:\n{conspectus[:2000]}"
                         )
                         w_text, tl_text, verdict, domain_conf = _run_domain_once(
@@ -1183,9 +1209,34 @@ If the hypothesis space is incomplete (missing a structurally distinct category 
 → verdict = iterate
 → State: "Your hypotheses only cover [X]. You must also consider [Y] as a separate hypothesis. Add it to open_hypotheses."
 
+**CHECK 5: CLAIM SOURCE AUDIT (Sufficient Reason for PROVEN)**
+For EVERY claim, rule, or definition in Worker's D2 output, verify its status matches its SOURCE:
+
+| Source type | Max allowed status | Example |
+|---|---|---|
+| Quoted from question text | PROVEN | "Metal A is divalent" — stated in problem |
+| Derived step-by-step from PROVEN premises only | PROVEN | "Therefore n=2" — if ALL steps trace to question text |
+| Domain knowledge / textbook fact | IMPORTED | "120° is optimal" — from Steiner theorem |
+| Worker-invented rule or convention | ASSUMED | "Purpose should match what control tests" |
+| Analogy or pattern | HEURISTIC | "Large enough to ignore" |
+
+CRITICAL TEST — scan for these red flags:
+- Worker writes "RULE:" or "RULE[N]:" WITHOUT citing a specific theorem/textbook/standard → status MUST be ASSUMED
+- Worker writes "The [more precise/accurate] description is..." → this is SEMANTIC JUDGMENT → ASSUMED
+- Worker writes "Convention:" or "Standard practice:" without citation → IMPORTED at best
+- Worker defines a NEW term or category not in the question → ASSUMED
+- Worker writes "clearly" / "obviously" on a non-trivial claim → ASSUMED
+
+If ANY claim has status PROVEN but its source is domain_knowledge or worker_invented:
+→ DOWNGRADE to IMPORTED or ASSUMED
+→ Add mandatory if_wrong: "If this claim is false, the answer changes to [X]"
+→ verdict = iterate
+→ State: "Claim '[claim]' was marked PROVEN but source is [type]. Downgraded to [new_status]. Worker must add if_wrong field."
+
 **VERDICT RULE:**
 If any D1 flag was closed by a CONDITIONAL proof → verdict = iterate.
 If hypothesis space is incomplete → verdict = iterate.
+If any claim has inflated status (PROVEN when should be IMPORTED/ASSUMED) → verdict = iterate.
 State in worker_instruction: "FLAG [id] was closed by a CONDITIONAL proof (step N assumes [what]). Re-open the flag. Consider BOTH branches: what if the proof holds, and what if it fails. Output open_hypotheses for both cases."
 """
     w_text, tl_text, verdict, d2_conf, d2_history = iterate_domain(
@@ -1231,9 +1282,33 @@ State in worker_instruction: "FLAG [id] was closed by a CONDITIONAL proof (step 
         # D3.1 — Enumerate
         d3_enumerate = (base_instruction or "") + """
 
-## D3 STEP 1: ENUMERATE ALL FRAMEWORKS
+## D3 STEP 1: METHOD MENU + FRAMEWORK ENUMERATION
 
-Do NOT select a framework yet. List ALL plausible mathematical approaches:
+### Part A: METHOD MENU (do this FIRST)
+BEFORE listing individual frameworks, classify the available SOLUTION METHODS.
+These are broad categories — paradigm shift will move between methods, not just between frameworks.
+
+Output a METHOD_MENU:
+```
+METHOD_MENU:
+  M1: [Method name] — [1-sentence description] — [why first choice]
+  M2: [Method name] — [1-sentence description] — [fallback if M1 stagnates]
+  M3: [Method name] — [1-sentence description] — [fallback if M2 stagnates]
+
+  Selected: M[X]
+  Fallback order on paradigm_shift: M[Y] → M[Z]
+```
+
+Common method categories (include ALL that could apply):
+- **Analytical/Symbolic**: exact derivation, closed-form solution, algebraic manipulation
+- **Numerical/Computational**: optimization, simulation, numerical search, iterative methods
+- **Structural/Combinatorial**: enumeration, graph theory, counting arguments, pigeonhole
+- **Reduction**: reduce to a known solved problem, isomorphism, bijection
+- **Probabilistic**: Monte Carlo, random sampling, expected value arguments
+- **Experimental/Empirical**: direct measurement, hypothesis testing (for science questions)
+
+### Part B: FRAMEWORK ENUMERATION (within the selected method)
+Do NOT select a framework yet. List ALL plausible approaches WITHIN the selected method:
 
 For each framework:
 - Name and brief description (1-2 sentences)
@@ -1565,6 +1640,22 @@ After evaluating D4 computation, check for numerical discrepancies with problem 
 
 CRITICAL: 3.68% error in exact stoichiometry = WRONG MODEL. 0.002% error in integer count = WRONG MODEL.
 Only 0.000% is acceptable for exact-answer tasks.
+
+**CLAIM STATUS INHERITANCE CHECK (Sufficient Reason):**
+D4 builds on claims from D2/D3 with statuses (PROVEN/IMPORTED/ASSUMED/CONDITIONAL).
+Before accepting ANY claim used in D4's computation:
+
+1. Check: does the claim trace back to the question text (PROVEN), or was it a D2 convention/rule?
+   - If D4 uses a claim marked PROVEN but it was actually a D2-invented rule (no question-text citation),
+     that claim is ASSUMED at best — D4's computation inherits the weakness.
+   - Record: "D4 FRAGILE DEPENDENCY: computation uses [claim] which is [actual_status], not PROVEN"
+
+2. If D4's answer would CHANGE when an IMPORTED/ASSUMED claim is negated:
+   - Record in conspectus: "FRAGILE: Answer depends on [claim]. If false → answer becomes [X]"
+   - domain_confidence penalty: -20pp (because answer is not robust)
+
+3. For MC questions: if D4 eliminates an answer option based on an IMPORTED/ASSUMED claim,
+   that elimination is CONDITIONAL — the eliminated option must remain as a candidate.
 """
 
     w_text, tl_text, verdict, d4_conf, d4_history = iterate_domain(
@@ -1706,6 +1797,25 @@ RED FLAGS (score F low):
 - "For all X, P(X)" proven only for generic X → F ≤ 0.3
 - Limit/asymptotic used as exact value at finite point → F ≤ 0.3
 
+CHECKPOINT F — ADDITIONAL: CLAIM GENEALOGY AUDIT (Sufficient Reason)
+For the final answer's inference chain, trace EACH claim back to its ORIGIN DOMAIN:
+- If origin = question text → OK (PROVEN)
+- If origin = D2 derivation with ALL PROVEN steps → OK (PROVEN)
+- If origin = D2 rule/convention WITHOUT question-text citation → NOT PROVEN (max IMPORTED)
+- If origin = Worker-invented rule ("RULE:", "Convention:", "Standard practice:") → ASSUMED
+
+Specific patterns to search for in the inference chain:
+- "RULE[N]:" or "RULE:" without citing a specific theorem/textbook → ASSUMED (not PROVEN)
+- "The [more precise/accurate] description is..." → SEMANTIC JUDGMENT → ASSUMED
+- "Off-target effects is vague" vs "altered surface expression is precise" → JUDGMENT, not FACT
+- "Purpose should be described by what the control tests" → INVENTED CONVENTION → ASSUMED
+- Any claim where Worker CHOSE between two valid interpretations → JUDGMENT → ASSUMED
+
+If ANY link in the final answer chain has INFLATED status (marked PROVEN but actually IMPORTED/ASSUMED):
+→ F ≤ 0.3 (the proof is built on sand)
+→ Hard cap: SUFFICIENT REASON VIOLATION → max 50%
+→ verdict = iterate
+
 CHECKPOINT H — ASSUMPTION INDEPENDENCE (ERR-based):
 Review Worker's Sufficient Reason Table:
 - Count claims with ERR status ≠ PROVEN
@@ -1776,16 +1886,90 @@ ADDITIONAL AUTO-FLAGS (trigger diagnostic regardless of gap):
     w_text, tl_text, verdict, d5_conf, d5_history = iterate_domain(
         "D5", instruction, tl_reflect_extra=d5_tl_extra)
 
+    # ── SUSPICIOUSLY CLEAN DETECTOR (MC questions only) ──
+    # Q2 failure: 92→95→97→98→100 with zero iterations on a 5-option MC question.
+    # For MC questions where top-2 answers differ by one phrase, this is a red flag.
+    # Force a devil's advocate D4 pass to stress-test the answer.
+    is_mc = question.get("answer_type") == "multipleChoice"
+    all_histories = [d1_history, d2_history, d4_history, d5_history]
+    all_passed_first_try = all(
+        len(h) <= 1 for h in all_histories if h
+    )
+    min_domain_conf = min(
+        d1_conf or 0, d2_conf or 0, d4_conf or 0, d5_conf or 0
+    )
+
+    if is_mc and all_passed_first_try and min_domain_conf >= 82:
+        print(f"  [CLEAN-FLAG] MC question: ALL domains passed first try, min_conf={min_domain_conf}%")
+        print(f"  [CLEAN-FLAG] Forcing devil's advocate D4 re-evaluation")
+
+        devil_instruction = f"""
+## DEVIL'S ADVOCATE PASS — MANDATORY FOR MC QUESTIONS WITH ZERO ITERATIONS
+
+Your previous pipeline produced answer with very high confidence on first try.
+For MC questions this is a RED FLAG — you may have confirmation-biased all verification.
+
+YOU MUST perform the following adversarial analysis:
+
+### Step 1: Identify top-2 candidates
+- Your chosen answer: [extract from conspectus]
+- Closest runner-up: [the answer choice that ALMOST passed your criteria]
+
+### Step 2: Build STRONGEST argument for the runner-up
+- What reasoning chain leads to the runner-up being correct?
+- What assumption in YOUR chain, if wrong, makes the runner-up correct?
+- Is there a domain-knowledge convention that favors the runner-up's phrasing?
+
+### Step 3: Claim source audit
+For each claim that distinguishes your answer from the runner-up:
+- Is it PROVEN (from question text) or ASSUMED (your judgment/convention)?
+- If the distinguishing claim is ASSUMED → you cannot be >70% confident
+
+### Step 4: Verdict
+- If runner-up has fewer ASSUMED claims → SWITCH your answer
+- If equal → lower confidence to max 70%, flag as "MC_ADVERSARIAL_UNCERTAIN"
+- If your answer clearly has stronger PROVEN chain → confirm, but confidence max 90%
+
+## FULL QUESTION TEXT:
+{q_text}
+
+## Current conspectus:
+{conspectus[:3000]}
+"""
+
+        w_devil, tl_devil, v_devil, d4_devil_conf, _ = _run_domain_once(
+            "D4", devil_instruction, tl_reflect_extra=d4_tl_extra,
+            label="D4_devil_advocate")
+
+        # If devil's advocate lowered confidence or changed answer, update D4
+        if d4_devil_conf is not None and d4_devil_conf < d4_conf:
+            print(f"  [CLEAN-FLAG] Devil's advocate lowered D4 conf: {d4_conf}% → {d4_devil_conf}%")
+            d4_conf = d4_devil_conf
+            d4_history.append(d4_devil_conf)
+
+            # Re-run D5 with updated context
+            print(f"  [CLEAN-FLAG] Re-running D5 after devil's advocate")
+            d5_instruction = get_instruction(tl_devil, "D5") or instruction
+            w_text, tl_text, verdict, d5_conf, d5_history = iterate_domain(
+                "D5", d5_instruction, tl_reflect_extra=d5_tl_extra)
+        else:
+            print(f"  [CLEAN-FLAG] Devil's advocate confirmed answer (conf={d4_devil_conf}%)")
+
     # ── Extract confidence values ──
     # Search BOTH conspectus AND tl_text (D5 reflect output) because
     # TL may write confidence in its reflect output before conspectus is updated.
     def extract_confidence(text, label):
+        # Strip Markdown bold markers — TL often writes "**C_computation (Worker):** 100%"
+        # which puts ** between : and digits, breaking the regex.
+        cleaned = text.replace('**', '')
         patterns = [
-            rf'{label}[^:\d]*[:\s]+(\d+)\s*%',   # "C_computation (Worker): 95%"
-            rf'{label}[^:\d]*[:\s]+(\d+)(?!\d)',   # "C_computation: 95"
+            rf'{label}[^:\d]*[:\s]+(\d+)\s*%',    # "C_computation (Worker): 95%"
+            rf'{label}[^:\d]*[:\s]+(\d+)(?!\d)',    # "C_computation: 95"
+            rf'{label}[^:\d]*=\s*(\d+)\s*%',       # "C_approach = 93%"
+            rf'{label}[^:\d]*=\s*(\d+)(?!\d)',      # "C_approach = 93"
         ]
         for p in patterns:
-            m = re.search(p, text, re.IGNORECASE)
+            m = re.search(p, cleaned, re.IGNORECASE)
             if m:
                 val = int(m.group(1))
                 if 0 <= val <= 100:
@@ -1808,14 +1992,25 @@ ADDITIONAL AUTO-FLAGS (trigger diagnostic regardless of gap):
                   or extract_confidence(conspectus, "TL confidence")
                   or extract_confidence(conspectus, "tl_confidence"))
 
-    # Fallback: if confidence still None (e.g. empty D5 reflect), assign low defaults
-    # so iteration logic can still run instead of skipping with "Could not extract"
+    # Fallback chain: if confidence labels not found, try domain_confidence parser,
+    # then flat defaults. Prevents Q3-style bug where bold formatting broke label parsing
+    # but domain_confidence was available.
     if c_computation is None:
-        c_computation = 20 if not w_text.strip() else 50
-        print(f"  [Confidence] c_computation not found — defaulting to {c_computation}%")
+        # Try extracting from Worker's text using domain_confidence parser
+        c_computation = _extract_confidence(w_text)
+        if c_computation:
+            print(f"  [Confidence] c_computation fallback from worker domain_confidence: {c_computation}%")
+        else:
+            c_computation = 20 if not w_text.strip() else 50
+            print(f"  [Confidence] c_computation not found — defaulting to {c_computation}%")
     if c_approach is None:
-        c_approach = 20 if not tl_text.strip() else 40
-        print(f"  [Confidence] c_approach not found — defaulting to {c_approach}%")
+        # Try extracting from TL's D5 reflect domain_confidence
+        c_approach = _extract_confidence(tl_text)
+        if c_approach:
+            print(f"  [Confidence] c_approach fallback from TL domain_confidence: {c_approach}%")
+        else:
+            c_approach = 20 if not tl_text.strip() else 40
+            print(f"  [Confidence] c_approach not found — defaulting to {c_approach}%")
 
     # ── CONFIDENCE-DRIVEN ITERATION ──
     #
