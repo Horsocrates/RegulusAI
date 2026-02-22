@@ -450,6 +450,7 @@ def normalize_answer(text: str) -> str:
     s = re.sub(r'\\text\{([^}]*)\}', r'\1', s)
     s = re.sub(r'\\mathrm\{([^}]*)\}', r'\1', s)
     s = re.sub(r'\\textbf\{([^}]*)\}', r'\1', s)
+    s = re.sub(r'\\text\{([^}]*)\}', r'\1', s)  # P7.1: strip \text{} wrappers
     # Chemistry normalization (P7 fix)
     # Strip state annotations: (s), (aq), (l), (g)
     s = re.sub(r'\((?:s|aq|l|g)\)', '', s)
@@ -458,6 +459,9 @@ def normalize_answer(text: str) -> str:
     s = re.sub(r'[→⟶⟹]', '=', s)
     # Remove LaTeX spacing commands
     s = re.sub(r'\\[;:!,]', '', s)
+    # P7.1: Remove LaTeX subscript notation: _3 → 3, _{12} → 12
+    s = re.sub(r'_\{([^}]*)\}', r'\1', s)
+    s = re.sub(r'_(\d)', r'\1', s)
     # Normalize subscripts: ₂ → 2, ₃ → 3, etc.
     sub_map = str.maketrans('₀₁₂₃₄₅₆₇₈₉', '0123456789')
     s = s.translate(sub_map)
@@ -480,19 +484,28 @@ def extract_core_answer(model_answer: str) -> str:
     """Extract the core answer from model output that may contain explanations.
     Tries XML tags first, then markdown patterns, then first substantive line.
     """
+    # P7.1: Strip code block markers (```) before processing
+    stripped_answer = model_answer.strip()
+    if stripped_answer.startswith('```'):
+        # Remove opening ``` (with optional language tag) and closing ```
+        stripped_answer = re.sub(r'^```\w*\s*\n?', '', stripped_answer)
+        stripped_answer = re.sub(r'\n?```\s*$', '', stripped_answer)
+        stripped_answer = stripped_answer.strip()
+
     # Try common XML tags
     for tag in ['final_answer', 'answer', 'result']:
-        match = re.search(f"<{tag}>(.*?)</{tag}>", model_answer, re.DOTALL)
+        match = re.search(f"<{tag}>(.*?)</{tag}>", stripped_answer, re.DOTALL)
         if match:
             return match.group(1).strip()
 
     # Try markdown bold "**Answer:** VALUE" or "**Final Answer:** VALUE"
-    md_match = re.search(r'\*\*(?:Final\s+)?Answer[:\s]*\*\*[:\s]*(.+?)(?:\n|$)', model_answer, re.IGNORECASE)
+    md_match = re.search(r'\*\*(?:Final\s+)?Answer[:\s]*\*\*[:\s]*(.+?)(?:\n|$)', stripped_answer, re.IGNORECASE)
     if md_match:
         ans_line = md_match.group(1).strip()
         ans_line = re.sub(r'\*+$', '', ans_line).strip()
-        # P7 fix: If answer contains a LaTeX equation ($$...$$), extract just the equation
-        chem_eq = re.search(r'\$\$(.*?)\$\$', ans_line, re.DOTALL)
+        # P7 fix: Check for LaTeX equation in remainder of text (may be on next line)
+        remainder = stripped_answer[md_match.start():]
+        chem_eq = re.search(r'\$\$(.*?)\$\$', remainder, re.DOTALL)
         if chem_eq:
             ans_line = chem_eq.group(1).strip()
         else:
@@ -505,23 +518,29 @@ def extract_core_answer(model_answer: str) -> str:
                 ans_line = reaction_match.group(1).strip()
         return ans_line
 
+    # P7.1: Try YAML-like structured answer with equation field
+    # Handle multi-line "answer:\n  equation: ..." blocks
+    eq_match = re.search(r'^\s*equation:\s*["\']?(.+?)["\']?\s*$', stripped_answer, re.MULTILINE | re.IGNORECASE)
+    if eq_match:
+        return eq_match.group(1).strip()
+
     # Try "answer: VALUE" at start of a line (YAML-like from structured output)
-    yaml_match = re.search(r'^answer:\s*(.+?)$', model_answer, re.MULTILINE | re.IGNORECASE)
+    yaml_match = re.search(r'^answer:\s*(.+?)$', stripped_answer, re.MULTILINE | re.IGNORECASE)
     if yaml_match:
         return yaml_match.group(1).strip()
 
     # If answer is short (< 200 chars), it's probably just the answer
-    if len(model_answer.strip()) < 200:
-        return model_answer.strip()
+    if len(stripped_answer) < 200:
+        return stripped_answer
 
     # Otherwise take first non-empty line that looks like an answer
-    for line in model_answer.strip().split('\n'):
-        stripped = line.strip()
-        plain = re.sub(r'^\*+|\*+$', '', stripped).strip()
+    for line in stripped_answer.split('\n'):
+        line_stripped = line.strip()
+        plain = re.sub(r'^\*+|\*+$', '', line_stripped).strip()
         if plain and not plain.startswith('#') and not plain.startswith('-'):
-            return stripped
+            return line_stripped
 
-    return model_answer.strip()[:200]
+    return stripped_answer[:200]
 
 
 def judge_answer(model_answer: str, expected_answer: str, answer_type: str) -> bool:
