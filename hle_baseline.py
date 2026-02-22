@@ -98,8 +98,8 @@ Give your final answer in the specified format.
     total_output = 0
     tool_calls = 0
 
-    # Tool use loop (max 10 iterations)
-    for iteration in range(10):
+    # Tool use loop (max 30 iterations — let model work until it's done)
+    for iteration in range(30):
         # Use streaming to avoid 10-min timeout on long thinking requests
         collected_blocks = []
         input_tokens = 0
@@ -163,7 +163,7 @@ Give your final answer in the specified format.
         "total_output": total_output,
         "total_tokens": total_input + total_output,
         "tool_calls": tool_calls,
-        "iterations": 10
+        "iterations": 30
     }
 
 
