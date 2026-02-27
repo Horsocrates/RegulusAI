@@ -1,13 +1,18 @@
 """
-MNIST certification benchmark.
+MNIST and CIFAR-10 certification benchmark.
 
-Trains a small model on MNIST, then certifies test images
+Trains small models on MNIST/CIFAR-10, then certifies test images
 using NNVerificationEngine with interval bound propagation.
 
 Usage:
     from regulus.nn.benchmark import train_mnist_model, certify_mnist
     model = train_mnist_model(epochs=3)
     report = certify_mnist(model, epsilon=0.01, n_test=100)
+    print(report.summary())
+
+    from regulus.nn.benchmark import train_cifar_model, certify_cifar
+    model = train_cifar_model(epochs=10)
+    report = certify_cifar(model, epsilon=0.01, n_test=100)
     print(report.summary())
 """
 
@@ -581,6 +586,452 @@ def certify_mnist(
     # epsilon in tensor space → [0,1] pixel space: eps * 0.3081
     # epsilon in tensor space → [0,255] pixel space: eps * 0.3081 * 255
     eps_01 = epsilon * 0.3081
+    eps_255 = eps_01 * 255.0
+
+    return CertificationReport(
+        total_images=n,
+        correctly_classified=correct,
+        certified_robust=certified,
+        epsilon=epsilon,
+        strategy=strategy,
+        architecture=architecture,
+        per_image=per_image,
+        avg_output_max_width=total_max_width / n if n > 0 else 0.0,
+        avg_margin=total_margin / n if n > 0 else 0.0,
+        total_time_sec=total_time,
+        eps_01_space=eps_01,
+        eps_pixel_255=eps_255,
+    )
+
+
+# =============================================================
+# CIFAR-10 benchmark
+# =============================================================
+
+# CIFAR-10 normalization constants (per-channel)
+CIFAR_MEAN = (0.4914, 0.4822, 0.4465)
+CIFAR_STD = (0.2470, 0.2435, 0.2616)
+
+
+def _ensure_cifar10(data_dir: str = "./data") -> None:
+    """Ensure CIFAR-10 data is available."""
+    import os
+    import torchvision
+
+    cifar_dir = os.path.join(data_dir, "cifar-10-batches-py")
+    if os.path.isdir(cifar_dir):
+        return  # Already downloaded
+
+    torchvision.datasets.CIFAR10(root=data_dir, train=True, download=True)
+    torchvision.datasets.CIFAR10(root=data_dir, train=False, download=True)
+
+
+def train_cifar_model(
+    architecture: str = "cifar_cnn_bn",
+    epochs: int = 10,
+    batch_size: int = 128,
+    lr: float = 0.001,
+    data_dir: str = "./data",
+    verbose: bool = True,
+    ibp_loss_weight: float = 0.0,
+    ibp_eps_start: float = 0.001,
+    ibp_eps_end: float = 0.01,
+    ibp_check_interval: int = 50,
+    ibp_n_samples: int = 4,
+    ibp_target_margin: float = 0.1,
+    weight_reg: float = 0.0,
+    flat_eps: bool = False,
+    lambda_ramp: bool = False,
+    lambda_ramp_fraction: float = 0.5,
+    lambda_warmup_fraction: float = 0.0,
+    seed: int | None = None,
+    grad_clip: float = 0.0,
+    lr_schedule: str = "none",
+    checkpoint: bool = False,
+    checkpoint_n_samples: int = 20,
+    return_result: bool = False,
+) -> nn.Module | TrainingResult:
+    """Train a model on CIFAR-10.
+
+    Same interface as train_mnist_model but for CIFAR-10 (3x32x32 input).
+
+    Args:
+        architecture: "cifar_cnn_bn" (default)
+        epochs: Number of training epochs
+        batch_size: Training batch size (128 default for CIFAR)
+        lr: Learning rate
+        data_dir: Directory to download CIFAR-10 data
+        verbose: Print training progress
+        ibp_loss_weight: Weight for IBP margin penalty (0 = disabled)
+        ibp_eps_start: Starting epsilon for IBP schedule
+        ibp_eps_end: Target epsilon for IBP schedule
+        ibp_check_interval: Check IBP margin every N batches
+        ibp_n_samples: Number of samples per IBP check
+        ibp_target_margin: Target margin for IBP penalty
+        weight_reg: Weight for L2 weight norm regularization
+        flat_eps: If True, use eps_end from step 0
+        lambda_ramp: If True, ramp IBP loss weight from 0
+        lambda_ramp_fraction: Fraction of steps for lambda ramp
+        lambda_warmup_fraction: Fraction of steps with lambda=0
+        seed: Random seed for reproducibility
+        grad_clip: Max gradient norm for clipping (0 = disabled)
+        lr_schedule: LR schedule: "none", "cosine", "plateau"
+        checkpoint: If True, save best model by certified accuracy
+        checkpoint_n_samples: Number of test images for checkpoint eval
+        return_result: If True, return TrainingResult instead of model
+
+    Returns:
+        Trained PyTorch model in eval mode (or TrainingResult).
+    """
+    import torchvision
+    import torchvision.transforms as transforms
+
+    from regulus.nn.architectures import make_cifar_cnn_bn
+
+    if seed is not None:
+        torch.manual_seed(seed)
+        np.random.seed(seed)
+
+    # Build model
+    if architecture == "cifar_cnn_bn":
+        model = make_cifar_cnn_bn()
+    else:
+        raise ValueError(f"Unknown CIFAR architecture: {architecture}. Use 'cifar_cnn_bn'.")
+
+    # Dataset
+    _ensure_cifar10(data_dir)
+
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(CIFAR_MEAN, CIFAR_STD),
+    ])
+
+    train_dataset = torchvision.datasets.CIFAR10(
+        root=data_dir, train=True, download=False, transform=transform
+    )
+    train_loader = DataLoader(
+        train_dataset, batch_size=batch_size, shuffle=True, num_workers=0
+    )
+
+    # IBP schedule
+    use_ibp = ibp_loss_weight > 0 or weight_reg > 0
+    eps_schedule = None
+    lambda_schedule = None
+    if use_ibp:
+        from regulus.nn.training import (
+            EpsilonSchedule, LambdaSchedule, compute_ibp_margin,
+            ibp_margin_penalty, weight_norm_regularizer,
+        )
+        total_steps = epochs * len(train_loader)
+        eps_schedule = EpsilonSchedule(
+            eps_start=ibp_eps_start,
+            eps_end=ibp_eps_end,
+            total_steps=total_steps,
+            flat=flat_eps,
+        )
+        if lambda_ramp and ibp_loss_weight > 0:
+            lambda_schedule = LambdaSchedule(
+                lambda_max=ibp_loss_weight,
+                total_steps=total_steps,
+                ramp_fraction=lambda_ramp_fraction,
+                warmup_fraction=lambda_warmup_fraction,
+            )
+
+    # Training
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    criterion = nn.CrossEntropyLoss()
+
+    # LR scheduler
+    scheduler = None
+    if lr_schedule == "cosine":
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max=epochs, eta_min=lr * 0.01
+        )
+    elif lr_schedule == "plateau":
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, mode="min", factor=0.5, patience=2, verbose=False
+        )
+
+    # Checkpointing
+    best_state_dict = None
+    best_certified = 0.0
+    best_epoch = 0
+    spike_count = 0
+    epoch_stats: list[dict] = []
+    median_loss = None
+
+    test_loader_ckpt = None
+    if checkpoint and use_ibp:
+        import torchvision as tv_ckpt
+        import torchvision.transforms as tr_ckpt
+        _ensure_cifar10(data_dir)
+        test_ds = tv_ckpt.datasets.CIFAR10(
+            root=data_dir, train=False, download=False,
+            transform=tr_ckpt.Compose([
+                tr_ckpt.ToTensor(), tr_ckpt.Normalize(CIFAR_MEAN, CIFAR_STD),
+            ]),
+        )
+        test_loader_ckpt = DataLoader(
+            torch.utils.data.Subset(test_ds, list(range(checkpoint_n_samples))),
+            batch_size=checkpoint_n_samples, shuffle=False, num_workers=0,
+        )
+
+    model.train()
+    global_step = 0
+    for epoch in range(epochs):
+        running_loss = 0.0
+        correct = 0
+        total = 0
+        ibp_margin_sum = 0.0
+        ibp_checks = 0
+
+        for batch_idx, (images, labels) in enumerate(train_loader):
+            optimizer.zero_grad()
+            outputs = model(images)
+            loss = criterion(outputs, labels)
+
+            if use_ibp:
+                if weight_reg > 0:
+                    w_reg = weight_norm_regularizer(model)
+                    loss = loss + weight_reg * w_reg
+
+                effective_ibp_weight = ibp_loss_weight
+                if lambda_schedule is not None:
+                    effective_ibp_weight = lambda_schedule(global_step)
+
+                if effective_ibp_weight > 0 and (global_step % ibp_check_interval == 0):
+                    current_eps = eps_schedule(global_step)
+                    margin = compute_ibp_margin(
+                        model, images, labels, current_eps,
+                        architecture=architecture,
+                        n_samples=ibp_n_samples,
+                    )
+                    penalty = ibp_margin_penalty(margin, ibp_target_margin)
+                    if penalty > 0:
+                        loss = loss + effective_ibp_weight * penalty * weight_norm_regularizer(model)
+
+                    ibp_margin_sum += margin
+                    ibp_checks += 1
+                    model.train()
+
+            loss.backward()
+
+            if grad_clip > 0:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
+
+            optimizer.step()
+
+            running_loss += loss.item()
+            _, predicted = outputs.max(1)
+            total += labels.size(0)
+            correct += predicted.eq(labels).sum().item()
+            global_step += 1
+
+        acc = 100.0 * correct / total
+        avg_loss = running_loss / len(train_loader)
+
+        is_spike = False
+        if median_loss is not None and avg_loss > 5 * median_loss:
+            spike_count += 1
+            is_spike = True
+        if median_loss is None:
+            median_loss = avg_loss
+        else:
+            median_loss = 0.7 * median_loss + 0.3 * min(avg_loss, 5 * median_loss)
+
+        current_lr = optimizer.param_groups[0]["lr"]
+        if scheduler is not None:
+            if lr_schedule == "plateau":
+                scheduler.step(avg_loss)
+            else:
+                scheduler.step()
+
+        # Checkpoint evaluation
+        epoch_cert = 0.0
+        if checkpoint and use_ibp and test_loader_ckpt is not None:
+            model.eval()
+            n_cert = 0
+            n_total_ckpt = 0
+            for test_images, test_labels in test_loader_ckpt:
+                for j in range(test_images.size(0)):
+                    img_np = test_images[j].numpy().astype(np.float64)
+                    lbl = int(test_labels[j].item())
+                    engine_ckpt = NNVerificationEngine(strategy="naive", fold_bn=True)
+                    with torch.no_grad():
+                        res = engine_ckpt.verify_from_point(
+                            model, img_np, ibp_eps_end, true_label=lbl
+                        )
+                    if res.certified_robust:
+                        n_cert += 1
+                    n_total_ckpt += 1
+            epoch_cert = n_cert / n_total_ckpt if n_total_ckpt > 0 else 0.0
+
+            if epoch_cert > best_certified:
+                best_certified = epoch_cert
+                best_epoch = epoch + 1
+                import copy
+                best_state_dict = copy.deepcopy(model.state_dict())
+
+            model.train()
+
+        stats = {
+            "epoch": epoch + 1,
+            "loss": avg_loss,
+            "acc": acc,
+            "lr": current_lr,
+            "is_spike": is_spike,
+        }
+        if use_ibp and ibp_checks > 0:
+            stats["ibp_margin"] = ibp_margin_sum / ibp_checks
+        if checkpoint:
+            stats["cert_ckpt"] = epoch_cert
+        epoch_stats.append(stats)
+
+        if verbose:
+            msg = f"  Epoch {epoch + 1}/{epochs}: loss={avg_loss:.4f}, acc={acc:.1f}%"
+            if use_ibp and ibp_checks > 0:
+                avg_margin = ibp_margin_sum / ibp_checks
+                msg += f", ibp_margin={avg_margin:.4f}"
+                if eps_schedule is not None:
+                    msg += f", eps={eps_schedule(global_step):.5f}"
+                if lambda_schedule is not None:
+                    msg += f", lambda={lambda_schedule(global_step):.4f}"
+            if lr_schedule != "none":
+                msg += f", lr={current_lr:.6f}"
+            if is_spike:
+                msg += " [SPIKE]"
+            if checkpoint and epoch_cert > 0:
+                ckpt_marker = " *BEST*" if epoch + 1 == best_epoch else ""
+                msg += f", cert_ckpt={epoch_cert*100:.1f}%{ckpt_marker}"
+            print(msg)
+
+    # Restore best checkpoint
+    if checkpoint and best_state_dict is not None:
+        final_certified = epoch_cert if checkpoint else 0.0
+        if best_certified > final_certified:
+            model.load_state_dict(best_state_dict)
+            if verbose:
+                print(f"  >> Restored best checkpoint from epoch {best_epoch} "
+                      f"(cert={best_certified*100:.1f}% vs final={final_certified*100:.1f}%)")
+        else:
+            final_certified = epoch_cert
+    else:
+        final_certified = 0.0
+
+    model.eval()
+
+    if return_result:
+        return TrainingResult(
+            model=model,
+            best_certified=best_certified,
+            best_epoch=best_epoch,
+            final_certified=final_certified,
+            spike_count=spike_count,
+            epoch_stats=epoch_stats,
+        )
+    return model
+
+
+def certify_cifar(
+    model: nn.Module,
+    epsilon: float = 0.01,
+    n_test: int = 100,
+    strategy: str = "naive",
+    architecture: str = "cifar_cnn_bn",
+    data_dir: str = "./data",
+    verbose: bool = True,
+    progress_interval: int = 10,
+    crown_depth: str = "fc",
+) -> CertificationReport:
+    """Certify CIFAR-10 test images using NNVerificationEngine.
+
+    Args:
+        model: Trained PyTorch model in eval mode.
+        epsilon: Perturbation radius in tensor (normalized) space.
+        n_test: Number of test images to certify.
+        strategy: Verification strategy ("naive" or "crown").
+        architecture: "cifar_cnn_bn" (determines input shape).
+        data_dir: Directory with CIFAR-10 data.
+        verbose: Print progress.
+        progress_interval: Print every N images.
+        crown_depth: CROWN depth ("fc", "deep", "full").
+
+    Returns:
+        CertificationReport with aggregated metrics.
+    """
+    import torchvision
+    import torchvision.transforms as transforms
+
+    _ensure_cifar10(data_dir)
+
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(CIFAR_MEAN, CIFAR_STD),
+    ])
+
+    test_dataset = torchvision.datasets.CIFAR10(
+        root=data_dir, train=False, download=False, transform=transform
+    )
+
+    engine = NNVerificationEngine(strategy=strategy, crown_depth=crown_depth)
+    model.eval()
+
+    correct = 0
+    certified = 0
+    total_max_width = 0.0
+    total_margin = 0.0
+    per_image: list[dict] = []
+
+    t_start = time.perf_counter()
+
+    for i in range(min(n_test, len(test_dataset))):
+        image, true_label = test_dataset[i]
+        image_np = image.numpy().astype(np.float64)
+
+        # Point forward pass for clean accuracy
+        with torch.no_grad():
+            point_out = model(image.unsqueeze(0))
+            point_pred = int(point_out.argmax(1).item())
+
+        is_correct = point_pred == true_label
+        if is_correct:
+            correct += 1
+
+        # Interval verification
+        result = engine.verify_from_point(model, image_np, epsilon, true_label=true_label)
+
+        if result.certified_robust:
+            certified += 1
+
+        total_max_width += float(np.max(result.output_width))
+        total_margin += result.margin
+
+        per_image.append({
+            "index": i,
+            "true_label": int(true_label),
+            "point_pred": point_pred,
+            "interval_pred": result.predicted_class,
+            "correct": is_correct,
+            "certified": result.certified_robust,
+            "margin": result.margin,
+            "max_width": float(np.max(result.output_width)),
+        })
+
+        if verbose and (i + 1) % progress_interval == 0:
+            print(
+                f"  [{i + 1}/{n_test}] "
+                f"correct={correct}, certified={certified}, "
+                f"avg_width={total_max_width / (i + 1):.6f}"
+            )
+
+    total_time = time.perf_counter() - t_start
+    n = min(n_test, len(test_dataset))
+
+    # Epsilon normalization context for CIFAR-10
+    # CIFAR normalizes per-channel: (x_c - mean_c) / std_c
+    # Use average std for approximate pixel-space epsilon
+    avg_std = sum(CIFAR_STD) / len(CIFAR_STD)
+    eps_01 = epsilon * avg_std
     eps_255 = eps_01 * 255.0
 
     return CertificationReport(
