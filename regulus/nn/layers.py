@@ -38,6 +38,24 @@ class IntervalLinear:
         bias = layer.bias.detach().cpu().numpy() if layer.bias is not None else None
         return cls(weight, bias)
 
+    def fold_bn(self, bn: IntervalBatchNorm) -> IntervalLinear:
+        """Fold a BatchNorm1d affine transform into this Linear layer.
+
+        BN computes: y = scale * (Wx + b) + shift
+                       = (scale * W)x + (scale * b + shift)
+
+        Eliminates the BN layer from the propagation chain.
+        Mathematically identical output, one fewer pos/neg decomposition.
+        """
+        scale = bn.scale  # (out_features,)
+        shift = bn.shift  # (out_features,)
+
+        new_weight = scale[:, np.newaxis] * self.weight  # (out,1) * (out,in)
+        old_bias = self.bias if self.bias is not None else np.zeros(self.weight.shape[0])
+        new_bias = scale * old_bias + shift
+
+        return IntervalLinear(new_weight, new_bias)
+
     def __call__(self, x: IntervalTensor) -> IntervalTensor:
         result = interval_matmul_exact_weights(self.weight, x)
         if self.bias is not None:
@@ -66,6 +84,46 @@ class IntervalSigmoid:
 
     def __call__(self, x: IntervalTensor) -> IntervalTensor:
         return x.sigmoid()
+
+
+class IntervalTanh:
+    """Interval tanh.
+
+    Tanh is monotone increasing -> [tanh(lo), tanh(hi)].
+    Compresses to [-1,1] -> fights blowup.
+    Coq backing: pi_monotone_correct (PInterval.v:612).
+    """
+
+    def __call__(self, x: IntervalTensor) -> IntervalTensor:
+        return x.tanh()
+
+
+class IntervalGELU:
+    """Interval GELU -- CONSERVATIVE bounds.
+
+    GELU(x) = x * Phi(x) is not monotone everywhere.
+    Has a global minimum at x* ~ -0.1685.
+    Uses min/max of boundary evaluations plus the global minimum
+    when the interval crosses the critical point.
+    """
+
+    def __call__(self, x: IntervalTensor) -> IntervalTensor:
+        return x.gelu()
+
+
+class IntervalELU:
+    """Interval ELU.
+
+    ELU(x) = x if x >= 0, alpha*(exp(x)-1) if x < 0.
+    Monotone increasing -> [elu(lo), elu(hi)].
+    Coq backing: pi_monotone_correct (PInterval.v:612).
+    """
+
+    def __init__(self, alpha: float = 1.0) -> None:
+        self.alpha = alpha
+
+    def __call__(self, x: IntervalTensor) -> IntervalTensor:
+        return x.elu(self.alpha)
 
 
 class IntervalSoftmax:
@@ -204,6 +262,26 @@ class IntervalConv2d:
         stride = layer.stride[0] if isinstance(layer.stride, tuple) else layer.stride
         padding = layer.padding[0] if isinstance(layer.padding, tuple) else layer.padding
         return cls(weight, bias, stride, padding)
+
+    def fold_bn(self, bn: IntervalBatchNorm) -> IntervalConv2d:
+        """Fold a BatchNorm2d affine transform into this Conv2d layer.
+
+        BN computes per-channel: y_c = scale_c * conv_c(x) + shift_c
+
+        New weight[c] = scale[c] * old_weight[c]
+        New bias[c]   = scale[c] * old_bias[c] + shift[c]
+
+        Eliminates the BN layer from the propagation chain.
+        """
+        scale = bn.scale  # (C_out,)
+        shift = bn.shift  # (C_out,)
+
+        # weight shape: (C_out, C_in, kH, kW)
+        new_weight = scale[:, np.newaxis, np.newaxis, np.newaxis] * self.weight
+        old_bias = self.bias if self.bias is not None else np.zeros(self.weight.shape[0])
+        new_bias = scale * old_bias + shift
+
+        return IntervalConv2d(new_weight, new_bias, self.stride, self.padding)
 
     def __call__(self, x: IntervalTensor) -> IntervalTensor:
         import torch

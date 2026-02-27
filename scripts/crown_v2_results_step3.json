@@ -1,0 +1,37 @@
+{
+  "v1_3seed": [
+    {
+      "seed": 42,
+      "architecture": "cnn_bn",
+      "ibp_certified": 0.875,
+      "ibp_width": 1.9657423497838227,
+      "ibp_margin": -1.6865363139208285,
+      "crown_certified": 0.95,
+      "crown_width": 1.0646056712522065,
+      "crown_margin": -0.7909149416242525,
+      "clean": 0.98
+    },
+    {
+      "seed": 123,
+      "architecture": "cnn_bn",
+      "ibp_certified": 0.905,
+      "ibp_width": 1.9050987970802025,
+      "ibp_margin": -1.6608777125722887,
+      "crown_certified": 0.95,
+      "crown_width": 1.0252091136051726,
+      "crown_margin": -0.7692059633858728,
+      "clean": 0.985
+    },
+    {
+      "seed": 7,
+      "architecture": "cnn_bn",
+      "ibp_certified": 0.83,
+      "ibp_width": 2.0007245288786453,
+      "ibp_margin": -1.653108501617862,
+      "crown_certified": 0.895,
+      "crown_width": 1.0581993227658513,
+      "crown_margin": -0.809673263516196,
+      "clean": 0.97
+    }
+  ]
+}

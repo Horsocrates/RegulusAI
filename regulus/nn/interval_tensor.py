@@ -60,6 +60,37 @@ class IntervalTensor:
     def mean_width(self) -> float:
         return float(np.mean(self.width))
 
+    # --- Diagnostics ---
+
+    def unstable_relu_count(self) -> int:
+        """Count elements where interval straddles zero: lo < 0 < hi.
+
+        These are 'unstable' ReLU neurons — IBP cannot determine
+        whether they activate. Primary driver of interval blowup.
+        Stable neurons (fully positive or fully negative) cause no blowup.
+        """
+        return int(np.sum((self.lo < 0) & (self.hi > 0)))
+
+    def stability_ratio(self) -> float:
+        """Fraction of elements that are ReLU-stable (not straddling zero).
+
+        1.0 = all stable (best case), 0.0 = all unstable (worst case).
+        """
+        total = self.lo.size
+        if total == 0:
+            return 1.0
+        return 1.0 - self.unstable_relu_count() / total
+
+    def width_percentiles(
+        self, percentiles: tuple[int, ...] = (50, 90, 95, 99, 100)
+    ) -> dict[int, float]:
+        """Width percentiles across all elements.
+
+        Helps distinguish uniform blowup from a few 'runaway' neurons.
+        """
+        w = self.width.flatten()
+        return {p: float(np.percentile(w, p)) for p in percentiles}
+
     # --- Arithmetic ---
 
     def __add__(self, other: IntervalTensor) -> IntervalTensor:
@@ -85,6 +116,60 @@ class IntervalTensor:
                 np.exp(x) / (1.0 + np.exp(x)),
             )
         return IntervalTensor(_sig(self.lo), _sig(self.hi))
+
+    def tanh(self) -> IntervalTensor:
+        """Element-wise tanh. Monotone increasing -> [tanh(lo), tanh(hi)].
+        Mirrors pi_monotone applied with tanh. Coq: pi_monotone_correct."""
+        return IntervalTensor(np.tanh(self.lo), np.tanh(self.hi))
+
+    def elu(self, alpha: float = 1.0) -> IntervalTensor:
+        """Element-wise ELU. Monotone increasing -> [elu(lo), elu(hi)].
+        ELU(x) = x if x >= 0, alpha*(exp(x)-1) if x < 0.
+        Coq: pi_monotone_correct."""
+        def _elu(x: np.ndarray) -> np.ndarray:
+            return np.where(x >= 0, x, alpha * (np.exp(x) - 1.0))
+        return IntervalTensor(_elu(self.lo), _elu(self.hi))
+
+    def gelu(self) -> IntervalTensor:
+        """Element-wise GELU with conservative bounds.
+
+        GELU(x) = x * Phi(x) is NOT globally monotone.
+        Has minimum at x* ~ -0.1685 where GELU(x*) ~ -0.0170.
+
+        For each element:
+        - If interval fully right of x*: monotone, [gelu(lo), gelu(hi)]
+        - If interval fully left of x*: decreasing, [gelu(hi), gelu(lo)]
+        - If crosses x*: lo = min(gelu(lo), gelu(hi), GELU_MIN_Y)
+        """
+        from math import erf as _scalar_erf
+
+        def _gelu(x: np.ndarray) -> np.ndarray:
+            # Use vectorized erf via numpy approximation:
+            # erf(x) can be computed from tanh approximation for speed,
+            # but for soundness use exact math.erf via vectorize
+            _verf = np.vectorize(_scalar_erf)
+            return 0.5 * x * (1.0 + _verf(x / np.sqrt(2.0)))
+
+        GELU_MIN_X = -0.7518  # GELU'(x*) = 0, found by root-finding
+        GELU_MIN_Y = 0.5 * GELU_MIN_X * (1.0 + _scalar_erf(GELU_MIN_X / np.sqrt(2.0)))
+
+        g_lo = _gelu(self.lo)
+        g_hi = _gelu(self.hi)
+
+        # Classification per element
+        monotone_right = self.lo >= GELU_MIN_X
+        monotone_left = self.hi <= GELU_MIN_X
+        crosses = ~monotone_right & ~monotone_left
+
+        out_lo = np.where(
+            monotone_right, g_lo,
+            np.where(monotone_left, g_hi,
+                     np.minimum(np.minimum(g_lo, g_hi), GELU_MIN_Y)))
+        out_hi = np.where(
+            monotone_left, g_lo,
+            np.maximum(g_lo, g_hi))
+
+        return IntervalTensor(out_lo, out_hi)
 
     def __repr__(self) -> str:
         if self.lo.size <= 6:

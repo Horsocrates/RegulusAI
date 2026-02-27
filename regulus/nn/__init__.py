@@ -9,6 +9,7 @@ actual output is guaranteed within the computed interval.
 from regulus.nn.interval_tensor import IntervalTensor, interval_matmul_exact_weights
 from regulus.nn.layers import (
     IntervalLinear, IntervalReLU, IntervalSigmoid, IntervalSoftmax,
+    IntervalTanh, IntervalGELU, IntervalELU,
     IntervalBatchNorm, IntervalConv2d, IntervalFlatten, IntervalMaxPool2d,
 )
 from regulus.nn.model import IntervalSequential, convert_model
@@ -16,7 +17,10 @@ from regulus.nn.reanchor import ReanchoredIntervalModel
 from regulus.nn.architectures import (
     ResBlock, IntervalResBlock,
     make_cifar_cnn_bn, ResNetCIFAR,
+    make_cnn_bn_v2,
 )
+from regulus.nn.verifier import VerificationMode, VerificationContract
+from regulus.nn.crown import CROWNEngine, CROWNResult, crown_verify
 
 __all__ = [
     "IntervalTensor",
@@ -25,6 +29,9 @@ __all__ = [
     "IntervalReLU",
     "IntervalSigmoid",
     "IntervalSoftmax",
+    "IntervalTanh",
+    "IntervalGELU",
+    "IntervalELU",
     "IntervalBatchNorm",
     "IntervalConv2d",
     "IntervalFlatten",
@@ -36,4 +43,9 @@ __all__ = [
     "IntervalResBlock",
     "make_cifar_cnn_bn",
     "ResNetCIFAR",
+    "VerificationMode",
+    "VerificationContract",
+    "CROWNEngine",
+    "CROWNResult",
+    "crown_verify",
 ]

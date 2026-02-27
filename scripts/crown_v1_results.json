@@ -1,0 +1,26 @@
+{
+  "ibp": {
+    "certified": 175,
+    "total": 200,
+    "certified_accuracy": 0.875,
+    "clean_accuracy": 0.98,
+    "avg_width": 1.9657423497838227,
+    "avg_margin": -1.6865363139208285,
+    "time_s": 6.71939470001962
+  },
+  "crown": {
+    "certified": 190,
+    "total": 200,
+    "certified_accuracy": 0.95,
+    "clean_accuracy": 0.98,
+    "avg_width": 1.0646056712522065,
+    "avg_margin": -0.7909149416242525,
+    "time_s": 5.722154000017326
+  },
+  "improvement": {
+    "certified_delta": 0.07499999999999996,
+    "width_reduction": 0.45842054460021997,
+    "crown_only": 15,
+    "ibp_only": 0
+  }
+}

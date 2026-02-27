@@ -1,0 +1,15 @@
+{
+  "v2_single": [
+    {
+      "seed": 42,
+      "architecture": "cnn_bn_v2",
+      "ibp_certified": 0.08,
+      "ibp_width": 5.491546729522311,
+      "ibp_margin": -4.881281796979292,
+      "crown_certified": 0.415,
+      "crown_width": 3.3798044631963666,
+      "crown_margin": -2.896728719140667,
+      "clean": 0.93
+    }
+  ]
+}

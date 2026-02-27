@@ -9,6 +9,26 @@ Four strategies:
   adaptive      -- re-anchor only when width exceeds threshold
   hybrid        -- try naive first, fall back to midpoint if too wide
   proportional  -- re-anchor with fraction of current width (preserves signal)
+
+Formal backing (PInterval_Composition.v, axiom-free):
+  - pi_reanchor_width: width(reanchor(I, eps)) == 2 * eps
+  - pi_reanchor_contains_midpoint: midpoint(I) in reanchor(I, eps)
+  - single_block_after_reanchor: output width <= factor * (2 * eps)
+  - reanchored_depth_independent: final width bounded independent of depth
+
+CRITICAL LIMITATION (Coq-proven, pi_reanchor_loses_containment):
+  Re-anchoring is LOSSY -- it does NOT preserve interval containment.
+  Counterexample: I=[0,10], eps=1 => midpoint=5, reanchored=[4,6].
+  The point x=0 is in I but NOT in reanchor(I, 1).
+
+  This means: after re-anchoring, the interval is no longer GUARANTEED
+  to contain the true value. The system provides NARROW MARGINS
+  (controlled width) rather than END-TO-END SOUNDNESS.
+
+  Naive (un-reanchored) IBP gives true soundness but exponential blowup.
+  Re-anchored IBP gives depth-independent width at the cost of soundness.
+  The "hybrid" strategy tries naive first and only sacrifices soundness
+  when width exceeds a threshold.
 """
 
 from __future__ import annotations
@@ -22,6 +42,13 @@ from regulus.nn.model import IntervalSequential, convert_model
 
 class ReanchoredIntervalModel:
     """Interval model with periodic re-anchoring to control width blowup.
+
+    Coq-verified properties (PInterval_Composition.v):
+      - After re-anchoring with eps, output width = 2*eps (exact).
+      - Through one block with width factor F, output width <= F * 2*eps.
+      - Final width is bounded INDEPENDENTLY of network depth.
+      - WARNING: re-anchoring breaks containment (proven negative result).
+        Use "hybrid" strategy when soundness matters.
 
     Parameters:
         torch_model: trained PyTorch nn.Sequential
@@ -89,7 +116,7 @@ class ReanchoredIntervalModel:
 
         for layer in children:
             current.append(layer)
-            if isinstance(layer, (nn.ReLU, nn.Sigmoid)):
+            if isinstance(layer, (nn.ReLU, nn.Sigmoid, nn.Tanh, nn.GELU, nn.ELU)):
                 activation_count += 1
                 if activation_count == block_size:
                     blocks.append(nn.Sequential(*current))

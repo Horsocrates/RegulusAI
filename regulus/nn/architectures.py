@@ -138,6 +138,40 @@ def make_cnn_bn() -> nn.Sequential:
     )
 
 
+def make_cnn_bn_v2() -> nn.Sequential:
+    """CNN v2: strided conv instead of MaxPool for tighter IBP bounds.
+
+    MaxPool is a source of bound looseness — IBP training can't compress it.
+    Strided conv has learnable weights that IBP training CAN compress.
+
+    Key design: use kernel=2, stride=2, no padding — this is the direct
+    analog to MaxPool(2): non-overlapping 2x2 windows, but with learnable
+    weights. NO extra BN/ReLU after strided conv — same number of
+    activation layers as v1 to avoid bound blowup.
+
+    Architecture:
+      Conv2d(1,16,3,pad=1) -> BN2d(16) -> ReLU -> Conv2d(16,16,2,stride=2)  [28->14]
+      Conv2d(16,32,3,pad=1) -> BN2d(32) -> ReLU -> Conv2d(32,32,2,stride=2) [14->7]
+      Flatten -> Linear(1568,128) -> ReLU -> Linear(128,10)
+
+    Same layer count, activation count, and spatial dims as v1.
+    """
+    return nn.Sequential(
+        nn.Conv2d(1, 16, 3, padding=1),
+        nn.BatchNorm2d(16),
+        nn.ReLU(),
+        nn.Conv2d(16, 16, 2, stride=2),  # replaces MaxPool2d(2): 2x2 no-overlap
+        nn.Conv2d(16, 32, 3, padding=1),
+        nn.BatchNorm2d(32),
+        nn.ReLU(),
+        nn.Conv2d(32, 32, 2, stride=2),  # replaces MaxPool2d(2): 2x2 no-overlap
+        nn.Flatten(),
+        nn.Linear(1568, 128),
+        nn.ReLU(),
+        nn.Linear(128, 10),
+    )
+
+
 class ResNetMNIST(nn.Module):
     """ResNet-like architecture for MNIST.
 
