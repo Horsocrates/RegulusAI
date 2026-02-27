@@ -172,6 +172,38 @@ def make_cnn_bn_v2() -> nn.Sequential:
     )
 
 
+def make_cnn_bn_v3() -> nn.Sequential:
+    """CNN v3: AvgPool instead of MaxPool for CROWN-friendly pooling.
+
+    AvgPool is a LINEAR operation (average of elements in each window).
+    Unlike MaxPool, CROWN can backward-propagate through AvgPool cleanly
+    because it's just a weighted sum — equivalent to a fixed conv2d with
+    uniform weights 1/k². No routing ambiguity, no mid-concretization needed.
+
+    This enables CROWN "deep" mode to extend backward through the pool
+    layers, giving tighter bounds than FC-only CROWN.
+
+    Architecture (same topology as v1, just AvgPool instead of MaxPool):
+      Conv2d(1,16,3,pad=1) -> BN2d(16) -> ReLU -> AvgPool(2)   [28->14]
+      Conv2d(16,32,3,pad=1) -> BN2d(32) -> ReLU -> AvgPool(2)  [14->7]
+      Flatten -> Linear(1568,128) -> ReLU -> Linear(128,10)
+    """
+    return nn.Sequential(
+        nn.Conv2d(1, 16, 3, padding=1),
+        nn.BatchNorm2d(16),
+        nn.ReLU(),
+        nn.AvgPool2d(2),
+        nn.Conv2d(16, 32, 3, padding=1),
+        nn.BatchNorm2d(32),
+        nn.ReLU(),
+        nn.AvgPool2d(2),
+        nn.Flatten(),
+        nn.Linear(1568, 128),
+        nn.ReLU(),
+        nn.Linear(128, 10),
+    )
+
+
 class ResNetMNIST(nn.Module):
     """ResNet-like architecture for MNIST.
 

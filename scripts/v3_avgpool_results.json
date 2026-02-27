@@ -1,0 +1,37 @@
+{
+  "v3_avgpool": [
+    {
+      "seed": 42,
+      "clean": 0.92,
+      "ibp_certified": 0.235,
+      "ibp_width": 3.032464852897503,
+      "crown_fc_certified": 0.58,
+      "crown_fc_width": 1.7133059547767826,
+      "crown_deep_certified": 0.76,
+      "crown_deep_width": 1.1303518245232818,
+      "deep_vs_fc_width_reduction": 0.3402510384255629
+    },
+    {
+      "seed": 123,
+      "clean": 0.955,
+      "ibp_certified": 0.45,
+      "ibp_width": 3.1620480802991513,
+      "crown_fc_certified": 0.765,
+      "crown_fc_width": 1.7884471683988832,
+      "crown_deep_certified": 0.84,
+      "crown_deep_width": 1.05024369880477,
+      "deep_vs_fc_width_reduction": 0.4127622457279483
+    },
+    {
+      "seed": 7,
+      "clean": 0.965,
+      "ibp_certified": 0.12,
+      "ibp_width": 3.2346372428925942,
+      "crown_fc_certified": 0.59,
+      "crown_fc_width": 1.8651822649816436,
+      "crown_deep_certified": 0.78,
+      "crown_deep_width": 1.1663636986925974,
+      "deep_vs_fc_width_reduction": 0.37466502840456917
+    }
+  ]
+}

@@ -354,3 +354,44 @@ class IntervalMaxPool2d:
             out_lo.squeeze(0).numpy(),
             out_hi.squeeze(0).numpy(),
         )
+
+
+class IntervalAvgPool2d:
+    """Interval propagation through AvgPool2d.
+
+    AvgPool is a LINEAR operation: each output is the mean of k² inputs.
+    Since all weights are positive (1/k²), AvgPool is monotone:
+        [avg_pool(lo), avg_pool(hi)] gives exact interval bounds.
+
+    Unlike MaxPool, AvgPool preserves CROWN backward-propagation because
+    it has a fixed, known Jacobian (no routing ambiguity).
+    """
+
+    def __init__(self, kernel_size: int, stride: int | None = None,
+                 padding: int = 0) -> None:
+        self.kernel_size = kernel_size
+        self.stride = stride if stride is not None else kernel_size
+        self.padding = padding
+
+    @classmethod
+    def from_torch(cls, layer) -> IntervalAvgPool2d:
+        """Convert from a PyTorch nn.AvgPool2d layer."""
+        ks = layer.kernel_size if isinstance(layer.kernel_size, int) else layer.kernel_size[0]
+        stride = layer.stride if isinstance(layer.stride, int) else layer.stride[0]
+        padding = layer.padding if isinstance(layer.padding, int) else layer.padding[0]
+        return cls(ks, stride, padding)
+
+    def __call__(self, x: IntervalTensor) -> IntervalTensor:
+        import torch
+        import torch.nn.functional as F
+
+        lo_t = torch.tensor(x.lo, dtype=torch.float64).unsqueeze(0)
+        hi_t = torch.tensor(x.hi, dtype=torch.float64).unsqueeze(0)
+
+        out_lo = F.avg_pool2d(lo_t, self.kernel_size, self.stride, self.padding)
+        out_hi = F.avg_pool2d(hi_t, self.kernel_size, self.stride, self.padding)
+
+        return IntervalTensor(
+            out_lo.squeeze(0).numpy(),
+            out_hi.squeeze(0).numpy(),
+        )

@@ -622,3 +622,229 @@ class TestCROWNDeepMode:
         assert fc_start is not None
         assert deep_start <= fc_start, \
             f"Deep start {deep_start} should be <= FC start {fc_start}"
+
+
+# =============================================================
+# CROWN AvgPool tests (v3 architecture)
+# =============================================================
+
+
+@pytest.fixture
+def cnn_avgpool():
+    """Conv2d → ReLU → AvgPool2d → Flatten → Linear (for testing AvgPool CROWN)."""
+    torch.manual_seed(42)
+    model = nn.Sequential(
+        nn.Conv2d(1, 4, 3, padding=1),
+        nn.ReLU(),
+        nn.AvgPool2d(2),
+        nn.Flatten(),
+        nn.Linear(4 * 4 * 4, 3),  # 8x8 input → 4x4 after pool
+    )
+    model.eval()
+    return model
+
+
+@pytest.fixture
+def cnn_bn_avgpool():
+    """Conv→BN→ReLU→AvgPool→Conv→BN→ReLU→AvgPool→Flatten→Linear→ReLU→Linear.
+
+    Same topology as cnn_bn_pool but with AvgPool instead of MaxPool.
+    """
+    torch.manual_seed(42)
+    model = nn.Sequential(
+        nn.Conv2d(1, 4, 3, padding=1),
+        nn.BatchNorm2d(4),
+        nn.ReLU(),
+        nn.AvgPool2d(2),
+        nn.Conv2d(4, 8, 3, padding=1),
+        nn.BatchNorm2d(8),
+        nn.ReLU(),
+        nn.AvgPool2d(2),
+        nn.Flatten(),
+        nn.Linear(8 * 2 * 2, 16),
+        nn.ReLU(),
+        nn.Linear(16, 3),
+    )
+    # Train BN
+    model.train()
+    for _ in range(10):
+        x = torch.randn(16, 1, 8, 8)
+        _ = model(x)
+    model.eval()
+    return model
+
+
+class TestCROWNAvgPool:
+    """Test CROWN with AvgPool2d — the key v3 innovation."""
+
+    def test_avgpool_fc_soundness(self, cnn_avgpool):
+        """CROWN(fc) is sound for AvgPool architectures."""
+        rng = np.random.default_rng(42)
+        engine = CROWNEngine(alpha_mode="adaptive", crown_depth="fc")
+
+        for _ in range(20):
+            x = rng.standard_normal((1, 8, 8)).astype(np.float64)
+            eps = 0.05
+            result = engine.compute_bounds(cnn_avgpool, x, eps)
+
+            with torch.no_grad():
+                y_true = cnn_avgpool(
+                    torch.tensor(x, dtype=torch.float32).unsqueeze(0)
+                ).squeeze(0).numpy()
+
+            assert np.all(result.output_lo <= y_true + 1e-4), \
+                f"AvgPool fc lower: lo={result.output_lo}, true={y_true}"
+            assert np.all(result.output_hi >= y_true - 1e-4), \
+                f"AvgPool fc upper: hi={result.output_hi}, true={y_true}"
+
+    def test_avgpool_deep_soundness(self, cnn_avgpool):
+        """CROWN(deep) is sound for AvgPool — unlike MaxPool, CROWN propagates through."""
+        rng = np.random.default_rng(42)
+        engine = CROWNEngine(alpha_mode="adaptive", crown_depth="deep")
+
+        for _ in range(20):
+            x = rng.standard_normal((1, 8, 8)).astype(np.float64)
+            eps = 0.05
+            result = engine.compute_bounds(cnn_avgpool, x, eps)
+
+            with torch.no_grad():
+                y_true = cnn_avgpool(
+                    torch.tensor(x, dtype=torch.float32).unsqueeze(0)
+                ).squeeze(0).numpy()
+
+            assert np.all(result.output_lo <= y_true + 1e-4), \
+                f"AvgPool deep lower: lo={result.output_lo}, true={y_true}"
+            assert np.all(result.output_hi >= y_true - 1e-4), \
+                f"AvgPool deep upper: hi={result.output_hi}, true={y_true}"
+
+    def test_avgpool_deep_perturbed(self, cnn_avgpool):
+        """Deep CROWN bounds contain random perturbations for AvgPool model."""
+        rng = np.random.default_rng(42)
+        engine = CROWNEngine(alpha_mode="adaptive", crown_depth="deep")
+
+        x = rng.standard_normal((1, 8, 8)).astype(np.float64)
+        eps = 0.05
+        result = engine.compute_bounds(cnn_avgpool, x, eps)
+
+        for _ in range(100):
+            delta = rng.uniform(-eps, eps, size=(1, 8, 8))
+            x_pert = x + delta
+            with torch.no_grad():
+                y_pert = cnn_avgpool(
+                    torch.tensor(x_pert, dtype=torch.float32).unsqueeze(0)
+                ).squeeze(0).numpy()
+
+            assert np.all(result.output_lo <= y_pert + 1e-4), \
+                f"AvgPool deep pert: lo={result.output_lo}, pert={y_pert}"
+            assert np.all(result.output_hi >= y_pert - 1e-4), \
+                f"AvgPool deep pert: hi={result.output_hi}, pert={y_pert}"
+
+    def test_avgpool_deep_tighter_than_fc(self, cnn_avgpool):
+        """Deep CROWN through AvgPool should be tighter than FC-only.
+
+        Unlike MaxPool (where deep == fc due to mid-concretization),
+        AvgPool is linear, so CROWN CAN propagate through it, giving
+        strictly tighter bounds.
+        """
+        rng = np.random.default_rng(42)
+        engine_fc = CROWNEngine(alpha_mode="adaptive", crown_depth="fc")
+        engine_deep = CROWNEngine(alpha_mode="adaptive", crown_depth="deep")
+
+        tighter_count = 0
+        total = 20
+
+        for _ in range(total):
+            x = rng.standard_normal((1, 8, 8)).astype(np.float64)
+            eps = 0.05
+
+            fc_result = engine_fc.compute_bounds(cnn_avgpool, x, eps)
+            deep_result = engine_deep.compute_bounds(cnn_avgpool, x, eps)
+
+            fc_width = np.mean(fc_result.output_hi - fc_result.output_lo)
+            deep_width = np.mean(deep_result.output_hi - deep_result.output_lo)
+
+            if deep_width < fc_width - 1e-8:
+                tighter_count += 1
+
+        # For AvgPool, deep should be tighter in most cases
+        assert tighter_count >= total // 2, \
+            f"Deep CROWN through AvgPool should be tighter than FC in most cases. " \
+            f"Got tighter in {tighter_count}/{total}"
+
+    def test_avgpool_multi_block_soundness(self, cnn_bn_avgpool):
+        """Deep CROWN sound for multi-block AvgPool (Conv→BN→ReLU→AvgPool ×2)."""
+        rng = np.random.default_rng(42)
+        engine = CROWNEngine(alpha_mode="adaptive", crown_depth="deep")
+
+        for _ in range(20):
+            x = rng.standard_normal((1, 8, 8)).astype(np.float64)
+            eps = 0.05
+            result = engine.compute_bounds(cnn_bn_avgpool, x, eps)
+
+            with torch.no_grad():
+                y_true = cnn_bn_avgpool(
+                    torch.tensor(x, dtype=torch.float32).unsqueeze(0)
+                ).squeeze(0).numpy()
+
+            assert np.all(result.output_lo <= y_true + 1e-4), \
+                f"Multi-block AvgPool lower: lo={result.output_lo}, true={y_true}"
+            assert np.all(result.output_hi >= y_true - 1e-4), \
+                f"Multi-block AvgPool upper: hi={result.output_hi}, true={y_true}"
+
+            # Also check perturbations
+            for _ in range(10):
+                delta = rng.uniform(-eps, eps, size=(1, 8, 8))
+                x_pert = x + delta
+                with torch.no_grad():
+                    y_pert = cnn_bn_avgpool(
+                        torch.tensor(x_pert, dtype=torch.float32).unsqueeze(0)
+                    ).squeeze(0).numpy()
+
+                assert np.all(result.output_lo <= y_pert + 1e-4)
+                assert np.all(result.output_hi >= y_pert - 1e-4)
+
+    def test_avgpool_ibp_naive_soundness(self, cnn_bn_avgpool):
+        """IntervalSequential (naive IBP) with AvgPool is sound."""
+        rng = np.random.default_rng(42)
+
+        for _ in range(20):
+            x = rng.standard_normal((1, 8, 8)).astype(np.float64)
+            eps = 0.05
+
+            imodel = convert_model(cnn_bn_avgpool, fold_bn=True)
+            it_input = IntervalTensor(x - eps, x + eps)
+            it_output = imodel(it_input)
+
+            with torch.no_grad():
+                y_true = cnn_bn_avgpool(
+                    torch.tensor(x, dtype=torch.float32).unsqueeze(0)
+                ).squeeze(0).numpy()
+
+            assert np.all(it_output.lo <= y_true + 1e-4), \
+                f"IBP AvgPool lower: lo={it_output.lo}, true={y_true}"
+            assert np.all(it_output.hi >= y_true + - 1e-4), \
+                f"IBP AvgPool upper: hi={it_output.hi}, true={y_true}"
+
+    def test_avgpool_verifier_integration(self, cnn_bn_avgpool):
+        """NNVerificationEngine works with AvgPool models (both naive and CROWN)."""
+        rng = np.random.default_rng(42)
+        x = rng.standard_normal((1, 8, 8)).astype(np.float64)
+        eps = 0.05
+
+        # Naive IBP
+        engine_ibp = NNVerificationEngine(strategy="naive")
+        result_ibp = engine_ibp.verify_from_point(cnn_bn_avgpool, x, eps)
+        assert result_ibp.output_lo is not None
+        assert result_ibp.output_hi is not None
+
+        # CROWN
+        engine_crown = NNVerificationEngine(strategy="crown")
+        result_crown = engine_crown.verify_from_point(cnn_bn_avgpool, x, eps)
+        assert result_crown.output_lo is not None
+        assert result_crown.output_hi is not None
+
+        # CROWN width should be <= IBP width
+        ibp_width = np.max(result_ibp.output_width)
+        crown_width = np.max(result_crown.output_width)
+        assert crown_width <= ibp_width + 1e-6, \
+            f"CROWN width {crown_width} > IBP width {ibp_width}"

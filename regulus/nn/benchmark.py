@@ -140,7 +140,7 @@ def train_mnist_model(
     import torchvision
     import torchvision.transforms as transforms
 
-    from regulus.nn.architectures import make_mlp, make_cnn_bn, make_cnn_bn_v2
+    from regulus.nn.architectures import make_mlp, make_cnn_bn, make_cnn_bn_v2, make_cnn_bn_v3
 
     # Seed for reproducibility
     if seed is not None:
@@ -154,8 +154,10 @@ def train_mnist_model(
         model = make_cnn_bn()
     elif architecture == "cnn_bn_v2":
         model = make_cnn_bn_v2()
+    elif architecture == "cnn_bn_v3":
+        model = make_cnn_bn_v3()
     else:
-        raise ValueError(f"Unknown architecture: {architecture}. Use 'mlp', 'cnn_bn', or 'cnn_bn_v2'.")
+        raise ValueError(f"Unknown architecture: {architecture}. Use 'mlp', 'cnn_bn', 'cnn_bn_v2', or 'cnn_bn_v3'.")
 
     # Dataset (with robust download)
     _ensure_mnist(data_dir)

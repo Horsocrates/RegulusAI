@@ -5,7 +5,7 @@ convert_model() takes a trained PyTorch model and produces
 an IntervalSequential that propagates intervals through the same layers.
 
 Supported: Linear, ReLU, Sigmoid, Tanh, GELU, ELU, Conv2d, BatchNorm1d/2d,
-           Flatten, MaxPool2d, Sequential (recursive), ResBlock.
+           Flatten, MaxPool2d, AvgPool2d, Sequential (recursive), ResBlock.
 """
 
 from __future__ import annotations
@@ -81,7 +81,8 @@ def convert_model(torch_model, fold_bn: bool = False) -> IntervalSequential:
     """
     import torch.nn as nn
     from regulus.nn.layers import (
-        IntervalBatchNorm, IntervalConv2d, IntervalFlatten, IntervalMaxPool2d,
+        IntervalBatchNorm, IntervalConv2d, IntervalFlatten,
+        IntervalMaxPool2d, IntervalAvgPool2d,
     )
     # Lazy import to avoid circular dependency (architectures imports from layers)
     from regulus.nn.architectures import ResBlock, IntervalResBlock
@@ -132,6 +133,8 @@ def convert_model(torch_model, fold_bn: bool = False) -> IntervalSequential:
             interval_layers.append(IntervalFlatten())
         elif isinstance(layer, nn.MaxPool2d):
             interval_layers.append(IntervalMaxPool2d.from_torch(layer))
+        elif isinstance(layer, nn.AvgPool2d):
+            interval_layers.append(IntervalAvgPool2d.from_torch(layer))
         elif isinstance(layer, nn.Sequential):
             # Recursive: flatten children of nested Sequential
             sub = convert_model(layer, fold_bn=fold_bn)
@@ -142,7 +145,7 @@ def convert_model(torch_model, fold_bn: bool = False) -> IntervalSequential:
             raise ValueError(
                 f"Unsupported layer type: {type(layer).__name__}. "
                 f"Supported: Linear, ReLU, Sigmoid, Tanh, GELU, ELU, Conv2d, "
-                f"BatchNorm1d/2d, Flatten, MaxPool2d, Sequential, ResBlock"
+                f"BatchNorm1d/2d, Flatten, MaxPool2d, AvgPool2d, Sequential, ResBlock"
             )
 
     return IntervalSequential(interval_layers)

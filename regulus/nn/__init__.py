@@ -10,14 +10,15 @@ from regulus.nn.interval_tensor import IntervalTensor, interval_matmul_exact_wei
 from regulus.nn.layers import (
     IntervalLinear, IntervalReLU, IntervalSigmoid, IntervalSoftmax,
     IntervalTanh, IntervalGELU, IntervalELU,
-    IntervalBatchNorm, IntervalConv2d, IntervalFlatten, IntervalMaxPool2d,
+    IntervalBatchNorm, IntervalConv2d, IntervalFlatten,
+    IntervalMaxPool2d, IntervalAvgPool2d,
 )
 from regulus.nn.model import IntervalSequential, convert_model
 from regulus.nn.reanchor import ReanchoredIntervalModel
 from regulus.nn.architectures import (
     ResBlock, IntervalResBlock,
     make_cifar_cnn_bn, ResNetCIFAR,
-    make_cnn_bn_v2,
+    make_cnn_bn_v2, make_cnn_bn_v3,
 )
 from regulus.nn.verifier import VerificationMode, VerificationContract
 from regulus.nn.crown import CROWNEngine, CROWNResult, crown_verify
@@ -36,6 +37,7 @@ __all__ = [
     "IntervalConv2d",
     "IntervalFlatten",
     "IntervalMaxPool2d",
+    "IntervalAvgPool2d",
     "IntervalSequential",
     "convert_model",
     "ReanchoredIntervalModel",
@@ -43,6 +45,8 @@ __all__ = [
     "IntervalResBlock",
     "make_cifar_cnn_bn",
     "ResNetCIFAR",
+    "make_cnn_bn_v2",
+    "make_cnn_bn_v3",
     "VerificationMode",
     "VerificationContract",
     "CROWNEngine",

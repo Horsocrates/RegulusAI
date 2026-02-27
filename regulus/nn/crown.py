@@ -235,7 +235,7 @@ class CROWNEngine:
             else:
                 # No flatten → check if all layers are FC
                 has_non_fc = any(
-                    layer["type"] in ("conv2d", "maxpool2d", "batchnorm")
+                    layer["type"] in ("conv2d", "maxpool2d", "avgpool2d", "batchnorm")
                     for layer in layers_info
                 )
                 fc_start = 0 if not has_non_fc else None
@@ -259,12 +259,12 @@ class CROWNEngine:
                 return 0
 
             # Walk backward from flatten_idx to find the conv block start.
-            # Include everything: conv2d, relu, batchnorm, maxpool2d.
+            # Include: conv2d, relu, batchnorm, maxpool2d, avgpool2d.
             deep_start = flatten_idx
             i = flatten_idx - 1
             while i >= 0:
                 ltype = layers_info[i]["type"]
-                if ltype in ("maxpool2d", "relu", "batchnorm"):
+                if ltype in ("maxpool2d", "avgpool2d", "relu", "batchnorm"):
                     deep_start = i
                     i -= 1
                 elif ltype == "conv2d":
@@ -353,6 +353,17 @@ class CROWNEngine:
                     "padding": padding,
                 })
 
+            elif isinstance(layer, nn.AvgPool2d):
+                ks = layer.kernel_size if isinstance(layer.kernel_size, int) else layer.kernel_size[0]
+                stride_val = layer.stride if isinstance(layer.stride, int) else layer.stride[0]
+                padding_val = layer.padding if isinstance(layer.padding, int) else layer.padding[0]
+                result.append({
+                    "type": "avgpool2d",
+                    "kernel_size": ks,
+                    "stride": stride_val,
+                    "padding": padding_val,
+                })
+
             elif isinstance(layer, (nn.BatchNorm1d, nn.BatchNorm2d)):
                 # Standalone BN (not folded) — extract scale+shift
                 gamma = layer.weight.detach().cpu().numpy().astype(np.float64)
@@ -374,7 +385,7 @@ class CROWNEngine:
             else:
                 raise ValueError(
                     f"CROWN: unsupported layer type: {type(layer).__name__}. "
-                    f"Supported: Linear, Conv2d, ReLU, Flatten, MaxPool2d, BatchNorm1d/2d"
+                    f"Supported: Linear, Conv2d, ReLU, Flatten, MaxPool2d, AvgPool2d, BatchNorm1d/2d"
                 )
 
         return result
@@ -509,6 +520,26 @@ class CROWNEngine:
                     pre_lo=out_lo, pre_hi=out_hi,
                     post_lo=out_lo.copy(), post_hi=out_hi.copy(),
                     layer_type="maxpool2d", shape=out_lo.shape,
+                ))
+                lo, hi = out_lo, out_hi
+
+            elif ltype == "avgpool2d":
+                ks = layer["kernel_size"]
+                stride = layer["stride"]
+                padding = layer["padding"]
+
+                # AvgPool is linear and monotone with positive weights (1/k²)
+                # so avgpool(lo) <= avgpool(x) <= avgpool(hi)
+                lo_t = torch.tensor(lo, dtype=torch.float64).unsqueeze(0)
+                hi_t = torch.tensor(hi, dtype=torch.float64).unsqueeze(0)
+
+                out_lo = F.avg_pool2d(lo_t, ks, stride, padding).squeeze(0).numpy()
+                out_hi = F.avg_pool2d(hi_t, ks, stride, padding).squeeze(0).numpy()
+
+                bounds.append(CROWNLayerBounds(
+                    pre_lo=out_lo, pre_hi=out_hi,
+                    post_lo=out_lo.copy(), post_hi=out_hi.copy(),
+                    layer_type="avgpool2d", shape=out_lo.shape,
                 ))
                 lo, hi = out_lo, out_hi
 
@@ -696,6 +727,29 @@ class CROWNEngine:
                 # This means CROWN doesn't propagate through MaxPool,
                 # but it does give tighter bounds at the MaxPool output
                 # from the layers AFTER MaxPool.
+
+            elif ltype == "avgpool2d":
+                # AvgPool2d is a LINEAR operation with fixed weights (1/k²).
+                # CROWN can backward-propagate through it cleanly.
+                # No bias, just Λ_new = Λ_old @ J_avgpool.
+                ks = layer["kernel_size"]
+                stride_val = layer["stride"]
+                padding_val = layer["padding"]
+
+                pool_out_shape = bound.pre_lo.shape
+
+                if i > 0:
+                    prev_shape = layer_bounds[i - 1].post_lo.shape
+                else:
+                    prev_shape = input_lo.shape
+
+                # Build AvgPool Jacobian using torch
+                J = self._avgpool_jacobian(
+                    ks, stride_val, padding_val, pool_out_shape, prev_shape
+                )
+
+                Lambda_lo = Lambda_lo @ J
+                Lambda_hi = Lambda_hi @ J
 
             elif ltype == "batchnorm":
                 scale = layer["scale"]
@@ -940,6 +994,36 @@ class CROWNEngine:
                 J[out_idx, in_idx] = 1.0
 
         return Lambda @ J
+
+    def _avgpool_jacobian(
+        self,
+        kernel_size: int,
+        stride: int,
+        padding: int,
+        pool_out_shape: tuple,
+        prev_shape: tuple,
+    ) -> np.ndarray:
+        """Build the Jacobian matrix for AvgPool2d.
+
+        AvgPool is a fixed linear operation: each output element is the
+        average of k² input elements. The Jacobian has entries 1/k² at
+        the corresponding positions.
+
+        Returns: (n_out, n_in) numpy array.
+        """
+        n_out = int(np.prod(pool_out_shape))
+        n_in = int(np.prod(prev_shape))
+
+        # Build Jacobian by probing with unit vectors (same approach as conv2d)
+        J = np.zeros((n_out, n_in), dtype=np.float64)
+        for j in range(n_in):
+            e_j = np.zeros(n_in, dtype=np.float64)
+            e_j[j] = 1.0
+            x = torch.tensor(e_j.reshape(prev_shape), dtype=torch.float64).unsqueeze(0)
+            out = F.avg_pool2d(x, kernel_size, stride, padding)
+            J[:, j] = out.squeeze(0).flatten().numpy()
+
+        return J
 
     def _concretize(
         self,
