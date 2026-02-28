@@ -971,7 +971,10 @@ def train_cifar_diff_ibp(
     loss from interval bounds and backpropagates THROUGH the intervals.
 
     Loss = (1 - lambda) * CE(model(x), y) + lambda * CE(worst_case_logits, y)
-           + margin_weight * hinge(target - worst_case_margin)
+           + margin_weight * hinge(target - clean_margin)
+
+    Note: margin is computed on CLEAN logits (not IBP bounds) for stability.
+    This prevents chaotic gradients when IBP bounds are initially wild.
 
     where worst_case_logits come from ibp_forward(model, x-eps, x+eps).
 
@@ -1118,8 +1121,19 @@ def train_cifar_diff_ibp(
             correct += predicted.eq(labels).sum().item()
             total += labels.size(0)
 
+            # 2. Margin regularization on CLEAN logits (stable, prevents collapse)
+            # Computed from clean_out, NOT from IBP bounds — avoids chaotic
+            # gradients when IBP bounds are initially wild.
+            if margin_weight > 0:
+                loss_margin, avg_marg = ibp_margin_loss(
+                    clean_out, clean_out, labels, target_margin=margin_target
+                )
+            else:
+                loss_margin = torch.tensor(0.0, device=device)
+                avg_marg = torch.tensor(0.0)
+
             if lam > 0:
-                # 2. IBP forward pass (eval mode — frozen BN)
+                # 3. IBP forward pass (eval mode — frozen BN)
                 model.eval()
                 x_lo = images - eps
                 x_hi = images + eps
@@ -1127,19 +1141,10 @@ def train_cifar_diff_ibp(
                 out_lo, out_hi = ibp_forward(model, x_lo, x_hi)
                 loss_ibp = ibp_worst_case_loss(out_lo, out_hi, labels)
 
-                # Margin regularization (prevents collapse)
-                if margin_weight > 0:
-                    loss_margin, avg_marg = ibp_margin_loss(
-                        out_lo, out_hi, labels, target_margin=margin_target
-                    )
-                else:
-                    loss_margin = torch.tensor(0.0, device=device)
-                    avg_marg = torch.tensor(0.0)
-
                 # Restore train mode
                 model.train()
 
-                # 3. Combined loss
+                # 4. Combined loss: clean + IBP + margin(clean)
                 loss = (1.0 - lam) * loss_clean + lam * loss_ibp + margin_weight * loss_margin
 
                 running_ibp += loss_ibp.item()
@@ -1150,7 +1155,10 @@ def train_cifar_diff_ibp(
                     running_width += avg_w
                 ibp_batches += 1
             else:
-                loss = loss_clean
+                # During warmup: clean + margin (builds robust features)
+                loss = loss_clean + margin_weight * loss_margin
+                running_margin_loss += loss_margin.item()
+                running_margin += avg_marg.item()
 
             # Weight regularization
             if weight_reg > 0:
@@ -1176,8 +1184,8 @@ def train_cifar_diff_ibp(
         avg_loss = running_loss / len(train_loader)
         avg_clean = running_clean / len(train_loader)
         avg_ibp_loss = running_ibp / max(ibp_batches, 1)
-        avg_margin_loss = running_margin_loss / max(ibp_batches, 1)
-        avg_margin_val = running_margin / max(ibp_batches, 1)
+        avg_margin_loss = running_margin_loss / len(train_loader)
+        avg_margin_val = running_margin / len(train_loader)
         avg_width = running_width / max(ibp_batches, 1)
 
         is_spike = False
@@ -1214,11 +1222,11 @@ def train_cifar_diff_ibp(
 
         if verbose:
             msg = f"  Epoch {epoch + 1}/{epochs}: loss={avg_loss:.4f}, acc={acc:.1f}%"
+            if margin_weight > 0:
+                msg += f", margin={avg_margin_val:.3f}"
             if ibp_batches > 0:
                 msg += (f", ibp_loss={avg_ibp_loss:.4f}, width={avg_width:.2f}"
                         f", lam={get_lambda(global_step):.3f}, eps={get_epsilon(global_step):.5f}")
-                if margin_weight > 0:
-                    msg += f", margin={avg_margin_val:.3f}, m_loss={avg_margin_loss:.4f}"
             if lr_schedule != "none":
                 msg += f", lr={current_lr:.6f}"
             if is_spike:
