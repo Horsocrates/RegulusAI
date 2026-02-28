@@ -12,10 +12,10 @@ Key changes from v4:
 
 Target: clean >= 60% AND IBP certified >= 30-50%
 
-Configs from GPT-5.2 feedback analysis:
-  D1: eps=0.01, lambda=0.20, warmup=0.4, margin_weight=0.1 (aggressive eps, moderate lambda)
-  D2: eps=0.005, lambda=0.25, warmup=0.4, margin_weight=0.1 (smaller eps, higher lambda)
-  D3: eps=0.005, lambda=0.15, warmup=0.5, margin_weight=0.05 (gentlest approach)
+Configs from GPT-5.2 feedback analysis (margin weights tuned to prevent collapse):
+  D1: eps=0.01, lambda=0.20, warmup=0.4, margin_weight=0.5 (aggressive eps, strong anti-collapse)
+  D2: eps=0.005, lambda=0.25, warmup=0.4, margin_weight=0.5 (smaller eps, strong anti-collapse)
+  D3: eps=0.005, lambda=0.15, warmup=0.5, margin_weight=0.3 (gentlest approach)
 """
 
 import argparse
@@ -118,15 +118,15 @@ def main():
             {
                 "label": "quick_v5_smoke",
                 "epochs": 10,
-                "ibp_weight": 0.2,
+                "ibp_weight": 0.15,
                 "eps_start": 0.001,
                 "eps_end": 0.005,
                 "warmup_fraction": 0.4,
                 "ramp_fraction": 0.3,
                 "grad_clip": 1.0,
                 "lr_schedule": "cosine",
-                "margin_weight": 0.1,
-                "margin_target": 1.0,
+                "margin_weight": 0.5,
+                "margin_target": 2.0,
             },
         ]
         n_test = 20
@@ -143,8 +143,8 @@ def main():
                 "weight_reg": 0.0,
                 "grad_clip": 1.0,
                 "lr_schedule": "cosine",
-                "margin_weight": 0.1,
-                "margin_target": 1.0,
+                "margin_weight": 0.5,
+                "margin_target": 2.0,
             },
             {
                 "label": "D2_eps005_lam25_warm40",
@@ -157,8 +157,8 @@ def main():
                 "weight_reg": 0.0,
                 "grad_clip": 1.0,
                 "lr_schedule": "cosine",
-                "margin_weight": 0.1,
-                "margin_target": 1.0,
+                "margin_weight": 0.5,
+                "margin_target": 2.0,
             },
             {
                 "label": "D3_eps005_lam15_warm50",
@@ -171,8 +171,8 @@ def main():
                 "weight_reg": 0.0,
                 "grad_clip": 1.0,
                 "lr_schedule": "cosine",
-                "margin_weight": 0.05,
-                "margin_target": 1.0,
+                "margin_weight": 0.3,
+                "margin_target": 2.0,
             },
         ]
         n_test = args.n_test
