@@ -650,6 +650,7 @@ def train_cifar_model(
     checkpoint: bool = False,
     checkpoint_n_samples: int = 20,
     return_result: bool = False,
+    augment: bool = True,
 ) -> nn.Module | TrainingResult:
     """Train a model on CIFAR-10.
 
@@ -679,6 +680,7 @@ def train_cifar_model(
         checkpoint: If True, save best model by certified accuracy
         checkpoint_n_samples: Number of test images for checkpoint eval
         return_result: If True, return TrainingResult instead of model
+        augment: If True, use data augmentation (RandomCrop + HorizontalFlip)
 
     Returns:
         Trained PyTorch model in eval mode (or TrainingResult).
@@ -686,7 +688,7 @@ def train_cifar_model(
     import torchvision
     import torchvision.transforms as transforms
 
-    from regulus.nn.architectures import make_cifar_cnn_bn
+    from regulus.nn.architectures import make_cifar_cnn_bn, make_cifar_cnn_bn_avgpool, ResNetCIFAR
 
     if seed is not None:
         torch.manual_seed(seed)
@@ -695,16 +697,25 @@ def train_cifar_model(
     # Build model
     if architecture == "cifar_cnn_bn":
         model = make_cifar_cnn_bn()
+    elif architecture == "cifar_cnn_bn_avgpool":
+        model = make_cifar_cnn_bn_avgpool()
+    elif architecture == "resnet_cifar":
+        model = ResNetCIFAR()
     else:
-        raise ValueError(f"Unknown CIFAR architecture: {architecture}. Use 'cifar_cnn_bn'.")
+        raise ValueError(f"Unknown CIFAR architecture: {architecture}. "
+                         f"Use 'cifar_cnn_bn', 'cifar_cnn_bn_avgpool', or 'resnet_cifar'.")
 
     # Dataset
     _ensure_cifar10(data_dir)
 
-    transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize(CIFAR_MEAN, CIFAR_STD),
-    ])
+    train_transforms = [transforms.ToTensor(), transforms.Normalize(CIFAR_MEAN, CIFAR_STD)]
+    if augment:
+        train_transforms = [
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(),
+        ] + train_transforms
+
+    transform = transforms.Compose(train_transforms)
 
     train_dataset = torchvision.datasets.CIFAR10(
         root=data_dir, train=True, download=False, transform=transform
@@ -903,7 +914,7 @@ def train_cifar_model(
             if checkpoint and epoch_cert > 0:
                 ckpt_marker = " *BEST*" if epoch + 1 == best_epoch else ""
                 msg += f", cert_ckpt={epoch_cert*100:.1f}%{ckpt_marker}"
-            print(msg)
+            print(msg, flush=True)
 
     # Restore best checkpoint
     if checkpoint and best_state_dict is not None:
@@ -942,6 +953,7 @@ def certify_cifar(
     verbose: bool = True,
     progress_interval: int = 10,
     crown_depth: str = "fc",
+    layerwise_report: bool = False,
 ) -> CertificationReport:
     """Certify CIFAR-10 test images using NNVerificationEngine.
 
@@ -955,6 +967,7 @@ def certify_cifar(
         verbose: Print progress.
         progress_interval: Print every N images.
         crown_depth: CROWN depth ("fc", "deep", "full").
+        layerwise_report: If True, print per-layer width growth table.
 
     Returns:
         CertificationReport with aggregated metrics.
@@ -981,6 +994,7 @@ def certify_cifar(
     total_max_width = 0.0
     total_margin = 0.0
     per_image: list[dict] = []
+    layer_width_accum: list[list[float]] = []  # per-layer widths across images
 
     t_start = time.perf_counter()
 
@@ -1006,6 +1020,14 @@ def certify_cifar(
         total_max_width += float(np.max(result.output_width))
         total_margin += result.margin
 
+        # Collect per-layer diagnostics from first image (representative)
+        if layerwise_report and i == 0 and hasattr(result, 'layer_diagnostics') and result.layer_diagnostics:
+            layer_width_accum = [[d.get("mean_width", 0.0)] for d in result.layer_diagnostics]
+        elif layerwise_report and i > 0 and hasattr(result, 'layer_diagnostics') and result.layer_diagnostics:
+            for j, d in enumerate(result.layer_diagnostics):
+                if j < len(layer_width_accum):
+                    layer_width_accum[j].append(d.get("mean_width", 0.0))
+
         per_image.append({
             "index": i,
             "true_label": int(true_label),
@@ -1026,6 +1048,18 @@ def certify_cifar(
 
     total_time = time.perf_counter() - t_start
     n = min(n_test, len(test_dataset))
+
+    # Print per-layer width growth table
+    if layerwise_report and layer_width_accum and result.layer_diagnostics:
+        print(f"\n  {'Layer':<30} {'Mean Width':>12} {'Max Width':>12} {'Amplification':>14}")
+        print(f"  {'-'*30} {'-'*12} {'-'*12} {'-'*14}")
+        input_width = np.mean(layer_width_accum[0]) if layer_width_accum[0] else 1.0
+        for j, d in enumerate(result.layer_diagnostics):
+            name = d.get("name", f"layer_{j}")
+            avg_w = np.mean(layer_width_accum[j]) if j < len(layer_width_accum) else 0.0
+            max_w = d.get("max_width", 0.0)
+            amp = avg_w / input_width if input_width > 0 else float("inf")
+            print(f"  {name:<30} {avg_w:>12.4f} {max_w:>12.4f} {amp:>13.1f}x")
 
     # Epsilon normalization context for CIFAR-10
     # CIFAR normalizes per-channel: (x_c - mean_c) / std_c

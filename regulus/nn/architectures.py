@@ -274,6 +274,43 @@ def make_cifar_cnn_bn() -> nn.Sequential:
     )
 
 
+def make_cifar_cnn_bn_avgpool() -> nn.Sequential:
+    """CNN with BatchNorm + AvgPool for CIFAR-10: 3x32x32 input, 10 classes.
+
+    Same topology as make_cifar_cnn_bn but replaces MaxPool2d with AvgPool2d.
+    AvgPool is a linear operation (uniform weighted sum) so IBP/CROWN can
+    propagate through it without the bound blowup caused by MaxPool's
+    element-wise max.  Mirrors the MNIST v3 AvgPool success.
+
+    Architecture:
+      Conv2d(3,32,3,pad=1) -> BN2d(32) -> ReLU ->
+      Conv2d(32,32,3,pad=1) -> BN2d(32) -> ReLU -> AvgPool(2)  [32->16]
+      Conv2d(32,64,3,pad=1) -> BN2d(64) -> ReLU ->
+      Conv2d(64,64,3,pad=1) -> BN2d(64) -> ReLU -> AvgPool(2)  [16->8]
+      Flatten -> Linear(4096,256) -> ReLU -> Linear(256,10)
+    """
+    return nn.Sequential(
+        nn.Conv2d(3, 32, 3, padding=1),
+        nn.BatchNorm2d(32),
+        nn.ReLU(),
+        nn.Conv2d(32, 32, 3, padding=1),
+        nn.BatchNorm2d(32),
+        nn.ReLU(),
+        nn.AvgPool2d(2),
+        nn.Conv2d(32, 64, 3, padding=1),
+        nn.BatchNorm2d(64),
+        nn.ReLU(),
+        nn.Conv2d(64, 64, 3, padding=1),
+        nn.BatchNorm2d(64),
+        nn.ReLU(),
+        nn.AvgPool2d(2),
+        nn.Flatten(),
+        nn.Linear(64 * 8 * 8, 256),
+        nn.ReLU(),
+        nn.Linear(256, 10),
+    )
+
+
 class ResNetCIFAR(nn.Module):
     """ResNet-like architecture for CIFAR-10: 3x32x32 input, 10 classes.
 
