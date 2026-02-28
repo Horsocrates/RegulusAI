@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 
-from regulus.nn.ibp_loss import ibp_forward, ibp_worst_case_loss, ibp_combined_loss
+from regulus.nn.ibp_loss import ibp_forward, ibp_worst_case_loss, ibp_combined_loss, ibp_margin_loss
 
 
 # ─── Fixtures ────────────────────────────────────────────────────────
@@ -293,6 +293,86 @@ class TestIBPCombinedLoss:
             for p in cnn_bn_model.parameters()
         )
         assert has_grad, "Combined loss produced no gradients"
+
+
+# ─── Test: ibp_margin_loss ────────────────────────────────────────
+
+class TestIBPMarginLoss:
+
+    def test_margin_loss_zero_when_large_margin(self, mlp_relu):
+        """Margin loss should be 0 when margin exceeds target."""
+        # Create scenario with very large margin (set target low)
+        out_lo = torch.tensor([[10.0, -5.0, -5.0]])
+        out_hi = torch.tensor([[12.0, -3.0, -3.0]])
+        labels = torch.tensor([0])
+
+        loss, avg_margin = ibp_margin_loss(out_lo, out_hi, labels, target_margin=1.0)
+        # margin = out_lo[0, 0] - max(out_hi[0, 1:]) = 10 - (-3) = 13
+        assert loss.item() == 0.0, f"Expected 0 loss, got {loss.item()}"
+        assert avg_margin.item() > 1.0
+
+    def test_margin_loss_positive_when_small_margin(self):
+        """Margin loss should be positive when margin is below target."""
+        out_lo = torch.tensor([[1.0, 0.5, -1.0]])
+        out_hi = torch.tensor([[2.0, 1.5, 0.0]])
+        labels = torch.tensor([0])
+
+        # margin = out_lo[0, 0] - max(out_hi[0, 1:]) = 1.0 - 1.5 = -0.5
+        loss, avg_margin = ibp_margin_loss(out_lo, out_hi, labels, target_margin=1.0)
+        # hinge = max(0, 1.0 - (-0.5)) = 1.5
+        assert loss.item() > 0.0, f"Expected positive loss, got {loss.item()}"
+        assert abs(loss.item() - 1.5) < 1e-5, f"Expected 1.5, got {loss.item()}"
+
+    def test_margin_loss_correct_margin_value(self):
+        """Verify margin computation: lo[y] - max(hi[c!=y])."""
+        out_lo = torch.tensor([[3.0, 1.0, 2.0]])
+        out_hi = torch.tensor([[5.0, 3.0, 4.0]])
+        labels = torch.tensor([0])
+
+        # margin = out_lo[0, 0] - max(out_hi[0, 1], out_hi[0, 2])
+        #        = 3.0 - max(3.0, 4.0) = 3.0 - 4.0 = -1.0
+        _, avg_margin = ibp_margin_loss(out_lo, out_hi, labels, target_margin=0.0)
+        assert abs(avg_margin.item() - (-1.0)) < 1e-5
+
+    def test_margin_loss_batch(self):
+        """Margin loss works on batches."""
+        out_lo = torch.tensor([[5.0, 0.0, 0.0],
+                               [0.0, 5.0, 0.0]])
+        out_hi = torch.tensor([[7.0, 2.0, 2.0],
+                               [2.0, 7.0, 2.0]])
+        labels = torch.tensor([0, 1])
+
+        # Sample 0: margin = 5.0 - max(2.0, 2.0) = 3.0
+        # Sample 1: margin = 5.0 - max(2.0, 2.0) = 3.0
+        loss, avg_margin = ibp_margin_loss(out_lo, out_hi, labels, target_margin=1.0)
+        assert loss.item() == 0.0
+        assert abs(avg_margin.item() - 3.0) < 1e-5
+
+    def test_margin_loss_gradients(self, mlp_relu):
+        """Margin loss produces gradients for training."""
+        x = torch.randn(4, 4)
+        labels = torch.tensor([0, 1, 2, 0])
+        eps = 0.1
+
+        lo, hi = ibp_forward(mlp_relu, x - eps, x + eps)
+        loss, _ = ibp_margin_loss(lo, hi, labels, target_margin=2.0)
+        loss.backward()
+
+        has_grad = any(
+            p.grad is not None and p.grad.abs().sum() > 0
+            for p in mlp_relu.parameters()
+        )
+        assert has_grad, "ibp_margin_loss produced no gradients"
+
+    def test_larger_target_gives_larger_loss(self):
+        """Larger target margin should give larger (or equal) loss."""
+        out_lo = torch.tensor([[2.0, 0.0, 0.0]])
+        out_hi = torch.tensor([[4.0, 3.0, 1.0]])
+        labels = torch.tensor([0])
+
+        loss1, _ = ibp_margin_loss(out_lo, out_hi, labels, target_margin=0.5)
+        loss2, _ = ibp_margin_loss(out_lo, out_hi, labels, target_margin=2.0)
+        assert loss2.item() >= loss1.item()
 
 
 # ─── Test: Real CIFAR architecture ─────────────────────────────────

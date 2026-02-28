@@ -16,6 +16,9 @@ Key functions:
     ibp_worst_case_loss(out_lo, out_hi, labels) -> scalar loss
         Constructs worst-case logits and computes cross-entropy.
 
+    ibp_margin_loss(out_lo, out_hi, labels, target_margin) -> (loss, margin)
+        Margin regularization to prevent collapse.
+
     ibp_combined_loss(model, images, labels, epsilon, lam) -> scalar loss
         Complete (1-λ)*clean + λ*ibp loss for training.
 """
@@ -235,6 +238,54 @@ def ibp_worst_case_loss(
     z_worst[batch_idx, labels] = out_lo[batch_idx, labels]
 
     return F.cross_entropy(z_worst, labels)
+
+
+def ibp_margin_loss(
+    out_lo: torch.Tensor,
+    out_hi: torch.Tensor,
+    labels: torch.Tensor,
+    target_margin: float = 1.0,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Margin regularization loss to prevent collapse during IBP training.
+
+    Penalizes when the worst-case margin (gap between true class lower bound
+    and best competing class upper bound) is too small. This prevents the
+    model from collapsing to constant output to trivially minimize IBP loss.
+
+    margin_i = out_lo[i, y_i] - max_{c != y_i} out_hi[i, c]
+    loss = mean(max(0, target_margin - margin_i))
+
+    Args:
+        out_lo: Lower bounds on output logits, shape (batch, num_classes)
+        out_hi: Upper bounds on output logits, shape (batch, num_classes)
+        labels: True labels, shape (batch,)
+        target_margin: Desired minimum margin (default: 1.0)
+
+    Returns:
+        (margin_loss, avg_margin): Scalar loss and average margin for logging
+    """
+    batch_size, num_classes = out_lo.shape
+    device = out_lo.device
+
+    # True class lower bound: out_lo[i, y_i]
+    batch_idx = torch.arange(batch_size, device=device)
+    true_lo = out_lo[batch_idx, labels]  # (batch,)
+
+    # Best competing class upper bound: max_{c != y_i} out_hi[i, c]
+    # Mask out true class by setting it to -inf
+    masked_hi = out_hi.clone()
+    masked_hi[batch_idx, labels] = float("-inf")
+    best_competing_hi = masked_hi.max(dim=1).values  # (batch,)
+
+    # Margin: positive means certified, negative means not
+    margin = true_lo - best_competing_hi  # (batch,)
+
+    # Hinge loss: penalize when margin < target
+    margin_loss = torch.clamp(target_margin - margin, min=0).mean()
+
+    avg_margin = margin.mean()
+
+    return margin_loss, avg_margin
 
 
 def ibp_combined_loss(

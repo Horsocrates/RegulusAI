@@ -960,6 +960,8 @@ def train_cifar_diff_ibp(
     grad_clip: float = 1.0,
     lr_schedule: str = "cosine",
     augment: bool = True,
+    margin_weight: float = 0.0,
+    margin_target: float = 1.0,
     return_result: bool = False,
 ) -> nn.Module | TrainingResult:
     """Train CIFAR-10 model with DIFFERENTIABLE IBP loss (Gowal et al. 2019).
@@ -969,6 +971,7 @@ def train_cifar_diff_ibp(
     loss from interval bounds and backpropagates THROUGH the intervals.
 
     Loss = (1 - lambda) * CE(model(x), y) + lambda * CE(worst_case_logits, y)
+           + margin_weight * hinge(target - worst_case_margin)
 
     where worst_case_logits come from ibp_forward(model, x-eps, x+eps).
 
@@ -994,13 +997,16 @@ def train_cifar_diff_ibp(
         grad_clip: Max gradient norm for clipping
         lr_schedule: "none", "cosine", or "plateau"
         augment: Data augmentation (RandomCrop + HorizontalFlip)
+        margin_weight: Weight for margin regularization loss (0 = disabled).
+            Prevents model collapse by penalizing small worst-case margins.
+        margin_target: Target minimum margin for hinge loss (default: 1.0)
         return_result: Return TrainingResult instead of model
     """
     import torchvision
     import torchvision.transforms as transforms
 
     from regulus.nn.architectures import make_cifar_cnn_bn, make_cifar_cnn_bn_avgpool, ResNetCIFAR
-    from regulus.nn.ibp_loss import ibp_forward, ibp_worst_case_loss
+    from regulus.nn.ibp_loss import ibp_forward, ibp_worst_case_loss, ibp_margin_loss
 
     if seed is not None:
         torch.manual_seed(seed)
@@ -1088,6 +1094,8 @@ def train_cifar_diff_ibp(
         running_loss = 0.0
         running_clean = 0.0
         running_ibp = 0.0
+        running_margin_loss = 0.0
+        running_margin = 0.0
         correct = 0
         total = 0
         running_width = 0.0
@@ -1119,13 +1127,24 @@ def train_cifar_diff_ibp(
                 out_lo, out_hi = ibp_forward(model, x_lo, x_hi)
                 loss_ibp = ibp_worst_case_loss(out_lo, out_hi, labels)
 
+                # Margin regularization (prevents collapse)
+                if margin_weight > 0:
+                    loss_margin, avg_marg = ibp_margin_loss(
+                        out_lo, out_hi, labels, target_margin=margin_target
+                    )
+                else:
+                    loss_margin = torch.tensor(0.0, device=device)
+                    avg_marg = torch.tensor(0.0)
+
                 # Restore train mode
                 model.train()
 
                 # 3. Combined loss
-                loss = (1.0 - lam) * loss_clean + lam * loss_ibp
+                loss = (1.0 - lam) * loss_clean + lam * loss_ibp + margin_weight * loss_margin
 
                 running_ibp += loss_ibp.item()
+                running_margin_loss += loss_margin.item()
+                running_margin += avg_marg.item()
                 with torch.no_grad():
                     avg_w = (out_hi - out_lo).mean().item()
                     running_width += avg_w
@@ -1157,6 +1176,8 @@ def train_cifar_diff_ibp(
         avg_loss = running_loss / len(train_loader)
         avg_clean = running_clean / len(train_loader)
         avg_ibp_loss = running_ibp / max(ibp_batches, 1)
+        avg_margin_loss = running_margin_loss / max(ibp_batches, 1)
+        avg_margin_val = running_margin / max(ibp_batches, 1)
         avg_width = running_width / max(ibp_batches, 1)
 
         is_spike = False
@@ -1180,6 +1201,8 @@ def train_cifar_diff_ibp(
             "loss": avg_loss,
             "loss_clean": avg_clean,
             "loss_ibp": avg_ibp_loss,
+            "loss_margin": avg_margin_loss,
+            "avg_margin": avg_margin_val,
             "acc": acc,
             "lr": current_lr,
             "lam": get_lambda(global_step),
@@ -1194,6 +1217,8 @@ def train_cifar_diff_ibp(
             if ibp_batches > 0:
                 msg += (f", ibp_loss={avg_ibp_loss:.4f}, width={avg_width:.2f}"
                         f", lam={get_lambda(global_step):.3f}, eps={get_epsilon(global_step):.5f}")
+                if margin_weight > 0:
+                    msg += f", margin={avg_margin_val:.3f}, m_loss={avg_margin_loss:.4f}"
             if lr_schedule != "none":
                 msg += f", lr={current_lr:.6f}"
             if is_spike:
