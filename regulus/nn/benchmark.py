@@ -1010,7 +1010,7 @@ def train_cifar_diff_ibp(
 
     from regulus.nn.architectures import (
         make_cifar_cnn_bn, make_cifar_cnn_bn_avgpool,
-        ResNetCIFAR, ResNetCIFAR_AvgPool,
+        ResNetCIFAR, ResNetCIFAR_AvgPool, ResNetCIFAR_FC2,
     )
     from regulus.nn.ibp_loss import ibp_forward, ibp_worst_case_loss, ibp_margin_loss
 
@@ -1027,6 +1027,8 @@ def train_cifar_diff_ibp(
         model = ResNetCIFAR()
     elif architecture == "resnet_cifar_avgpool":
         model = ResNetCIFAR_AvgPool()
+    elif architecture == "resnet_cifar_fc2":
+        model = ResNetCIFAR_FC2()
     else:
         raise ValueError(f"Unknown CIFAR architecture: {architecture}")
 

@@ -351,6 +351,56 @@ class ResNetCIFAR(nn.Module):
         return x
 
 
+class ResNetCIFAR_FC2(nn.Module):
+    """ResNet CIFAR-10 with 2-layer FC head for CROWN benefit.
+
+    Key insight: CROWN tightens bounds at ReLU layers between FC layers.
+    ResNetCIFAR has only Linear(4096,10) after Flatten — CROWN = IBP.
+    This variant adds an intermediate FC layer with ReLU, matching
+    cifar_cnn_bn's FC tail where CROWN gives 2-3x cert improvement.
+
+    Architecture (~200K params):
+      stem: Conv2d(3,32,3,pad=1) -> BN2d(32) -> ReLU
+      ResBlock(32) -> MaxPool(2)                     [32->16]
+      expand: Conv2d(32,64,1) -> BN2d(64) -> ReLU   [channel expand]
+      ResBlock(64) -> MaxPool(2)                     [16->8]
+      Flatten -> Linear(4096,256) -> ReLU -> Linear(256,10)
+                 ↑ CROWN backward tightens this ReLU
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.stem = nn.Sequential(
+            nn.Conv2d(3, 32, 3, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+        )
+        self.block1 = ResBlock(32)
+        self.pool1 = nn.MaxPool2d(2)
+        self.expand = nn.Sequential(
+            nn.Conv2d(32, 64, 1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+        )
+        self.block2 = ResBlock(64)
+        self.pool2 = nn.MaxPool2d(2)
+        self.flatten = nn.Flatten()
+        self.fc1 = nn.Linear(64 * 8 * 8, 256)
+        self.fc1_relu = nn.ReLU()
+        self.fc2 = nn.Linear(256, 10)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.stem(x)
+        x = self.pool1(self.block1(x))
+        x = self.expand(x)
+        x = self.pool2(self.block2(x))
+        x = self.flatten(x)
+        x = self.fc1(x)
+        x = self.fc1_relu(x)
+        x = self.fc2(x)
+        return x
+
+
 class ResNetCIFAR_AvgPool(nn.Module):
     """ResNet-like architecture for CIFAR-10 with AvgPool instead of MaxPool.
 
