@@ -848,3 +848,281 @@ class TestCROWNAvgPool:
         crown_width = np.max(result_crown.output_width)
         assert crown_width <= ibp_width + 1e-6, \
             f"CROWN width {crown_width} > IBP width {ibp_width}"
+
+
+# =============================================================
+# ResBlock CROWN tests
+# =============================================================
+
+
+@pytest.fixture
+def resnet_small():
+    """Small ResNet: stem(Conv→BN→ReLU) → ResBlock(4) → MaxPool(2) → Flatten → Linear.
+
+    Input: (1, 8, 8) — small enough for fast tests.
+    """
+    from regulus.nn.architectures import ResBlock
+
+    torch.manual_seed(42)
+    model = nn.Module()
+    model.stem = nn.Sequential(
+        nn.Conv2d(1, 4, 3, padding=1),
+        nn.BatchNorm2d(4),
+        nn.ReLU(),
+    )
+    model.block1 = ResBlock(4)
+    model.pool1 = nn.MaxPool2d(2)
+    model.flatten = nn.Flatten()
+    model.fc = nn.Linear(4 * 4 * 4, 3)
+
+    # Must define forward for model() calls
+    class SmallResNet(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.stem = nn.Sequential(
+                nn.Conv2d(1, 4, 3, padding=1),
+                nn.BatchNorm2d(4),
+                nn.ReLU(),
+            )
+            self.block1 = ResBlock(4)
+            self.pool1 = nn.MaxPool2d(2)
+            self.flatten = nn.Flatten()
+            self.fc = nn.Linear(4 * 4 * 4, 3)
+
+        def forward(self, x):
+            x = self.stem(x)
+            x = self.pool1(self.block1(x))
+            x = self.flatten(x)
+            x = self.fc(x)
+            return x
+
+    model = SmallResNet()
+    # Train briefly so BN has running stats
+    model.train()
+    for _ in range(10):
+        x = torch.randn(16, 1, 8, 8)
+        _ = model(x)
+    model.eval()
+    return model
+
+
+@pytest.fixture
+def resnet_avgpool_small():
+    """Small ResNet with AvgPool: stem → ResBlock(4) → AvgPool(2) → Flatten → Linear."""
+    from regulus.nn.architectures import ResBlock
+
+    class SmallResNetAvg(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.stem = nn.Sequential(
+                nn.Conv2d(1, 4, 3, padding=1),
+                nn.BatchNorm2d(4),
+                nn.ReLU(),
+            )
+            self.block1 = ResBlock(4)
+            self.pool1 = nn.AvgPool2d(2)
+            self.flatten = nn.Flatten()
+            self.fc = nn.Linear(4 * 4 * 4, 3)
+
+        def forward(self, x):
+            x = self.stem(x)
+            x = self.pool1(self.block1(x))
+            x = self.flatten(x)
+            x = self.fc(x)
+            return x
+
+    torch.manual_seed(42)
+    model = SmallResNetAvg()
+    model.train()
+    for _ in range(10):
+        x = torch.randn(16, 1, 8, 8)
+        _ = model(x)
+    model.eval()
+    return model
+
+
+class TestCROWNResBlock:
+    """Test CROWN verification through ResBlock skip connections."""
+
+    def test_extract_layers_resblock(self, resnet_small):
+        """_extract_layers correctly decomposes ResBlock into start/conv/relu/conv/end."""
+        engine = CROWNEngine(crown_depth="fc")
+        layers = engine._extract_layers(resnet_small, (1, 8, 8))
+
+        types = [l["type"] for l in layers]
+        # Should contain: conv2d, relu (from stem),
+        # resblock_start, conv2d, relu, conv2d, resblock_end (from block1),
+        # maxpool2d (from pool1), flatten, affine (from fc)
+        assert "resblock_start" in types, f"Missing resblock_start in {types}"
+        assert "resblock_end" in types, f"Missing resblock_end in {types}"
+
+        # Count resblock pairs
+        starts = types.count("resblock_start")
+        ends = types.count("resblock_end")
+        assert starts == 1 and ends == 1, f"Expected 1 start/end pair, got {starts}/{ends}"
+
+        # Verify structure between start and end
+        si = types.index("resblock_start")
+        ei = types.index("resblock_end")
+        inner = types[si + 1 : ei]
+        assert inner == ["conv2d", "relu", "conv2d"], \
+            f"Expected [conv2d, relu, conv2d] inside ResBlock, got {inner}"
+
+    def test_forward_ibp_resblock_soundness(self, resnet_small):
+        """Forward IBP through ResBlock is sound: bounds contain true output."""
+        rng = np.random.default_rng(42)
+        engine = CROWNEngine(crown_depth="fc")
+
+        for _ in range(20):
+            x = rng.standard_normal((1, 8, 8)).astype(np.float64)
+            eps = 0.05
+            result = engine.compute_bounds(resnet_small, x, eps)
+
+            with torch.no_grad():
+                y_true = resnet_small(
+                    torch.tensor(x, dtype=torch.float32).unsqueeze(0)
+                ).squeeze(0).numpy()
+
+            assert np.all(result.output_lo <= y_true + 1e-4), \
+                f"ResBlock lower: lo={result.output_lo}, true={y_true}"
+            assert np.all(result.output_hi >= y_true - 1e-4), \
+                f"ResBlock upper: hi={result.output_hi}, true={y_true}"
+
+    def test_forward_ibp_resblock_perturbed(self, resnet_small):
+        """CROWN bounds contain all perturbed outputs for ResBlock model."""
+        rng = np.random.default_rng(42)
+        engine = CROWNEngine(crown_depth="fc")
+
+        x = rng.standard_normal((1, 8, 8)).astype(np.float64)
+        eps = 0.05
+        result = engine.compute_bounds(resnet_small, x, eps)
+
+        for _ in range(100):
+            delta = rng.uniform(-eps, eps, size=(1, 8, 8))
+            x_pert = x + delta
+            with torch.no_grad():
+                y_pert = resnet_small(
+                    torch.tensor(x_pert, dtype=torch.float32).unsqueeze(0)
+                ).squeeze(0).numpy()
+
+            assert np.all(result.output_lo <= y_pert + 1e-4), \
+                f"ResBlock pert: lo={result.output_lo}, pert={y_pert}"
+            assert np.all(result.output_hi >= y_pert - 1e-4), \
+                f"ResBlock pert: hi={result.output_hi}, pert={y_pert}"
+
+    def test_crown_tighter_than_ibp_resblock(self, resnet_small):
+        """CROWN(fc) bounds are at least as tight as pure IBP for ResBlock."""
+        rng = np.random.default_rng(42)
+        engine = CROWNEngine(crown_depth="fc")
+
+        for _ in range(10):
+            x = rng.standard_normal((1, 8, 8)).astype(np.float64)
+            eps = 0.05
+            result = engine.compute_bounds(resnet_small, x, eps)
+
+            # CROWN should be at least as tight as IBP
+            ibp_width = np.mean(result.ibp_output_hi - result.ibp_output_lo)
+            crown_width = np.mean(result.output_hi - result.output_lo)
+            assert crown_width <= ibp_width + 1e-6, \
+                f"CROWN width {crown_width} > IBP width {ibp_width}"
+
+    def test_resblock_avgpool_soundness(self, resnet_avgpool_small):
+        """CROWN(fc) sound for ResBlock + AvgPool combination."""
+        rng = np.random.default_rng(42)
+        engine = CROWNEngine(crown_depth="fc")
+
+        for _ in range(20):
+            x = rng.standard_normal((1, 8, 8)).astype(np.float64)
+            eps = 0.05
+            result = engine.compute_bounds(resnet_avgpool_small, x, eps)
+
+            with torch.no_grad():
+                y_true = resnet_avgpool_small(
+                    torch.tensor(x, dtype=torch.float32).unsqueeze(0)
+                ).squeeze(0).numpy()
+
+            assert np.all(result.output_lo <= y_true + 1e-4), \
+                f"ResBlock+AvgPool lower: lo={result.output_lo}, true={y_true}"
+            assert np.all(result.output_hi >= y_true - 1e-4), \
+                f"ResBlock+AvgPool upper: hi={result.output_hi}, true={y_true}"
+
+    def test_resblock_avgpool_perturbed(self, resnet_avgpool_small):
+        """Bounds contain perturbed outputs for ResBlock + AvgPool."""
+        rng = np.random.default_rng(42)
+        engine = CROWNEngine(crown_depth="fc")
+
+        x = rng.standard_normal((1, 8, 8)).astype(np.float64)
+        eps = 0.05
+        result = engine.compute_bounds(resnet_avgpool_small, x, eps)
+
+        for _ in range(100):
+            delta = rng.uniform(-eps, eps, size=(1, 8, 8))
+            x_pert = x + delta
+            with torch.no_grad():
+                y_pert = resnet_avgpool_small(
+                    torch.tensor(x_pert, dtype=torch.float32).unsqueeze(0)
+                ).squeeze(0).numpy()
+
+            assert np.all(result.output_lo <= y_pert + 1e-4), \
+                f"ResBlock+AvgPool pert: lo={result.output_lo}, pert={y_pert}"
+            assert np.all(result.output_hi >= y_pert - 1e-4), \
+                f"ResBlock+AvgPool pert: hi={result.output_hi}, pert={y_pert}"
+
+    def test_two_resblocks(self):
+        """CROWN handles two consecutive ResBlocks (like ResNetCIFAR)."""
+        from regulus.nn.architectures import ResBlock
+
+        class TwoBlockNet(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.stem = nn.Sequential(
+                    nn.Conv2d(1, 4, 3, padding=1),
+                    nn.BatchNorm2d(4),
+                    nn.ReLU(),
+                )
+                self.block1 = ResBlock(4)
+                self.pool1 = nn.MaxPool2d(2)
+                self.block2 = ResBlock(4)
+                self.pool2 = nn.MaxPool2d(2)
+                self.flatten = nn.Flatten()
+                self.fc = nn.Linear(4 * 2 * 2, 3)
+
+            def forward(self, x):
+                x = self.stem(x)
+                x = self.pool1(self.block1(x))
+                x = self.pool2(self.block2(x))
+                x = self.flatten(x)
+                x = self.fc(x)
+                return x
+
+        torch.manual_seed(42)
+        model = TwoBlockNet()
+        model.train()
+        for _ in range(10):
+            x = torch.randn(16, 1, 8, 8)
+            _ = model(x)
+        model.eval()
+
+        rng = np.random.default_rng(42)
+        engine = CROWNEngine(crown_depth="fc")
+
+        for _ in range(20):
+            x = rng.standard_normal((1, 8, 8)).astype(np.float64)
+            eps = 0.05
+            result = engine.compute_bounds(model, x, eps)
+
+            with torch.no_grad():
+                y_true = model(
+                    torch.tensor(x, dtype=torch.float32).unsqueeze(0)
+                ).squeeze(0).numpy()
+
+            assert np.all(result.output_lo <= y_true + 1e-4), \
+                f"TwoBlock lower: lo={result.output_lo}, true={y_true}"
+            assert np.all(result.output_hi >= y_true - 1e-4), \
+                f"TwoBlock upper: hi={result.output_hi}, true={y_true}"
+
+        # Verify two resblock pairs extracted
+        layers = engine._extract_layers(model, (1, 8, 8))
+        types = [l["type"] for l in layers]
+        assert types.count("resblock_start") == 2
+        assert types.count("resblock_end") == 2

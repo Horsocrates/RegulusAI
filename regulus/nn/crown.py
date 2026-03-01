@@ -382,13 +382,72 @@ class CROWNEngine:
                 sub_layers = self._extract_layers(layer, input_shape)
                 result.extend(sub_layers)
 
+            elif self._is_resblock(layer):
+                # ResBlock: decompose into skip-connection markers + inner layers.
+                # resblock_start saves the current interval as residual.
+                # Inner path: conv1(+bn1) → relu → conv2(+bn2)
+                # resblock_end adds residual back and applies output relu.
+                result.append({"type": "resblock_start"})
+
+                # conv1 + bn1 (folded)
+                conv1 = layer.conv1
+                bn1 = layer.bn1
+                w1 = conv1.weight.detach().cpu().double()
+                b1 = conv1.bias.detach().cpu().double() \
+                    if conv1.bias is not None else torch.zeros(conv1.out_channels, dtype=torch.float64)
+                s1 = conv1.stride[0] if isinstance(conv1.stride, tuple) else conv1.stride
+                p1 = conv1.padding[0] if isinstance(conv1.padding, tuple) else conv1.padding
+                w1, b1 = self._fold_bn_conv(w1, b1, bn1)
+                result.append({
+                    "type": "conv2d", "weight": w1, "bias": b1,
+                    "stride": s1, "padding": p1,
+                })
+
+                # relu1
+                result.append({"type": "relu"})
+
+                # conv2 + bn2 (folded)
+                conv2 = layer.conv2
+                bn2 = layer.bn2
+                w2 = conv2.weight.detach().cpu().double()
+                b2 = conv2.bias.detach().cpu().double() \
+                    if conv2.bias is not None else torch.zeros(conv2.out_channels, dtype=torch.float64)
+                s2 = conv2.stride[0] if isinstance(conv2.stride, tuple) else conv2.stride
+                p2 = conv2.padding[0] if isinstance(conv2.padding, tuple) else conv2.padding
+                w2, b2 = self._fold_bn_conv(w2, b2, bn2)
+                result.append({
+                    "type": "conv2d", "weight": w2, "bias": b2,
+                    "stride": s2, "padding": p2,
+                })
+
+                # resblock_end: add residual + output relu
+                result.append({"type": "resblock_end"})
+
             else:
-                raise ValueError(
-                    f"CROWN: unsupported layer type: {type(layer).__name__}. "
-                    f"Supported: Linear, Conv2d, ReLU, Flatten, MaxPool2d, AvgPool2d, BatchNorm1d/2d"
-                )
+                # Try recursive extraction for any module with children
+                # (e.g., ResNetCIFAR, ResNetCIFAR_AvgPool)
+                sub_children = list(layer.children())
+                if sub_children:
+                    sub_layers = self._extract_layers(layer, input_shape)
+                    result.extend(sub_layers)
+                else:
+                    raise ValueError(
+                        f"CROWN: unsupported layer type: {type(layer).__name__}. "
+                        f"Supported: Linear, Conv2d, ReLU, Flatten, MaxPool2d, AvgPool2d, "
+                        f"BatchNorm1d/2d, ResBlock, Sequential"
+                    )
 
         return result
+
+    @staticmethod
+    def _is_resblock(layer: nn.Module) -> bool:
+        """Check if a module is a ResBlock (duck-typing to avoid circular imports)."""
+        return (
+            hasattr(layer, 'conv1') and hasattr(layer, 'bn1') and
+            hasattr(layer, 'conv2') and hasattr(layer, 'bn2') and
+            hasattr(layer, 'relu_out') and
+            type(layer).__name__ == 'ResBlock'
+        )
 
     @staticmethod
     def _fold_bn(W: np.ndarray, b: np.ndarray, bn_layer) -> tuple[np.ndarray, np.ndarray]:
@@ -433,10 +492,16 @@ class CROWNEngine:
         input_lo: np.ndarray,
         input_hi: np.ndarray,
     ) -> list[CROWNLayerBounds]:
-        """Forward IBP pass to compute pre/post-activation bounds at each layer."""
+        """Forward IBP pass to compute pre/post-activation bounds at each layer.
+
+        Supports ResBlock skip connections via resblock_start/resblock_end markers.
+        resblock_start saves the current interval on a stack.
+        resblock_end pops the residual, adds it, and applies output ReLU.
+        """
         bounds = []
         lo = input_lo.copy()
         hi = input_hi.copy()
+        resblock_stack: list[tuple[np.ndarray, np.ndarray]] = []
 
         for layer in layers_info:
             ltype = layer["type"]
@@ -565,6 +630,31 @@ class CROWNEngine:
                     layer_type="batchnorm", shape=pre_lo.shape,
                 ))
                 lo, hi = pre_lo, pre_hi
+
+            elif ltype == "resblock_start":
+                # Save current interval as residual for skip connection
+                resblock_stack.append((lo.copy(), hi.copy()))
+                bounds.append(CROWNLayerBounds(
+                    pre_lo=lo.copy(), pre_hi=hi.copy(),
+                    post_lo=lo.copy(), post_hi=hi.copy(),
+                    layer_type="resblock_start", shape=lo.shape,
+                ))
+
+            elif ltype == "resblock_end":
+                # Pop residual, add to current, apply output ReLU
+                res_lo, res_hi = resblock_stack.pop()
+                # Addition is exact in interval arithmetic
+                pre_lo = lo + res_lo
+                pre_hi = hi + res_hi
+                # Output ReLU
+                post_lo = np.maximum(0.0, pre_lo)
+                post_hi = np.maximum(0.0, pre_hi)
+                bounds.append(CROWNLayerBounds(
+                    pre_lo=pre_lo, pre_hi=pre_hi,
+                    post_lo=post_lo, post_hi=post_hi,
+                    layer_type="resblock_end", shape=post_lo.shape,
+                ))
+                lo, hi = post_lo, post_hi
 
         return bounds
 
