@@ -2,15 +2,16 @@
 Differentiable IBP (Interval Bound Propagation) training loss.
 
 Implements a fully differentiable interval forward pass through PyTorch
-Sequential models, enabling proper IBP training where gradients flow
-through interval bounds back to model weights.
+models (Sequential and custom architectures like ResNetCIFAR), enabling
+proper IBP training where gradients flow through interval bounds.
 
 Reference: Gowal et al. (2019) "Scalable Verified Training for Provably
 Robust Image Classifiers" — the standard approach for certified training.
 
 Key functions:
     ibp_forward(model, x_lo, x_hi) -> (out_lo, out_hi)
-        Propagates interval [x_lo, x_hi] through model.
+        Propagates interval [x_lo, x_hi] through model (recursive).
+        Supports Sequential, ResBlock (skip connections), and leaf layers.
         All operations are standard PyTorch ops → fully differentiable.
 
     ibp_worst_case_loss(out_lo, out_hi, labels) -> scalar loss
@@ -136,12 +137,61 @@ def _ibp_batchnorm(
     return out_lo, out_hi
 
 
+def _ibp_resblock(
+    block: nn.Module,
+    x_lo: torch.Tensor,
+    x_hi: torch.Tensor,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Interval propagation through a ResBlock with skip connection.
+
+    ResBlock: y = relu(x + conv1→bn1→relu1→conv2→bn2(x))
+
+    The skip connection is sound in interval arithmetic because
+    addition is exact: [a_lo+b_lo, a_hi+b_hi] = {a+b : a∈[a_lo,a_hi], b∈[b_lo,b_hi]}
+
+    Width analysis: width(output) ≤ width(x) + width(g(x)) after ReLU.
+    Key insight: if g learns small updates (residual learning), width(g(x))
+    stays small and skip connections HELP IBP tightness.
+    """
+    # Save residual interval
+    res_lo, res_hi = x_lo, x_hi
+
+    # Inner path: conv1 → bn1 → relu1 → conv2 → bn2
+    lo, hi = _ibp_conv2d(
+        x_lo, x_hi, block.conv1.weight, block.conv1.bias,
+        stride=block.conv1.stride, padding=block.conv1.padding,
+    )
+    lo, hi = _ibp_batchnorm(lo, hi, block.bn1)
+    lo = torch.clamp(lo, min=0)  # relu1
+    hi = torch.clamp(hi, min=0)
+    lo, hi = _ibp_conv2d(
+        lo, hi, block.conv2.weight, block.conv2.bias,
+        stride=block.conv2.stride, padding=block.conv2.padding,
+    )
+    lo, hi = _ibp_batchnorm(lo, hi, block.bn2)
+
+    # Add residual: [inner_lo + res_lo, inner_hi + res_hi] (exact)
+    lo = lo + res_lo
+    hi = hi + res_hi
+
+    # Output ReLU
+    lo = torch.clamp(lo, min=0)
+    hi = torch.clamp(hi, min=0)
+
+    return lo, hi
+
+
 def ibp_forward(
     model: nn.Module,
     x_lo: torch.Tensor,
     x_hi: torch.Tensor,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    """Propagate interval [x_lo, x_hi] through a Sequential model.
+    """Propagate interval [x_lo, x_hi] through a model (recursive dispatch).
+
+    Supports nn.Sequential, ResBlock (skip connections), and all standard
+    leaf layers. For non-Sequential modules with children (e.g. ResNetCIFAR),
+    processes named_children() in registration order — which must match
+    the model's forward() execution order.
 
     All operations use standard PyTorch ops, so gradients flow through
     model.parameters() → enables proper IBP training.
@@ -149,61 +199,74 @@ def ibp_forward(
     The model MUST be in eval() mode (for correct BatchNorm behavior).
 
     Args:
-        model: nn.Sequential (or any iterable of nn.Module layers)
+        model: Any supported nn.Module (Sequential, ResNetCIFAR, etc.)
         x_lo: Lower bounds, shape (batch, ...)
         x_hi: Upper bounds, shape (batch, ...)
 
     Returns:
         (out_lo, out_hi): Output interval bounds
     """
-    lo, hi = x_lo, x_hi
+    # Import here to avoid circular dependency
+    from regulus.nn.architectures import ResBlock
 
-    for layer in model.modules():
-        # Skip container modules — only process leaf layers
-        if isinstance(layer, (nn.Sequential, nn.Module)) and len(list(layer.children())) > 0:
-            continue
+    # --- Leaf layers (no children) ---
 
-        if isinstance(layer, nn.Linear):
-            lo, hi = _ibp_linear(lo, hi, layer.weight, layer.bias)
+    if isinstance(model, nn.Linear):
+        return _ibp_linear(x_lo, x_hi, model.weight, model.bias)
 
-        elif isinstance(layer, nn.Conv2d):
-            lo, hi = _ibp_conv2d(
-                lo, hi, layer.weight, layer.bias,
-                stride=layer.stride, padding=layer.padding,
-            )
+    if isinstance(model, nn.Conv2d):
+        return _ibp_conv2d(
+            x_lo, x_hi, model.weight, model.bias,
+            stride=model.stride, padding=model.padding,
+        )
 
-        elif isinstance(layer, (nn.BatchNorm2d, nn.BatchNorm1d)):
-            lo, hi = _ibp_batchnorm(lo, hi, layer)
+    if isinstance(model, (nn.BatchNorm2d, nn.BatchNorm1d)):
+        return _ibp_batchnorm(x_lo, x_hi, model)
 
-        elif isinstance(layer, nn.ReLU):
-            lo = torch.clamp(lo, min=0)
-            hi = torch.clamp(hi, min=0)
+    if isinstance(model, nn.ReLU):
+        return torch.clamp(x_lo, min=0), torch.clamp(x_hi, min=0)
 
-        elif isinstance(layer, nn.AvgPool2d):
-            ks = layer.kernel_size
-            st = layer.stride if layer.stride is not None else ks
-            pad = layer.padding if layer.padding is not None else 0
-            lo = F.avg_pool2d(lo, ks, stride=st, padding=pad)
-            hi = F.avg_pool2d(hi, ks, stride=st, padding=pad)
+    if isinstance(model, nn.AvgPool2d):
+        ks = model.kernel_size
+        st = model.stride if model.stride is not None else ks
+        pad = model.padding if model.padding is not None else 0
+        return F.avg_pool2d(x_lo, ks, stride=st, padding=pad), \
+               F.avg_pool2d(x_hi, ks, stride=st, padding=pad)
 
-        elif isinstance(layer, nn.MaxPool2d):
-            ks = layer.kernel_size
-            st = layer.stride if layer.stride is not None else ks
-            pad = layer.padding if layer.padding is not None else 0
-            lo = F.max_pool2d(lo, ks, stride=st, padding=pad)
-            hi = F.max_pool2d(hi, ks, stride=st, padding=pad)
+    if isinstance(model, nn.MaxPool2d):
+        ks = model.kernel_size
+        st = model.stride if model.stride is not None else ks
+        pad = model.padding if model.padding is not None else 0
+        return F.max_pool2d(x_lo, ks, stride=st, padding=pad), \
+               F.max_pool2d(x_hi, ks, stride=st, padding=pad)
 
-        elif isinstance(layer, nn.Flatten):
-            lo = lo.flatten(layer.start_dim, layer.end_dim)
-            hi = hi.flatten(layer.start_dim, layer.end_dim)
+    if isinstance(model, nn.Flatten):
+        return x_lo.flatten(model.start_dim, model.end_dim), \
+               x_hi.flatten(model.start_dim, model.end_dim)
 
-        else:
-            raise NotImplementedError(
-                f"ibp_forward: unsupported layer type {type(layer).__name__}. "
-                f"Supported: Linear, Conv2d, BatchNorm, ReLU, AvgPool2d, MaxPool2d, Flatten."
-            )
+    # --- ResBlock: explicit skip connection handling ---
 
-    return lo, hi
+    if isinstance(model, ResBlock):
+        return _ibp_resblock(model, x_lo, x_hi)
+
+    # --- Containers: process children sequentially ---
+    # Works for nn.Sequential, ResNetCIFAR, ResNetMNIST, etc.
+    # REQUIREMENT: named_children() order must match forward() order.
+
+    children = list(model.children())
+    if len(children) > 0:
+        lo, hi = x_lo, x_hi
+        for child in children:
+            lo, hi = ibp_forward(child, lo, hi)
+        return lo, hi
+
+    # --- Unsupported leaf layer ---
+
+    raise NotImplementedError(
+        f"ibp_forward: unsupported layer type {type(model).__name__}. "
+        f"Supported: Linear, Conv2d, BatchNorm, ReLU, AvgPool2d, MaxPool2d, "
+        f"Flatten, Sequential, ResBlock."
+    )
 
 
 def ibp_worst_case_loss(

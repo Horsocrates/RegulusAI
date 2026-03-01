@@ -6,6 +6,7 @@ import torch.nn as nn
 import numpy as np
 
 from regulus.nn.ibp_loss import ibp_forward, ibp_worst_case_loss, ibp_combined_loss, ibp_margin_loss
+from regulus.nn.architectures import ResBlock, ResNetCIFAR
 
 
 # ─── Fixtures ────────────────────────────────────────────────────────
@@ -416,3 +417,161 @@ class TestCIFARArchitecture:
             out = cifar_cnn_bn(x + noise)
             assert (out >= lo - 1e-3).all(), f"Below lo: {(lo - out).max()}"
             assert (out <= hi + 1e-3).all(), f"Above hi: {(out - hi).max()}"
+
+
+# ─── Test: ResBlock and ResNetCIFAR ──────────────────────────────
+
+class TestResBlockIBP:
+    """Tests for IBP propagation through ResBlock skip connections."""
+
+    @pytest.fixture
+    def resblock_32(self):
+        """ResBlock with 32 channels."""
+        block = ResBlock(32)
+        # Initialize BN running stats
+        block.train()
+        dummy = torch.randn(4, 32, 8, 8)
+        block(dummy)
+        block.eval()
+        return block
+
+    @pytest.fixture
+    def resblock_64(self):
+        """ResBlock with 64 channels."""
+        block = ResBlock(64)
+        block.train()
+        dummy = torch.randn(4, 64, 8, 8)
+        block(dummy)
+        block.eval()
+        return block
+
+    @pytest.fixture
+    def resnet_cifar(self):
+        """Full ResNetCIFAR model."""
+        model = ResNetCIFAR()
+        model.train()
+        dummy = torch.randn(4, 3, 32, 32)
+        model(dummy)
+        model.eval()
+        return model
+
+    def test_resblock_point_interval(self, resblock_32):
+        """Zero-width interval through ResBlock should equal forward pass."""
+        x = torch.randn(2, 32, 8, 8)
+        lo, hi = ibp_forward(resblock_32, x, x)
+
+        expected = resblock_32(x)
+        torch.testing.assert_close(lo, expected, atol=1e-5, rtol=1e-4)
+        torch.testing.assert_close(hi, expected, atol=1e-5, rtol=1e-4)
+
+    def test_resblock_lo_le_hi(self, resblock_32):
+        """Lower bounds must be <= upper bounds through ResBlock."""
+        x = torch.randn(2, 32, 8, 8)
+        eps = 0.05
+        lo, hi = ibp_forward(resblock_32, x - eps, x + eps)
+        assert (lo <= hi + 1e-5).all(), f"lo > hi: max diff = {(lo - hi).max()}"
+
+    def test_resblock_soundness(self, resblock_32):
+        """Random points in input interval must stay in output interval."""
+        x = torch.randn(3, 32, 8, 8)
+        eps = 0.02
+        lo, hi = ibp_forward(resblock_32, x - eps, x + eps)
+
+        for _ in range(50):
+            noise = torch.rand_like(x) * 2 * eps - eps
+            out = resblock_32(x + noise)
+            assert (out >= lo - 1e-4).all(), f"Below lo: {(lo - out).max()}"
+            assert (out <= hi + 1e-4).all(), f"Above hi: {(out - hi).max()}"
+
+    def test_resblock_gradients(self, resblock_32):
+        """Gradients must flow through ResBlock skip connection."""
+        x = torch.randn(2, 32, 8, 8)
+        eps = 0.05
+        lo, hi = ibp_forward(resblock_32, x - eps, x + eps)
+        loss = (hi - lo).sum()
+        loss.backward()
+
+        grad_params = [
+            name for name, p in resblock_32.named_parameters()
+            if p.grad is not None and p.grad.abs().sum() > 0
+        ]
+        # All 4 conv/bn weights should get gradients
+        assert len(grad_params) >= 4, (
+            f"Only {len(grad_params)} params got gradients: {grad_params}"
+        )
+
+    def test_resblock_width_with_epsilon(self, resblock_32):
+        """Output width should grow with epsilon."""
+        x = torch.randn(2, 32, 8, 8)
+
+        lo1, hi1 = ibp_forward(resblock_32, x - 0.01, x + 0.01)
+        lo2, hi2 = ibp_forward(resblock_32, x - 0.05, x + 0.05)
+
+        w1 = (hi1 - lo1).mean()
+        w2 = (hi2 - lo2).mean()
+        assert w2 > w1, f"Wider eps should give wider output: {w1} vs {w2}"
+
+    # --- ResNetCIFAR (full model) ---
+
+    def test_resnet_cifar_forward(self, resnet_cifar):
+        """ibp_forward works on full ResNetCIFAR."""
+        x = torch.randn(2, 3, 32, 32)
+        eps = 0.01
+        lo, hi = ibp_forward(resnet_cifar, x - eps, x + eps)
+
+        assert lo.shape == (2, 10), f"Wrong shape: {lo.shape}"
+        assert hi.shape == (2, 10), f"Wrong shape: {hi.shape}"
+        assert (lo <= hi + 1e-4).all(), f"lo > hi: {(lo - hi).max()}"
+
+    def test_resnet_cifar_point_interval(self, resnet_cifar):
+        """Zero-width interval through ResNetCIFAR equals forward pass."""
+        x = torch.randn(2, 3, 32, 32)
+        lo, hi = ibp_forward(resnet_cifar, x, x)
+
+        expected = resnet_cifar(x)
+        torch.testing.assert_close(lo, expected, atol=1e-4, rtol=1e-3)
+        torch.testing.assert_close(hi, expected, atol=1e-4, rtol=1e-3)
+
+    def test_resnet_cifar_soundness(self, resnet_cifar):
+        """Soundness: random perturbations stay within IBP bounds."""
+        x = torch.randn(2, 3, 32, 32)
+        eps = 0.005
+        lo, hi = ibp_forward(resnet_cifar, x - eps, x + eps)
+
+        for _ in range(20):
+            noise = torch.rand_like(x) * 2 * eps - eps
+            out = resnet_cifar(x + noise)
+            assert (out >= lo - 1e-3).all(), f"Below lo: {(lo - out).max()}"
+            assert (out <= hi + 1e-3).all(), f"Above hi: {(out - hi).max()}"
+
+    def test_resnet_cifar_gradients(self, resnet_cifar):
+        """Gradients flow through full ResNetCIFAR with IBP loss."""
+        x = torch.randn(2, 3, 32, 32)
+        labels = torch.tensor([3, 7])
+        eps = 0.01
+
+        lo, hi = ibp_forward(resnet_cifar, x - eps, x + eps)
+        loss = ibp_worst_case_loss(lo, hi, labels)
+        loss.backward()
+
+        grad_params = [
+            name for name, p in resnet_cifar.named_parameters()
+            if p.grad is not None and p.grad.abs().sum() > 0
+        ]
+        # Should have gradients in stem, block1, expand, block2, fc
+        assert len(grad_params) >= 10, (
+            f"Only {len(grad_params)} params got gradients — expected >=10"
+        )
+
+    def test_resnet_cifar_ibp_loss_runs(self, resnet_cifar):
+        """ibp_worst_case_loss through ResNetCIFAR produces valid loss."""
+        x = torch.randn(4, 3, 32, 32)
+        labels = torch.randint(0, 10, (4,))
+        eps = 0.005
+
+        lo, hi = ibp_forward(resnet_cifar, x - eps, x + eps)
+        loss = ibp_worst_case_loss(lo, hi, labels)
+
+        assert loss.item() > 0, "Loss should be positive"
+        assert not torch.isnan(loss), "Loss is NaN"
+        assert not torch.isinf(loss), "Loss is Inf"
