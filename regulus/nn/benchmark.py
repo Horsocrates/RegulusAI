@@ -650,6 +650,7 @@ def train_cifar_model(
     checkpoint: bool = False,
     checkpoint_n_samples: int = 20,
     return_result: bool = False,
+    augment: bool = True,
 ) -> nn.Module | TrainingResult:
     """Train a model on CIFAR-10.
 
@@ -679,6 +680,7 @@ def train_cifar_model(
         checkpoint: If True, save best model by certified accuracy
         checkpoint_n_samples: Number of test images for checkpoint eval
         return_result: If True, return TrainingResult instead of model
+        augment: If True, use data augmentation (RandomCrop + HorizontalFlip)
 
     Returns:
         Trained PyTorch model in eval mode (or TrainingResult).
@@ -686,7 +688,7 @@ def train_cifar_model(
     import torchvision
     import torchvision.transforms as transforms
 
-    from regulus.nn.architectures import make_cifar_cnn_bn
+    from regulus.nn.architectures import make_cifar_cnn_bn, make_cifar_cnn_bn_avgpool, ResNetCIFAR
 
     if seed is not None:
         torch.manual_seed(seed)
@@ -695,16 +697,25 @@ def train_cifar_model(
     # Build model
     if architecture == "cifar_cnn_bn":
         model = make_cifar_cnn_bn()
+    elif architecture == "cifar_cnn_bn_avgpool":
+        model = make_cifar_cnn_bn_avgpool()
+    elif architecture == "resnet_cifar":
+        model = ResNetCIFAR()
     else:
-        raise ValueError(f"Unknown CIFAR architecture: {architecture}. Use 'cifar_cnn_bn'.")
+        raise ValueError(f"Unknown CIFAR architecture: {architecture}. "
+                         f"Use 'cifar_cnn_bn', 'cifar_cnn_bn_avgpool', or 'resnet_cifar'.")
 
     # Dataset
     _ensure_cifar10(data_dir)
 
-    transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize(CIFAR_MEAN, CIFAR_STD),
-    ])
+    train_transforms = [transforms.ToTensor(), transforms.Normalize(CIFAR_MEAN, CIFAR_STD)]
+    if augment:
+        train_transforms = [
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(),
+        ] + train_transforms
+
+    transform = transforms.Compose(train_transforms)
 
     train_dataset = torchvision.datasets.CIFAR10(
         root=data_dir, train=True, download=False, transform=transform
@@ -903,7 +914,7 @@ def train_cifar_model(
             if checkpoint and epoch_cert > 0:
                 ckpt_marker = " *BEST*" if epoch + 1 == best_epoch else ""
                 msg += f", cert_ckpt={epoch_cert*100:.1f}%{ckpt_marker}"
-            print(msg)
+            print(msg, flush=True)
 
     # Restore best checkpoint
     if checkpoint and best_state_dict is not None:
@@ -932,6 +943,311 @@ def train_cifar_model(
     return model
 
 
+def train_cifar_diff_ibp(
+    architecture: str = "cifar_cnn_bn",
+    epochs: int = 50,
+    batch_size: int = 128,
+    lr: float = 0.001,
+    data_dir: str = "./data",
+    verbose: bool = True,
+    ibp_weight: float = 0.3,
+    eps_start: float = 0.001,
+    eps_end: float = 0.01,
+    warmup_fraction: float = 0.2,
+    ramp_fraction: float = 0.5,
+    weight_reg: float = 0.0,
+    seed: int | None = None,
+    grad_clip: float = 1.0,
+    lr_schedule: str = "cosine",
+    augment: bool = True,
+    margin_weight: float = 0.0,
+    margin_target: float = 1.0,
+    return_result: bool = False,
+) -> nn.Module | TrainingResult:
+    """Train CIFAR-10 model with DIFFERENTIABLE IBP loss (Gowal et al. 2019).
+
+    Unlike train_cifar_model() which uses indirect IBP pressure (scalar
+    penalty on weight norm), this function computes worst-case cross-entropy
+    loss from interval bounds and backpropagates THROUGH the intervals.
+
+    Loss = (1 - lambda) * CE(model(x), y) + lambda * CE(worst_case_logits, y)
+           + margin_weight * hinge(target - clean_margin)
+
+    Note: margin is computed on CLEAN logits (not IBP bounds) for stability.
+    This prevents chaotic gradients when IBP bounds are initially wild.
+
+    where worst_case_logits come from ibp_forward(model, x-eps, x+eps).
+
+    Training schedule:
+        [0, warmup]            -> lambda=0, eps=eps_start  (pure clean training)
+        [warmup, warmup+ramp]  -> lambda ramps 0->ibp_weight, eps ramps
+        [warmup+ramp, end]     -> lambda=ibp_weight, eps=eps_end
+
+    Args:
+        architecture: "cifar_cnn_bn" or "cifar_cnn_bn_avgpool"
+        epochs: Number of training epochs
+        batch_size: Training batch size
+        lr: Learning rate
+        data_dir: Directory for CIFAR-10 data
+        verbose: Print training progress
+        ibp_weight: Maximum IBP loss weight (lambda_max)
+        eps_start: Starting epsilon for perturbation schedule
+        eps_end: Target epsilon for perturbation schedule
+        warmup_fraction: Fraction of training with lambda=0 (clean only)
+        ramp_fraction: Fraction of training for lambda ramp (after warmup)
+        weight_reg: L2 weight regularization (0 = disabled)
+        seed: Random seed
+        grad_clip: Max gradient norm for clipping
+        lr_schedule: "none", "cosine", or "plateau"
+        augment: Data augmentation (RandomCrop + HorizontalFlip)
+        margin_weight: Weight for margin regularization loss (0 = disabled).
+            Prevents model collapse by penalizing small worst-case margins.
+        margin_target: Target minimum margin for hinge loss (default: 1.0)
+        return_result: Return TrainingResult instead of model
+    """
+    import torchvision
+    import torchvision.transforms as transforms
+
+    from regulus.nn.architectures import make_cifar_cnn_bn, make_cifar_cnn_bn_avgpool, ResNetCIFAR
+    from regulus.nn.ibp_loss import ibp_forward, ibp_worst_case_loss, ibp_margin_loss
+
+    if seed is not None:
+        torch.manual_seed(seed)
+        np.random.seed(seed)
+
+    # Build model
+    if architecture == "cifar_cnn_bn":
+        model = make_cifar_cnn_bn()
+    elif architecture == "cifar_cnn_bn_avgpool":
+        model = make_cifar_cnn_bn_avgpool()
+    elif architecture == "resnet_cifar":
+        model = ResNetCIFAR()
+    else:
+        raise ValueError(f"Unknown CIFAR architecture: {architecture}")
+
+    # Move to GPU if available
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
+
+    # Dataset
+    _ensure_cifar10(data_dir)
+
+    train_transforms = [transforms.ToTensor(), transforms.Normalize(CIFAR_MEAN, CIFAR_STD)]
+    if augment:
+        train_transforms = [
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(),
+        ] + train_transforms
+
+    transform = transforms.Compose(train_transforms)
+
+    train_dataset = torchvision.datasets.CIFAR10(
+        root=data_dir, train=True, download=False, transform=transform
+    )
+    train_loader = DataLoader(
+        train_dataset, batch_size=batch_size, shuffle=True, num_workers=0
+    )
+
+    # Optimizer
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    criterion = nn.CrossEntropyLoss()
+
+    # LR scheduler
+    scheduler = None
+    if lr_schedule == "cosine":
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max=epochs, eta_min=lr * 0.01
+        )
+    elif lr_schedule == "plateau":
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, mode="min", factor=0.5, patience=3, verbose=False
+        )
+
+    # Schedule: warmup (clean) -> ramp (0->ibp_weight) -> full IBP
+    total_steps = epochs * len(train_loader)
+    warmup_steps = int(warmup_fraction * total_steps)
+    ramp_steps = int(ramp_fraction * total_steps)
+    ramp_end = warmup_steps + ramp_steps
+
+    def get_lambda(step: int) -> float:
+        if step < warmup_steps:
+            return 0.0
+        elif step < ramp_end:
+            progress = (step - warmup_steps) / max(ramp_steps, 1)
+            return ibp_weight * progress
+        else:
+            return ibp_weight
+
+    def get_epsilon(step: int) -> float:
+        if step < warmup_steps:
+            return eps_start
+        elif step < ramp_end:
+            progress = (step - warmup_steps) / max(ramp_steps, 1)
+            return eps_start + (eps_end - eps_start) * progress
+        else:
+            return eps_end
+
+    # Training
+    epoch_stats: list[dict] = []
+    spike_count = 0
+    median_loss = None
+    global_step = 0
+
+    for epoch in range(epochs):
+        running_loss = 0.0
+        running_clean = 0.0
+        running_ibp = 0.0
+        running_margin_loss = 0.0
+        running_margin = 0.0
+        correct = 0
+        total = 0
+        running_width = 0.0
+        ibp_batches = 0
+
+        for batch_idx, (images, labels) in enumerate(train_loader):
+            images, labels = images.to(device), labels.to(device)
+
+            lam = get_lambda(global_step)
+            eps = get_epsilon(global_step)
+
+            optimizer.zero_grad()
+
+            # 1. Clean forward pass (train mode — updates BN stats)
+            model.train()
+            clean_out = model(images)
+            loss_clean = criterion(clean_out, labels)
+
+            _, predicted = clean_out.max(1)
+            correct += predicted.eq(labels).sum().item()
+            total += labels.size(0)
+
+            # 2. Margin regularization on CLEAN logits (stable, prevents collapse)
+            # Computed from clean_out, NOT from IBP bounds — avoids chaotic
+            # gradients when IBP bounds are initially wild.
+            if margin_weight > 0:
+                loss_margin, avg_marg = ibp_margin_loss(
+                    clean_out, clean_out, labels, target_margin=margin_target
+                )
+            else:
+                loss_margin = torch.tensor(0.0, device=device)
+                avg_marg = torch.tensor(0.0)
+
+            if lam > 0:
+                # 3. IBP forward pass (eval mode — frozen BN)
+                model.eval()
+                x_lo = images - eps
+                x_hi = images + eps
+
+                out_lo, out_hi = ibp_forward(model, x_lo, x_hi)
+                loss_ibp = ibp_worst_case_loss(out_lo, out_hi, labels)
+
+                # Restore train mode
+                model.train()
+
+                # 4. Combined loss: clean + IBP + margin(clean)
+                loss = (1.0 - lam) * loss_clean + lam * loss_ibp + margin_weight * loss_margin
+
+                running_ibp += loss_ibp.item()
+                running_margin_loss += loss_margin.item()
+                running_margin += avg_marg.item()
+                with torch.no_grad():
+                    avg_w = (out_hi - out_lo).mean().item()
+                    running_width += avg_w
+                ibp_batches += 1
+            else:
+                # During warmup: clean + margin (builds robust features)
+                loss = loss_clean + margin_weight * loss_margin
+                running_margin_loss += loss_margin.item()
+                running_margin += avg_marg.item()
+
+            # Weight regularization
+            if weight_reg > 0:
+                w_reg = torch.tensor(0.0, device=device)
+                for p in model.parameters():
+                    if p.dim() >= 2:
+                        w_reg = w_reg + torch.sum(p ** 2)
+                loss = loss + weight_reg * w_reg
+
+            loss.backward()
+
+            if grad_clip > 0:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
+
+            optimizer.step()
+
+            running_loss += loss.item()
+            running_clean += loss_clean.item()
+            global_step += 1
+
+        # Epoch stats
+        acc = 100.0 * correct / total
+        avg_loss = running_loss / len(train_loader)
+        avg_clean = running_clean / len(train_loader)
+        avg_ibp_loss = running_ibp / max(ibp_batches, 1)
+        avg_margin_loss = running_margin_loss / len(train_loader)
+        avg_margin_val = running_margin / len(train_loader)
+        avg_width = running_width / max(ibp_batches, 1)
+
+        is_spike = False
+        if median_loss is not None and avg_loss > 5 * median_loss:
+            spike_count += 1
+            is_spike = True
+        if median_loss is None:
+            median_loss = avg_loss
+        else:
+            median_loss = 0.7 * median_loss + 0.3 * min(avg_loss, 5 * median_loss)
+
+        current_lr = optimizer.param_groups[0]["lr"]
+        if scheduler is not None:
+            if lr_schedule == "plateau":
+                scheduler.step(avg_loss)
+            else:
+                scheduler.step()
+
+        stats = {
+            "epoch": epoch + 1,
+            "loss": avg_loss,
+            "loss_clean": avg_clean,
+            "loss_ibp": avg_ibp_loss,
+            "loss_margin": avg_margin_loss,
+            "avg_margin": avg_margin_val,
+            "acc": acc,
+            "lr": current_lr,
+            "lam": get_lambda(global_step),
+            "eps": get_epsilon(global_step),
+            "ibp_width": avg_width,
+            "is_spike": is_spike,
+        }
+        epoch_stats.append(stats)
+
+        if verbose:
+            msg = f"  Epoch {epoch + 1}/{epochs}: loss={avg_loss:.4f}, acc={acc:.1f}%"
+            if margin_weight > 0:
+                msg += f", margin={avg_margin_val:.3f}"
+            if ibp_batches > 0:
+                msg += (f", ibp_loss={avg_ibp_loss:.4f}, width={avg_width:.2f}"
+                        f", lam={get_lambda(global_step):.3f}, eps={get_epsilon(global_step):.5f}")
+            if lr_schedule != "none":
+                msg += f", lr={current_lr:.6f}"
+            if is_spike:
+                msg += " [SPIKE]"
+            print(msg, flush=True)
+
+    model.eval()
+    model = model.cpu()  # Move back to CPU for verification
+
+    if return_result:
+        return TrainingResult(
+            model=model,
+            best_certified=0.0,
+            best_epoch=0,
+            final_certified=0.0,
+            spike_count=spike_count,
+            epoch_stats=epoch_stats,
+        )
+    return model
+
+
 def certify_cifar(
     model: nn.Module,
     epsilon: float = 0.01,
@@ -942,6 +1258,7 @@ def certify_cifar(
     verbose: bool = True,
     progress_interval: int = 10,
     crown_depth: str = "fc",
+    layerwise_report: bool = False,
 ) -> CertificationReport:
     """Certify CIFAR-10 test images using NNVerificationEngine.
 
@@ -955,6 +1272,7 @@ def certify_cifar(
         verbose: Print progress.
         progress_interval: Print every N images.
         crown_depth: CROWN depth ("fc", "deep", "full").
+        layerwise_report: If True, print per-layer width growth table.
 
     Returns:
         CertificationReport with aggregated metrics.
@@ -981,6 +1299,7 @@ def certify_cifar(
     total_max_width = 0.0
     total_margin = 0.0
     per_image: list[dict] = []
+    layer_width_accum: list[list[float]] = []  # per-layer widths across images
 
     t_start = time.perf_counter()
 
@@ -1006,6 +1325,14 @@ def certify_cifar(
         total_max_width += float(np.max(result.output_width))
         total_margin += result.margin
 
+        # Collect per-layer diagnostics from first image (representative)
+        if layerwise_report and i == 0 and hasattr(result, 'layer_diagnostics') and result.layer_diagnostics:
+            layer_width_accum = [[d.get("mean_width", 0.0)] for d in result.layer_diagnostics]
+        elif layerwise_report and i > 0 and hasattr(result, 'layer_diagnostics') and result.layer_diagnostics:
+            for j, d in enumerate(result.layer_diagnostics):
+                if j < len(layer_width_accum):
+                    layer_width_accum[j].append(d.get("mean_width", 0.0))
+
         per_image.append({
             "index": i,
             "true_label": int(true_label),
@@ -1026,6 +1353,18 @@ def certify_cifar(
 
     total_time = time.perf_counter() - t_start
     n = min(n_test, len(test_dataset))
+
+    # Print per-layer width growth table
+    if layerwise_report and layer_width_accum and result.layer_diagnostics:
+        print(f"\n  {'Layer':<30} {'Mean Width':>12} {'Max Width':>12} {'Amplification':>14}")
+        print(f"  {'-'*30} {'-'*12} {'-'*12} {'-'*14}")
+        input_width = np.mean(layer_width_accum[0]) if layer_width_accum[0] else 1.0
+        for j, d in enumerate(result.layer_diagnostics):
+            name = d.get("name", f"layer_{j}")
+            avg_w = np.mean(layer_width_accum[j]) if j < len(layer_width_accum) else 0.0
+            max_w = d.get("max_width", 0.0)
+            amp = avg_w / input_width if input_width > 0 else float("inf")
+            print(f"  {name:<30} {avg_w:>12.4f} {max_w:>12.4f} {amp:>13.1f}x")
 
     # Epsilon normalization context for CIFAR-10
     # CIFAR normalizes per-channel: (x_c - mean_c) / std_c
