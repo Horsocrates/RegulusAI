@@ -95,15 +95,19 @@ def run_experiment(configs, architecture="resnet_cifar", n_test=100, seed=42, ve
 
         if report_ibp.avg_output_max_width < 50.0:
             print(f"\n  Running CROWN(fc)...")
-            report_crown = certify_cifar(
-                model, epsilon=eps_end, n_test=n_test,
-                strategy="crown", architecture=architecture,
-                crown_depth="fc", verbose=verbose, progress_interval=50,
-            )
-            result["crown_certified"] = report_crown.certified_accuracy
-            result["crown_width"] = report_crown.avg_output_max_width
-            print(f"  CROWN: cert={report_crown.certified_accuracy*100:.1f}%, "
-                  f"width={report_crown.avg_output_max_width:.4f}")
+            try:
+                report_crown = certify_cifar(
+                    model, epsilon=eps_end, n_test=n_test,
+                    strategy="crown", architecture=architecture,
+                    crown_depth="fc", verbose=verbose, progress_interval=50,
+                )
+                result["crown_certified"] = report_crown.certified_accuracy
+                result["crown_width"] = report_crown.avg_output_max_width
+                print(f"  CROWN: cert={report_crown.certified_accuracy*100:.1f}%, "
+                      f"width={report_crown.avg_output_max_width:.4f}")
+            except (ValueError, NotImplementedError) as e:
+                print(f"  CROWN skipped: {e}")
+                print(f"  (CROWN does not yet support ResBlock — using IBP cert only)")
 
         results.append(result)
     return results
@@ -221,16 +225,18 @@ def main():
 
     # Goal check
     print(f"\n{'='*70}")
-    print("GOAL CHECK: clean >= 50% AND CROWN cert >= 40%")
+    print("GOAL CHECK: clean >= 50% AND IBP cert >= 40%")
+    print(f"  (CROWN not yet supported for ResBlock — using IBP cert)")
     print(f"{'='*70}")
     for r in results:
-        crown_val = r.get("crown_certified", r["ibp_certified"])
+        cert_val = r.get("crown_certified", r["ibp_certified"])
+        cert_type = "CROWN" if "crown_certified" in r else "IBP"
         clean_ok = r["clean"] >= 0.50
-        cert_ok = crown_val >= 0.40
+        cert_ok = cert_val >= 0.40
         status = "PASS" if (clean_ok and cert_ok) else "FAIL"
         print(f"  {r['label']:<30} {status}  "
               f"(clean {'OK' if clean_ok else 'X'} {r['clean']*100:.0f}%, "
-              f"CROWN {'OK' if cert_ok else 'X'} {crown_val*100:.0f}%)")
+              f"{cert_type} {'OK' if cert_ok else 'X'} {cert_val*100:.0f}%)")
 
     output_path = os.path.join(os.path.dirname(__file__), "v9_resnet_results.json")
     with open(output_path, "w") as f:
