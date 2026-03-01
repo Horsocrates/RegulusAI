@@ -1008,7 +1008,10 @@ def train_cifar_diff_ibp(
     import torchvision
     import torchvision.transforms as transforms
 
-    from regulus.nn.architectures import make_cifar_cnn_bn, make_cifar_cnn_bn_avgpool, ResNetCIFAR
+    from regulus.nn.architectures import (
+        make_cifar_cnn_bn, make_cifar_cnn_bn_avgpool,
+        ResNetCIFAR, ResNetCIFAR_AvgPool,
+    )
     from regulus.nn.ibp_loss import ibp_forward, ibp_worst_case_loss, ibp_margin_loss
 
     if seed is not None:
@@ -1022,6 +1025,8 @@ def train_cifar_diff_ibp(
         model = make_cifar_cnn_bn_avgpool()
     elif architecture == "resnet_cifar":
         model = ResNetCIFAR()
+    elif architecture == "resnet_cifar_avgpool":
+        model = ResNetCIFAR_AvgPool()
     else:
         raise ValueError(f"Unknown CIFAR architecture: {architecture}")
 

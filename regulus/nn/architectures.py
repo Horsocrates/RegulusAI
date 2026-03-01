@@ -349,3 +349,47 @@ class ResNetCIFAR(nn.Module):
         x = self.flatten(x)
         x = self.fc(x)
         return x
+
+
+class ResNetCIFAR_AvgPool(nn.Module):
+    """ResNet-like architecture for CIFAR-10 with AvgPool instead of MaxPool.
+
+    AvgPool is a LINEAR operation (uniform weighted sum), so IBP/CROWN can
+    propagate through it without the bound blowup caused by MaxPool's
+    element-wise max.  Same architecture as ResNetCIFAR, just AvgPool.
+
+    Architecture (~137K params):
+      stem: Conv2d(3,32,3,pad=1) -> BN2d(32) -> ReLU
+      ResBlock(32) -> AvgPool(2)                     [32->16]
+      expand: Conv2d(32,64,1) -> BN2d(64) -> ReLU   [channel expand]
+      ResBlock(64) -> AvgPool(2)                     [16->8]
+      Flatten -> Linear(4096,10)
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.stem = nn.Sequential(
+            nn.Conv2d(3, 32, 3, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+        )
+        self.block1 = ResBlock(32)
+        self.pool1 = nn.AvgPool2d(2)
+        self.expand = nn.Sequential(
+            nn.Conv2d(32, 64, 1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+        )
+        self.block2 = ResBlock(64)
+        self.pool2 = nn.AvgPool2d(2)
+        self.flatten = nn.Flatten()
+        self.fc = nn.Linear(64 * 8 * 8, 10)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.stem(x)
+        x = self.pool1(self.block1(x))
+        x = self.expand(x)
+        x = self.pool2(self.block2(x))
+        x = self.flatten(x)
+        x = self.fc(x)
+        return x
