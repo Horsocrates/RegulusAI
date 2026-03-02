@@ -1,0 +1,115 @@
+{
+  "dataset": "tasksource/logical-fallacy",
+  "split": "test",
+  "total": 511,
+  "binary_recall": 0.9041095890410958,
+  "type_accuracy": 0.03718199608610567,
+  "type_precision": 0.04112554112554113,
+  "macro_f1": 0.062240513992227624,
+  "per_class": {
+    "ad hominem": {
+      "tp": 5,
+      "fn": 52,
+      "fp": 3,
+      "recall": 0.08771929824561403,
+      "precision": 0.625,
+      "f1": 0.15384615384615383
+    },
+    "ad populum": {
+      "tp": 2,
+      "fn": 33,
+      "fp": 3,
+      "recall": 0.05714285714285714,
+      "precision": 0.4,
+      "f1": 0.09999999999999999
+    },
+    "appeal to emotion": {
+      "tp": 0,
+      "fn": 49,
+      "fp": 1,
+      "recall": 0.0,
+      "precision": 0.0,
+      "f1": 0.0
+    },
+    "circular reasoning": {
+      "tp": 0,
+      "fn": 20,
+      "fp": 1,
+      "recall": 0.0,
+      "precision": 0.0,
+      "f1": 0.0
+    },
+    "equivocation": {
+      "tp": 0,
+      "fn": 9,
+      "fp": 0,
+      "recall": 0.0,
+      "precision": 0.0,
+      "f1": 0.0
+    },
+    "fallacy of credibility": {
+      "tp": 0,
+      "fn": 37,
+      "fp": 0,
+      "recall": 0.0,
+      "precision": 0.0,
+      "f1": 0.0
+    },
+    "fallacy of extension": {
+      "tp": 0,
+      "fn": 26,
+      "fp": 0,
+      "recall": 0.0,
+      "precision": 0.0,
+      "f1": 0.0
+    },
+    "fallacy of logic": {
+      "tp": 0,
+      "fn": 31,
+      "fp": 0,
+      "recall": 0.0,
+      "precision": 0.0,
+      "f1": 0.0
+    },
+    "fallacy of relevance": {
+      "tp": 0,
+      "fn": 46,
+      "fp": 0,
+      "recall": 0.0,
+      "precision": 0.0,
+      "f1": 0.0
+    },
+    "false causality": {
+      "tp": 0,
+      "fn": 34,
+      "fp": 0,
+      "recall": 0.0,
+      "precision": 0.0,
+      "f1": 0.0
+    },
+    "false dilemma": {
+      "tp": 5,
+      "fn": 13,
+      "fp": 1,
+      "recall": 0.2777777777777778,
+      "precision": 0.8333333333333334,
+      "f1": 0.4166666666666667
+    },
+    "faulty generalization": {
+      "tp": 7,
+      "fn": 82,
+      "fp": 5,
+      "recall": 0.07865168539325842,
+      "precision": 0.5833333333333334,
+      "f1": 0.13861386138613863
+    },
+    "intentional": {
+      "tp": 0,
+      "fn": 60,
+      "fp": 0,
+      "recall": 0.0,
+      "precision": 0.0,
+      "f1": 0.0
+    }
+  }
+}
