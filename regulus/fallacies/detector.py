@@ -82,9 +82,10 @@ EMOTION_PATTERNS = [
 
 # --- Authority without evidence (Type 1: False Authority) ---
 AUTHORITY_PATTERNS = [
-    r"\beveryone knows\b", r"\bexperts say\b(?!.*\bstudy\b)",
+    r"\bexperts say\b(?!.*\bstudy\b)",
     r"\bscience says\b(?!.*\bresearch\b)", r"\bGod\b.*\bwants\b",
     r"\bit is written\b", r"\bthe universe\b.*\btells\b",
+    r"\bI have authority\b",
 ]
 
 # --- False dilemma (D2: Incomplete Analysis) ---
@@ -145,6 +146,7 @@ CIRCULAR_PATTERNS = [
 BANDWAGON_PATTERNS = [
     r"\beveryone\b.*\bdoing\b", r"\bmillions\b.*\bcan'?t be wrong\b",
     r"\bpopular\b.*\btherefore\b", r"\bmajority\b.*\bagree\b",
+    r"\beveryone knows\b",
 ]
 
 # --- Passive voice hiding agent (D2: Hidden Agent) ---
