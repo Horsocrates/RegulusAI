@@ -67,18 +67,46 @@ def compare_entities(e1: Node, e2: Node, policy: Policy = Policy.LEGACY_PRIORITY
             return 0
 
 
-def find_max_entity(nodes: List[Node], policy: Policy = Policy.LEGACY_PRIORITY) -> Optional[Node]:
+def find_max_entity(
+    nodes: List[Node],
+    policy: Policy = Policy.LEGACY_PRIORITY,
+    use_evt: bool = False,
+) -> Optional[Node]:
     """
     Find the entity with maximum weight (PrimaryMax candidate).
     Uses L5-Resolution for tie-breaking.
 
     Only considers valid nodes (gate.is_valid == True).
+
+    When *use_evt* is True, uses the Coq-verified ``argmax_idx`` from
+    EVT_idx.v instead of the hand-written comparison loop.  This
+    guarantees:
+        - argmax_idx_bound:     returned index is valid
+        - argmax_idx_maximizes: selected node has the highest weight
+
+    L5 leftmost tie-breaking is achieved by sorting nodes in descending
+    legacy_idx order before calling argmax_idx (which updates on ``<=``,
+    giving the last equal index — the lowest legacy_idx after reversal).
     """
     valid_nodes = [n for n in nodes if n.gate and n.gate.is_valid]
 
     if not valid_nodes:
         return None
 
+    if use_evt:
+        from regulus.interval.evt import argmax_idx as evt_argmax_idx
+
+        # Sort descending by legacy_idx so that argmax_idx's rightmost-
+        # on-equal behaviour selects the node with the *lowest* legacy_idx
+        # (L5 leftmost tie-breaking).
+        sorted_nodes = sorted(valid_nodes, key=lambda n: -n.legacy_idx)
+        idx = evt_argmax_idx(
+            f=lambda x: x.final_weight,
+            lst=sorted_nodes,
+        )
+        return sorted_nodes[idx]
+
+    # Original implementation (preserved for backward compatibility)
     max_node = valid_nodes[0]
     for node in valid_nodes[1:]:
         if compare_entities(node, max_node, policy) > 0:

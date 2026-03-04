@@ -127,42 +127,38 @@ class IntervalELU:
 
 
 class IntervalSoftmax:
-    """Interval softmax -- CONSERVATIVE bounds.
+    """Interval softmax — VERIFIED bounds.
 
-    Softmax is NOT component-wise monotone (increasing one input
-    decreases probabilities of others). We use interval bound propagation:
+    Uses Coq-verified cross-multiplication bounds from PInterval_Softmax.v.
+    Parametric over monotone positive f; instantiated with exp for NN use.
 
     For class i:
-    - Max probability: e^(hi_i) / (e^(hi_i) + sum_{j!=i} e^(lo_j))
-    - Min probability: e^(lo_i) / (e^(lo_i) + sum_{j!=i} e^(hi_j))
+    - Lower: f(lo_i) / (f(lo_i) + sum_{j!=i} f(hi_j))
+    - Upper: f(hi_i) / (f(hi_i) + sum_{j!=i} f(lo_j))
+
+    Coq theorems:
+        interval_softmax_lower_bound — cross-mul: f(lo)*D_x <= f(x)*D_lo
+        interval_softmax_upper_bound — cross-mul: f(x)*D_hi <= f(hi)*D_x
     """
 
     def __call__(self, x: IntervalTensor) -> IntervalTensor:
+        import math
+        from regulus.interval.softmax import interval_softmax
+
         n = x.lo.shape[0]
-        result_lo = np.zeros(n)
-        result_hi = np.zeros(n)
 
-        for i in range(n):
-            # Min probability of class i:
-            # smallest numerator / largest denominator
-            shift = np.max(x.hi)
-            exp_lo_i = np.exp(x.lo[i] - shift)
-            sum_exp_hi_others = sum(
-                np.exp(x.hi[j] - shift) for j in range(n) if j != i
-            )
-            result_lo[i] = exp_lo_i / (exp_lo_i + sum_exp_hi_others)
+        # Numerical stability: log-sum-exp shift
+        # The shift cancels in the softmax ratio, so bounds remain valid.
+        shift = float(max(np.max(x.hi), np.max(x.lo)))
+        los_shifted = [float(x.lo[i]) - shift for i in range(n)]
+        his_shifted = [float(x.hi[i]) - shift for i in range(n)]
 
-            # Max probability of class i:
-            # largest numerator / smallest denominator
-            shift2 = np.max(x.lo)
-            exp_hi_i = np.exp(x.hi[i] - shift2)
-            sum_exp_lo_others = sum(
-                np.exp(x.lo[j] - shift2) for j in range(n) if j != i
-            )
-            result_hi[i] = exp_hi_i / (exp_hi_i + sum_exp_lo_others)
+        result_lo_list, result_hi_list = interval_softmax(
+            los_shifted, his_shifted, f=math.exp,
+        )
 
-        result_lo = np.clip(result_lo, 0.0, 1.0)
-        result_hi = np.clip(result_hi, 0.0, 1.0)
+        result_lo = np.clip(np.array(result_lo_list), 0.0, 1.0)
+        result_hi = np.clip(np.array(result_hi_list), 0.0, 1.0)
 
         return IntervalTensor(result_lo, result_hi)
 

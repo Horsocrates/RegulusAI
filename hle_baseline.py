@@ -212,7 +212,7 @@ def main():
     seed_path = Path(sys.argv[1])
     max_q = int(sys.argv[2]) if len(sys.argv) > 2 else 999
 
-    with open(seed_path) as f:
+    with open(seed_path, encoding="utf-8") as f:
         seed = json.load(f)
 
     questions = seed["questions"][:max_q]

@@ -137,40 +137,38 @@ Question: "How many nitrogens from compound 7 are present in compound 10?"
 | Pattern check | Q1: from 11 in 1 (forward ✅). Q2: from 11 in 14 (forward ✅). Q3: from 7 in 10 (**reverse** — intentional trap) |
 | Resolution | **0** — L5 ordering is structural, not reinterpretable |
 
-### Step 3: BRANCH or COMMIT
+### Step 3: COMMIT or REGISTER AS UNRESOLVED
 
 **COMMIT** (single interpretation) — only if:
 - All other readings violate L1 (Identity) or domain conventions
 - The context unambiguously resolves the ambiguity
 - You can state why the alternative is WRONG, not just why yours is "more natural"
 
-**BRANCH** (multiple hypotheses) — if:
+**REGISTER AS UNRESOLVED** — if:
 - Two or more readings are viable after testing
 - D1 flagged the ambiguity as a potential trap
 - The alternative interpretation would change the answer
 
-When branching, output ALL interpretations as `open_hypotheses`:
+When unresolved, add to `unresolved_ambiguities` with ALL viable readings:
 
 ```json
-"open_hypotheses": [
+"unresolved_ambiguities": [
   {
-    "id": "H1",
-    "interpretation": "Description of reading A",
-    "basis": "Why this reading is viable",
-    "implications": "What answer this leads to",
-    "test": "How D3-D5 could distinguish this from H2"
-  },
-  {
-    "id": "H2",
-    "interpretation": "Description of reading B",
-    "basis": "Why this reading is viable",
-    "implications": "What answer this leads to",
-    "test": "How D3-D5 could distinguish this from H1"
+    "id": "AMB1",
+    "source_flag": "FLAG ID from D1",
+    "readings": [
+      {"label": "Reading A", "basis": "Why viable", "requires": ["A1: assumption"]},
+      {"label": "Reading B", "basis": "Why viable", "requires": ["A2: assumption"]}
+    ],
+    "impact": "Different readings lead to different answers",
+    "note": "D3 must generate separate hypotheses for each viable reading"
   }
 ]
 ```
 
-**CRITICAL:** Branching is NOT indecision — it is intellectual honesty. Premature closure (choosing one reading without sufficient reason) is a D2 failure mode. Branching when genuinely ambiguous is correct behavior.
+**CRITICAL:** D2 does NOT form hypotheses or predict answers. D2 ONLY clarifies terms, verifies rules, and registers what is resolved vs unresolved. Hypothesis formation is D3's job — D3 will use D2's clarifications and unresolved ambiguities to enumerate ALL possible answer-hypotheses.
+
+**CRITICAL:** Do NOT choose between readings based on "likelihood" or "what the question probably means." If multiple readings are viable, register ALL of them. D3 will form hypotheses and D4 will test them.
 
 ### Worked example (from HLE error):
 
@@ -180,11 +178,12 @@ D1 flag: "Synthesis goes 10->7, but question asks 7->10. May be a trap."
 **WRONG (premature closure):**
 > "Since 10 and 7 share the same nitrogen, the answer is 1."
 
-**RIGHT (branch):**
-> H1: "from X in Y" = shared atoms between X and Y -> answer: 1
-> H2: "from X in Y" = atoms that originate FROM X and end up IN Y (provenance) -> answer: 0
-> Test: Q1 and Q2 both follow forward synthesis direction. If Q3 is consistent, H2 is correct. If Q3 intentionally reverses, H1 may be intended.
-> Note: D1 flagged this as a "trap" — pattern break favors H2.
+**RIGHT (register unresolved):**
+> AMB1: "from X in Y" has two viable readings:
+>   Reading A: shared atoms between X and Y
+>   Reading B: atoms that originate FROM X and end up IN Y (provenance)
+> Impact: Reading A → answer 1, Reading B → answer 0
+> Note: D3 must generate hypotheses for both readings. Q1 and Q2 follow forward direction — pattern break here is a signal.
 
 ## PROOF CHAIN PROTOCOL (L4 — Sufficient Reason for every derivation step)
 
@@ -337,14 +336,16 @@ Write to d2_output.json:
       "Assumption 1: what is taken for granted",
       "Assumption 2: ..."
     ],
-    "open_hypotheses": [
+    "unresolved_ambiguities": [
       {
-        "id": "H1",
+        "id": "AMB1",
         "source_flag": "FLAG ID from D1 that triggered this",
-        "interpretation": "Reading A",
-        "basis": "Why viable",
-        "implications": "What downstream answer this implies",
-        "test": "How D3-D5 could resolve"
+        "readings": [
+          {"label": "Reading A", "basis": "Why viable", "requires": ["assumptions needed"]},
+          {"label": "Reading B", "basis": "Why viable", "requires": ["assumptions needed"]}
+        ],
+        "impact": "How different readings affect downstream analysis",
+        "note": "D3 must generate separate hypotheses for each viable reading"
       }
     ],
     "proof_chains": [
@@ -372,7 +373,7 @@ Write to d2_output.json:
         "note": "If CONDITIONAL → flag remains OPEN, forwarded to D3-D5"
       }
     ],
-    "branching_decision": "committed:[reason] | branched:[count] hypotheses",
+    "ambiguity_status": "all_resolved | unresolved:[count] ambiguities forwarded to D3",
     "d1_gaps": ["Any elements D1 missed that clarification revealed (do NOT add — flag for Team Lead)"],
     "critical_clarification": "The single most important clarification for this question",
     "depth_summary": "Deepest level achieved and whether sufficient for task",
@@ -400,8 +401,8 @@ Update state.json: D2 status → "complete".
 7. Do NOT evaluate or compare (that's D4)
 8. Do NOT draw conclusions (that's D5)
 9. If you discover D1 missed something — flag it in d1_gaps, don't silently add
-10. When D1 flags an ambiguity — follow the AMBIGUITY PROTOCOL. Enumerate all readings, test against context, then COMMIT or BRANCH. Never silently resolve a D1 flag.
-11. When branching: output open_hypotheses for Team Lead. Team Lead decides whether to run parallel D3-D5 tracks or to resolve before proceeding.
+10. When D1 flags an ambiguity — follow the AMBIGUITY PROTOCOL. Enumerate all readings, test against context, then COMMIT or REGISTER AS UNRESOLVED. Never silently resolve a D1 flag.
+11. D2 does NOT form hypotheses about the answer. Register unresolved ambiguities for D3. D3 will form hypotheses based on D2's clarifications.
 12. Pattern consistency: if a multi-part question has parts 1-N following one pattern, and part N+1 breaks the pattern — this is likely intentional. Flag the pattern break; do not normalize it.
 13. Every derivation or proof must follow the PROOF CHAIN PROTOCOL — numbered steps with explicit assumptions and conclusion_strength classification.
 14. CONDITIONAL proofs CANNOT close D1 flags. Only PROVEN conclusions (all steps derived from question text or D1 ERR) may close a flag. If you close a flag with a CONDITIONAL proof, state this explicitly so TL can re-open it.

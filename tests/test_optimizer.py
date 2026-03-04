@@ -40,6 +40,7 @@ def _make_node(
     )
     node.gate = IntegrityGate(
         err_complete=valid,
+        deps_valid=valid,
         levels_valid=valid,
         order_valid=valid,
     )

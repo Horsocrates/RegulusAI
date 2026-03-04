@@ -46,6 +46,7 @@ def _make_node(
     )
     node.gate = IntegrityGate(
         err_complete=valid,
+        deps_valid=valid,
         levels_valid=valid,
         order_valid=valid,
     )
@@ -210,7 +211,10 @@ class TestCrossBranchSelection:
         """Branch weight = sum of valid node weights only."""
         # Branch with one invalid node
         branch = _make_branch(0, [50, 60, 70, 40])
-        branch[1].gate = IntegrityGate(False, False, False)  # Make D4 invalid
+        branch[1].gate = IntegrityGate(
+            err_complete=False, deps_valid=False,
+            levels_valid=False, order_valid=False,
+        )  # Make D4 invalid
         branch[1].final_weight = 1000  # High weight but invalid
 
         # Branch with all valid nodes
@@ -259,7 +263,10 @@ class TestCrossBranchSelection:
         branch_b = _make_branch(1, [60, 60, 60, 60])
         # Make all nodes invalid
         for node in branch_a + branch_b:
-            node.gate = IntegrityGate(False, False, False)
+            node.gate = IntegrityGate(
+                err_complete=False, deps_valid=False,
+                levels_valid=False, order_valid=False,
+            )
 
         trisect = SocraticTrisection()
         selected = trisect.select_best_branch([branch_a, branch_b])

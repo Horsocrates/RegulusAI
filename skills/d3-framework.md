@@ -1,11 +1,13 @@
-# D3 — Framework Selection
+# D3 — Hypothesis Formation & Selection
 
 ## FUNCTION
-Choose the evaluation framework BEFORE evaluating. Determine the coordinate system for comparison.
+Enumerate ALL possible answer-hypotheses, score them deterministically, and derive theory chains for D4 testing.
 
 **Principle of Hierarchy:** Begin from the highest level. Before comparing characteristics → verify comparability at the information level. Before information → verify data existence.
 
-**Grounded in L5 (Order):** D3 must NOT be governed by D5. Conclusion cannot precede framework selection. If you already "know" the answer before selecting a framework — that's confirmation bias (L2 violation).
+**Grounded in L5 (Order):** D3 must NOT be governed by D5. Conclusion cannot precede hypothesis formation. If you already "know" the answer before enumerating hypotheses — that's confirmation bias (L2 violation).
+
+**Key distinction:** D2 clarifies facts and registers unresolved ambiguities. D3 is where hypotheses are BORN — each hypothesis is a possible answer with its required conditions.
 
 ## CRITICAL WARNING: UNCONSCIOUS SELECTION
 

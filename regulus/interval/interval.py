@@ -157,6 +157,47 @@ class Interval:
                 return ex / (1.0 + ex)
         return self.monotone(_sig)
 
+    def tanh(self) -> Interval:
+        """Tanh is monotone increasing: tanh([a,b]) = [tanh(a), tanh(b)].
+        Uses pi_monotone_correct."""
+        import math
+        return self.monotone(math.tanh)
+
+    def elu(self, alpha: float = 1.0) -> Interval:
+        """ELU is monotone increasing: elu([a,b]) = [elu(a), elu(b)].
+        ELU(x) = x if x >= 0, alpha*(exp(x)-1) if x < 0.
+        Uses pi_monotone_correct."""
+        import math
+        def _elu(x: float) -> float:
+            return x if x >= 0 else alpha * (math.exp(x) - 1.0)
+        return self.monotone(_elu)
+
+    def gelu(self) -> Interval:
+        """GELU with conservative bounds for non-monotone region.
+        GELU(x) = x * Phi(x). Has minimum at x* ~ -0.1685.
+        For monotone regions: direct evaluation.
+        For intervals crossing x*: include the global minimum."""
+        import math
+
+        def _gelu(x: float) -> float:
+            return 0.5 * x * (1.0 + math.erf(x / math.sqrt(2.0)))
+
+        GELU_MIN_X = -0.7518  # GELU'(x*) = 0, found by root-finding
+        GELU_MIN_Y = _gelu(GELU_MIN_X)
+
+        g_lo = _gelu(self.lo)
+        g_hi = _gelu(self.hi)
+
+        if self.lo >= GELU_MIN_X:
+            # Fully in monotone increasing region
+            return Interval(g_lo, g_hi)
+        elif self.hi <= GELU_MIN_X:
+            # Fully in decreasing region
+            return Interval(g_hi, g_lo)
+        else:
+            # Crosses minimum — include it
+            return Interval(min(g_lo, g_hi, GELU_MIN_Y), max(g_lo, g_hi))
+
     def __abs__(self) -> Interval:
         """Absolute value. Corresponds to pi_abs_correct."""
         if self.lo >= 0:

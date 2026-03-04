@@ -292,7 +292,7 @@ class DetectionResult:
 
 def detect(text: str) -> DetectionResult:
     """
-    Analyze text for reasoning fallacies.
+    Analyze text for reasoning fallacies (regex-based).
 
     Detection order (most severe first):
       1. Self-reference / paradox → Level Confusion
@@ -317,7 +317,70 @@ def detect(text: str) -> DetectionResult:
     Returns DetectionResult with matched fallacy or valid=True.
     """
     sig = extract_signals(text)
+    return _detect_from_signals(sig)
 
+
+async def detect_llm(
+    text: str,
+    extractor: "LLMFallacyExtractor",
+) -> DetectionResult:
+    """
+    Analyze text for fallacies using LLM-based signal extraction.
+
+    Two strategies depending on extractor mode:
+
+    ERR mode (domain-aware):
+      1. If LLM returns primary_fallacy_id with confidence >= 0.5
+         AND that ID exists in our taxonomy → trust the LLM directly.
+         Lower threshold because ERR domain analysis is more structured.
+      2. Otherwise → run LLM-extracted signals through cascade.
+
+    Legacy mode (flat signals):
+      1. If LLM returns primary_fallacy_id with confidence >= 0.7
+         AND that ID exists in our taxonomy → trust the LLM directly.
+      2. Otherwise → run LLM-extracted signals through cascade.
+
+    Args:
+        text: Text to analyze
+        extractor: LLMFallacyExtractor instance
+
+    Returns:
+        DetectionResult with matched fallacy or valid=True
+    """
+    from regulus.fallacies.llm_extractor import LLMFallacyExtractor
+
+    result = await extractor.extract(text)
+
+    # Confidence threshold depends on mode
+    # ERR mode uses lower threshold (0.5) because domain-aware
+    # analysis is more precise than flat signal matching
+    threshold = 0.5 if extractor.mode in ("err", "pipeline", "cascade", "multigate") else 0.7
+
+    # Strategy 1: Trust LLM classification above threshold
+    if (
+        result.primary_fallacy_id
+        and result.confidence >= threshold
+    ):
+        fallacy = get_fallacy(result.primary_fallacy_id)
+        if fallacy is not None:
+            return DetectionResult(
+                valid=False,
+                fallacy=fallacy,
+                signals=result.signals,
+                confidence=result.confidence,
+            )
+
+    # Strategy 2: Run LLM signals through the existing cascade
+    return _detect_from_signals(result.signals)
+
+
+def _detect_from_signals(sig: Signals) -> DetectionResult:
+    """
+    Core detection cascade operating on pre-extracted signals.
+
+    Extracted from detect() so it can be reused by both
+    regex-based detect() and LLM-based detect_llm().
+    """
     # --- Layer 1: Level Confusion (Paradox) ---
     if sig.self_reference:
         return DetectionResult(
@@ -371,7 +434,6 @@ def detect(text: str) -> DetectionResult:
         )
 
     # --- Layer 5: D3 — Framework Selection ---
-    # Tradition appeal fires even with "because" — "because tradition" IS the fallacy
     if sig.uses_tradition:
         return DetectionResult(
             valid=False,
@@ -458,16 +520,14 @@ def detect(text: str) -> DetectionResult:
 
     # --- Layer 10: Syndrome — No counter-evidence at all ---
     if not sig.considers_counter and sig.addresses_argument:
-        # Has argument structure but no counter-evidence = confirmation bias
         return DetectionResult(
             valid=False,
             fallacy=get_fallacy("T4_CONFIRMATION_BIAS"),
             signals=sig,
-            confidence=0.5,  # Lower confidence — absence-based
+            confidence=0.5,
         )
 
     if not sig.considers_counter and not sig.addresses_argument:
-        # Neither argument nor counter = very low quality
         return DetectionResult(
             valid=False,
             fallacy=get_fallacy("T4_CONFIRMATION_BIAS"),

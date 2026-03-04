@@ -89,6 +89,11 @@ class ReanchoredIntervalModel:
         self.block_widths: list[float] = []
         self.n_reanchors: int = 0
 
+        # Composition tracking (PInterval_Composition.v, chain_width_product)
+        # Populated after forward() — predicted widths from chain_width theorem
+        self.composition_predicted_widths: list[float] = []
+        self.composition_factors: list[float] = []
+
     @staticmethod
     def _split_into_blocks(
         torch_model: nn.Sequential, block_size: int
@@ -152,14 +157,31 @@ class ReanchoredIntervalModel:
     # ------------------------------------------------------------------
 
     def _forward_midpoint(self, x: IntervalTensor) -> IntervalTensor:
-        """After every block (except the last), collapse to midpoint + eps."""
+        """After every block (except the last), collapse to midpoint + eps.
+
+        Tracks composition width factors for diagnostics
+        (chain_width_product theorem from PInterval_Composition.v).
+        """
         self.block_widths = [x.mean_width()]
         self.n_reanchors = 0
+        self.composition_factors = []
+        self.composition_predicted_widths = []
 
         current = x
         for i, block in enumerate(self.interval_blocks):
+            pre_width = current.mean_width()
             current = block(current)
-            self.block_widths.append(current.mean_width())
+            post_width = current.mean_width()
+            self.block_widths.append(post_width)
+
+            # Track empirical width factor for this block
+            # chain_width_product: chain_width == factor_product * input_width
+            if pre_width > 1e-15:
+                factor = post_width / pre_width
+            else:
+                factor = 1.0
+            self.composition_factors.append(factor)
+            self.composition_predicted_widths.append(post_width)
 
             # Re-anchor between blocks (not after final)
             if i < len(self.interval_blocks) - 1:

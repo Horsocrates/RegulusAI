@@ -1334,6 +1334,72 @@ def get_failure_mode_fallacies(fm: FailureMode) -> List[Fallacy]:
 
 
 # =============================================================================
+#                           TAXONOMY SUMMARY (for LLM prompts)
+# =============================================================================
+
+def get_taxonomy_summary() -> str:
+    """
+    Generate a compact taxonomy description for LLM system prompts.
+
+    Groups the 156 fallacies by domain/type, showing ID + short description.
+    Designed to fit in ~2000 tokens so cheap models can use it.
+
+    Returns:
+        Multi-line string with all fallacy IDs and descriptions.
+    """
+    lines: list[str] = []
+
+    # Type 1: Condition Violations (pre-domain)
+    t1 = FALLACIES_BY_TYPE.get(FallacyType.T1_CONDITION_VIOLATION, [])
+    lines.append(f"### Type 1: Condition Violations ({len(t1)} fallacies)")
+    lines.append("Reasoning doesn't begin — manipulation, coercion, bad faith.")
+    for f in t1[:12]:  # Show first 12 of 36 (most common)
+        lines.append(f"  {f.id}: {f.description}")
+    if len(t1) > 12:
+        lines.append(f"  ... and {len(t1) - 12} more")
+    lines.append("")
+
+    # Type 2: Domain Violations (by domain)
+    domain_names = {
+        Domain.D1_RECOGNITION: "D1 Recognition — What is actually here?",
+        Domain.D2_CLARIFICATION: "D2 Clarification — What exactly is this?",
+        Domain.D3_FRAMEWORK: "D3 Framework — How do we connect?",
+        Domain.D4_COMPARISON: "D4 Comparison — How does it compare?",
+        Domain.D5_INFERENCE: "D5 Inference — What follows?",
+        Domain.D6_REFLECTION: "D6 Reflection — Where doesn't it work?",
+    }
+
+    for domain, name in domain_names.items():
+        fallacies = FALLACIES_BY_DOMAIN.get(domain, [])
+        lines.append(f"### {name} ({len(fallacies)} fallacies)")
+        for f in fallacies:
+            lines.append(f"  {f.id}: {f.description}")
+        lines.append("")
+
+    # Type 3: Sequence Violations
+    t3 = FALLACIES_BY_TYPE.get(FallacyType.T3_SEQUENCE_VIOLATION, [])
+    lines.append(f"### Type 3: Sequence Violations ({len(t3)})")
+    for f in t3:
+        lines.append(f"  {f.id}: {f.description}")
+    lines.append("")
+
+    # Type 4: Syndromes
+    t4 = FALLACIES_BY_TYPE.get(FallacyType.T4_SYNDROME, [])
+    lines.append(f"### Type 4: Syndromes ({len(t4)})")
+    for f in t4:
+        lines.append(f"  {f.id}: {f.description}")
+    lines.append("")
+
+    # Type 5: Context-Dependent
+    t5 = FALLACIES_BY_TYPE.get(FallacyType.T5_CONTEXT_DEPENDENT, [])
+    lines.append(f"### Type 5: Context-Dependent ({len(t5)})")
+    for f in t5:
+        lines.append(f"  {f.id}: {f.description}")
+
+    return "\n".join(lines)
+
+
+# =============================================================================
 #                           VERIFICATION (mirrors Coq counting lemmas)
 # =============================================================================
 

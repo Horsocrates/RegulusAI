@@ -551,6 +551,72 @@ def benchmark(
     typer.echo("=" * 70)
 
 
+@app.command("verify-nn")
+def verify_nn(
+    model_path: Path = typer.Argument(..., help="Path to saved PyTorch model (.pt or .pth)"),
+    epsilon: float = typer.Option(
+        0.01, "--epsilon", "-e",
+        help="Perturbation radius for input intervals",
+    ),
+    input_path: Path = typer.Option(
+        None, "--input", "-i",
+        help="Path to numpy input array (.npy). If not provided, uses random input.",
+    ),
+    strategy: str = typer.Option(
+        "naive", "--strategy", "-s",
+        help="Verification strategy: naive, midpoint, adaptive, hybrid, proportional",
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v",
+        help="Show per-layer width report",
+    ),
+):
+    """Verify neural network robustness via interval bound propagation."""
+    import numpy as np
+    import torch
+
+    from .nn.verifier import NNVerificationEngine
+
+    # Load model
+    if not model_path.exists():
+        typer.echo(f"Error: Model file not found: {model_path}", err=True)
+        raise typer.Exit(1)
+
+    try:
+        model = torch.load(model_path, map_location="cpu", weights_only=False)
+        model.eval()
+    except Exception as exc:
+        typer.echo(f"Error loading model: {exc}", err=True)
+        raise typer.Exit(1)
+
+    # Load or generate input
+    if input_path is not None:
+        if not input_path.exists():
+            typer.echo(f"Error: Input file not found: {input_path}", err=True)
+            raise typer.Exit(1)
+        input_data = np.load(str(input_path))
+    else:
+        # Infer input shape from first layer
+        first_param = next(model.parameters())
+        in_features = first_param.shape[1] if first_param.ndim >= 2 else first_param.shape[0]
+        input_data = np.random.randn(in_features) * 0.1
+        typer.echo(f"No input provided, using random input of size {in_features}")
+
+    # Run verification
+    try:
+        engine = NNVerificationEngine(strategy=strategy)
+        result = engine.verify_from_point(model, input_data, epsilon)
+    except Exception as exc:
+        typer.echo(f"Verification error: {exc}", err=True)
+        raise typer.Exit(1)
+
+    # Output results
+    typer.echo(result.summary())
+
+    if verbose:
+        typer.echo("\n" + result.width_report())
+
+
 @app.command()
 def verify(
     filepath: Path = typer.Argument(..., help="Path to JSON reasoning tree file"),
@@ -623,6 +689,62 @@ def example():
     for prop, (passed, msg) in verifications.items():
         status = "✓" if passed else "✗"
         print(f"  [{status}] {prop}: {msg}")
+
+
+@app.command("demo-nn")
+def demo_nn(
+    epsilon: float = typer.Option(
+        0.01, "--epsilon", "-e",
+        help="Perturbation radius for input intervals",
+    ),
+    n_test: int = typer.Option(
+        100, "--n-test", "-n",
+        help="Number of test images to certify",
+    ),
+    architecture: str = typer.Option(
+        "cnn_bn", "--architecture", "-a",
+        help="Model architecture: mlp or cnn_bn",
+    ),
+    strategy: str = typer.Option(
+        "naive", "--strategy", "-s",
+        help="Verification strategy: naive, midpoint, adaptive, hybrid, proportional",
+    ),
+    epochs: int = typer.Option(
+        3, "--epochs",
+        help="Training epochs",
+    ),
+):
+    """Train on MNIST and certify robustness via interval bound propagation."""
+    from .nn.benchmark import train_mnist_model, certify_mnist
+
+    typer.echo("=" * 55)
+    typer.echo("REGULUS AI — Neural Network Verification Demo")
+    typer.echo("=" * 55)
+    typer.echo(f"  Architecture: {architecture}")
+    typer.echo(f"  Strategy:     {strategy}")
+    typer.echo(f"  Epsilon:      {epsilon}")
+    typer.echo(f"  Test images:  {n_test}")
+    typer.echo()
+
+    typer.echo(f"Training {architecture} on MNIST ({epochs} epochs)...")
+    model = train_mnist_model(
+        architecture=architecture,
+        epochs=epochs,
+        verbose=True,
+    )
+
+    typer.echo(f"\nCertifying {n_test} test images at epsilon={epsilon}...")
+    report = certify_mnist(
+        model,
+        epsilon=epsilon,
+        n_test=n_test,
+        strategy=strategy,
+        architecture=architecture,
+        verbose=True,
+    )
+
+    typer.echo()
+    typer.echo(report.summary())
 
 
 if __name__ == "__main__":
