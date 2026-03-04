@@ -401,6 +401,61 @@ class ResNetCIFAR_FC2(nn.Module):
         return x
 
 
+class ResNetCIFAR_FC2_Softmax(nn.Module):
+    """ResNet CIFAR-10 with softmax output for probability-level uncertainty.
+
+    Same as ResNetCIFAR_FC2 but ends with Softmax instead of raw logits.
+    This enables:
+      - Interval softmax bounds: [P_lo, P_hi] per class (Coq-verified)
+      - Probability-level uncertainty statements
+      - IBP certification with probability interpretation
+
+    Note: CROWN is NOT applicable to softmax models (requires piecewise-linear
+    activations). Use IBP-only certification for this architecture.
+
+    Architecture (~200K params):
+      stem: Conv2d(3,32,3,pad=1) -> BN2d(32) -> ReLU
+      ResBlock(32) -> MaxPool(2)
+      expand: Conv2d(32,64,1) -> BN2d(64) -> ReLU
+      ResBlock(64) -> MaxPool(2)
+      Flatten -> Linear(4096,256) -> ReLU -> Linear(256,10) -> Softmax
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.stem = nn.Sequential(
+            nn.Conv2d(3, 32, 3, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+        )
+        self.block1 = ResBlock(32)
+        self.pool1 = nn.MaxPool2d(2)
+        self.expand = nn.Sequential(
+            nn.Conv2d(32, 64, 1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+        )
+        self.block2 = ResBlock(64)
+        self.pool2 = nn.MaxPool2d(2)
+        self.flatten = nn.Flatten()
+        self.fc1 = nn.Linear(64 * 8 * 8, 256)
+        self.fc1_relu = nn.ReLU()
+        self.fc2 = nn.Linear(256, 10)
+        self.softmax = nn.Softmax(dim=1)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.stem(x)
+        x = self.pool1(self.block1(x))
+        x = self.expand(x)
+        x = self.pool2(self.block2(x))
+        x = self.flatten(x)
+        x = self.fc1(x)
+        x = self.fc1_relu(x)
+        x = self.fc2(x)
+        x = self.softmax(x)
+        return x
+
+
 class ResNetCIFAR_AvgPool(nn.Module):
     """ResNet-like architecture for CIFAR-10 with AvgPool instead of MaxPool.
 

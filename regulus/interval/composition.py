@@ -194,3 +194,137 @@ def conv_bn_relu_factor(
     Corresponds to PInterval_Composition.conv_bn_relu_spec.
     """
     return abs(bn_scale) * conv_weight_l1
+
+
+# ---------------------------------------------------------------------------
+#  Bridge: predict block factors from interval model
+# ---------------------------------------------------------------------------
+
+def predict_block_factors(
+    interval_blocks: list,
+) -> List[LayerSpec]:
+    """Inspect IntervalSequential blocks and predict width amplification factors.
+
+    For each block, estimates the worst-case width factor from the layer
+    weights:
+      - IntervalLinear: factor = max row L1-norm (spectral-like bound)
+      - IntervalConv2d: factor = max over output channels of L1-norm of kernel
+      - IntervalBatchNorm: factor = max(|scale|)
+      - IntervalReLU / IntervalSigmoid / IntervalTanh: factor = 1.0 (monotone)
+      - IntervalFlatten / IntervalMaxPool2d / IntervalAvgPool2d: factor = 1.0
+      - IntervalSoftmax: factor = 1.0 (output in [0,1])
+
+    The block factor is the product of individual layer factors.
+
+    This feeds into chain_width_product and reanchored_depth_independent
+    (PInterval_Composition.v) for adaptive reanchoring control.
+
+    Parameters
+    ----------
+    interval_blocks : list of IntervalSequential
+        Blocks from ReanchoredIntervalModel.interval_blocks.
+
+    Returns
+    -------
+    list of LayerSpec
+        One LayerSpec per block with the predicted amplification factor.
+    """
+    import numpy as np
+
+    specs: List[LayerSpec] = []
+    for block in interval_blocks:
+        block_factor = 1.0
+        layers = block.layers if hasattr(block, 'layers') else [block]
+
+        for layer in layers:
+            # Use duck-typing for robustness (works with mocks and subclasses)
+            layer_type = type(layer).__name__
+
+            if hasattr(layer, 'weight') and hasattr(layer, 'bias'):
+                w = np.abs(layer.weight)
+                if w.ndim == 2:
+                    # Linear layer: max row L1-norm
+                    # max_i sum_j |W[i,j]|
+                    # This is the exact worst-case width amplification for
+                    # the positive/negative weight decomposition
+                    factor = float(np.max(np.sum(w, axis=1)))
+                    block_factor *= factor
+                elif w.ndim == 4:
+                    # Conv2d layer: max output-channel L1-norm of kernel
+                    # (C_out, C_in, kH, kW)
+                    per_channel = np.sum(w, axis=(1, 2, 3))  # (C_out,)
+                    factor = float(np.max(per_channel))
+                    block_factor *= factor
+                else:
+                    block_factor *= 1.0
+
+            elif hasattr(layer, 'weight') and not hasattr(layer, 'bias'):
+                # Weight-only layer (e.g. mock Linear without bias)
+                w = np.abs(layer.weight)
+                if w.ndim == 2:
+                    factor = float(np.max(np.sum(w, axis=1)))
+                    block_factor *= factor
+                elif w.ndim == 4:
+                    per_channel = np.sum(w, axis=(1, 2, 3))
+                    factor = float(np.max(per_channel))
+                    block_factor *= factor
+                else:
+                    block_factor *= 1.0
+
+            elif hasattr(layer, 'scale') and hasattr(layer, 'shift'):
+                # BatchNorm: factor = max(|scale|)
+                factor = float(np.max(np.abs(layer.scale)))
+                block_factor *= factor
+
+            elif "ResBlock" in layer_type:
+                # ResBlock: x + f(x) → width(relu(x + f(x))) ≤ w(x) + w(f(x))
+                # Conservative: treat as factor 2 (skip adds f-path width)
+                block_factor *= 2.0
+
+            else:
+                # Activations (ReLU, Sigmoid, Tanh, GELU, ELU, Softmax),
+                # Flatten, MaxPool, AvgPool: factor ≤ 1
+                block_factor *= 1.0
+
+        specs.append(LayerSpec(max(block_factor, 1e-15)))
+
+    return specs
+
+
+def predict_optimal_eps(
+    layer_specs: List[LayerSpec],
+    block_index: int,
+    target_output_width: float,
+) -> float:
+    """Predict optimal reanchor eps for a given block.
+
+    Using chain_width_product: output_width = product(remaining_factors) * 2*eps.
+    Solving for eps: eps = target_output_width / (2 * remaining_factor_product).
+
+    This implements the key idea: use composition theorem predictions
+    to allocate per-block reanchor eps adaptively.
+
+    Parameters
+    ----------
+    layer_specs : list of LayerSpec
+        Per-block factors from predict_block_factors().
+    block_index : int
+        Current block index (reanchor happens AFTER this block).
+    target_output_width : float
+        Desired output width at end of chain.
+
+    Returns
+    -------
+    float
+        Optimal reanchor eps (half-width).
+    """
+    # Remaining blocks are [block_index+1, ..., n-1]
+    remaining = layer_specs[block_index + 1:]
+    remaining_product = factor_product(remaining)
+
+    if remaining_product < 1e-15:
+        return target_output_width / 2.0
+
+    # reanchored_depth_independent: output <= remaining_product * 2 * eps
+    # Solve: eps = target / (2 * remaining_product)
+    return target_output_width / (2.0 * remaining_product)

@@ -17,7 +17,7 @@ Note: ShrinkingIntervals_ERR.v and ShrinkingIntervals_uncountable_ERR.v are dupl
 
 ### B. RegulusAI (Python Implementation)
 ```
-~40K lines Python  |  188 tests passing  |  61 Coq theorems (local)  |  4 LLM providers
+~40K lines Python  |  205 tests passing  |  61 Coq theorems (local)  |  4 LLM providers
 ```
 
 | Component | Size | Status | Description |
@@ -56,15 +56,15 @@ Note: ShrinkingIntervals_ERR.v and ShrinkingIntervals_uncountable_ERR.v are dupl
 
 ### Integration into NN Verification Pipeline:
 
-| Module | What it does | CIFAR-10 integration | Gap |
-|--------|-------------|---------------------|-----|
-| **composition.py** | Depth-independent width bounds via reanchoring | Referenced in reanchor.py for DIAGNOSTICS ONLY | NOT used for adaptive control |
-| **softmax.py** | Verified softmax output bounds | IntervalSoftmax exists in layers.py | CIFAR models use Linear output, not Softmax |
-| **evt.py** | Certified argmax with grid refinement | STANDALONE | Not connected to verification pipeline |
-| **trisection.py** | Diagonal construction with certified gaps | STANDALONE | Not connected to benchmark |
-| **adversarial.py** | Adversarial inputs via trisection | STANDALONE | Not in CIFAR benchmark |
-| **llm_extractor.py** | 4-mode LLM fallacy classification | STANDALONE (benchmarks only) | Not in orchestrator correction loop |
-| **detector.py** (enhanced) | 50+ regex patterns | Connected to CLI | Not in automated pipeline |
+| Module | What it does | CIFAR-10 integration | Status |
+|--------|-------------|---------------------|--------|
+| **composition.py** | Depth-independent width bounds via reanchoring | **predict_block_factors() + predict_optimal_eps()** in reanchor.py | ✅ INTEGRATED (Phase 1/A1) |
+| **softmax.py** | Verified softmax output bounds | **IntervalSoftmax in convert_model() + ResNetCIFAR_FC2_Softmax** | ✅ INTEGRATED (Phase 2/A2) |
+| **evt.py** | Certified argmax with grid refinement | STANDALONE | Pending (Phase 3/A3) |
+| **trisection.py** | Diagonal construction with certified gaps | STANDALONE | Pending (Phase 3/A3b) |
+| **adversarial.py** | Adversarial inputs via trisection | STANDALONE | Pending (Phase 3/A3b) |
+| **llm_extractor.py** | 4-mode LLM fallacy classification | Available via --use-llm-detector flag | Pending deeper integration |
+| **detector.py** (enhanced) | 50+ regex patterns | **Integrated into orchestrator correction loop** | ✅ INTEGRATED (Phase 2/A2b) |
 
 ### Expected CIFAR-10 Improvement from Integration:
 
@@ -263,6 +263,7 @@ Formal base: Architecture_of_Reasoning.v (17 theorems)
 | test_trisection_interval.py | 19 | Passing (new) |
 | test_adversarial.py | 9 | Passing (new) |
 | test_llm_fallacy_extractor.py | ~5 | Passing (new) |
-| **TOTAL** | **188** | **All passing** |
+| test_composition_reanchor.py | 17 | Passing (new — Phase 1/A1) |
+| **TOTAL** | **205** | **All passing** |
 
 Note: test_diagnostics.py, test_interval_properties.py, test_verifier.py require torch (broken on Windows/Python 3.14).

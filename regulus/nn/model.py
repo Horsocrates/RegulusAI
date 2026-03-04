@@ -4,8 +4,9 @@ IntervalSequential model and PyTorch conversion.
 convert_model() takes a trained PyTorch model and produces
 an IntervalSequential that propagates intervals through the same layers.
 
-Supported: Linear, ReLU, Sigmoid, Tanh, GELU, ELU, Conv2d, BatchNorm1d/2d,
-           Flatten, MaxPool2d, AvgPool2d, Sequential (recursive), ResBlock.
+Supported: Linear, ReLU, Sigmoid, Tanh, GELU, ELU, Softmax, Conv2d,
+           BatchNorm1d/2d, Flatten, MaxPool2d, AvgPool2d, Sequential
+           (recursive), ResBlock.
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ from regulus.nn.interval_tensor import IntervalTensor
 from regulus.nn.layers import (
     IntervalLinear, IntervalReLU, IntervalSigmoid,
     IntervalTanh, IntervalGELU, IntervalELU,
+    IntervalSoftmax,
 )
 
 
@@ -68,9 +70,9 @@ class IntervalSequential:
 def convert_model(torch_model, fold_bn: bool = False) -> IntervalSequential:
     """Convert a PyTorch model to IntervalSequential.
 
-    Supported layers: Linear, ReLU, Sigmoid, Tanh, GELU, ELU, Conv2d,
-                      BatchNorm1d/2d, Flatten, MaxPool2d, Sequential
-                      (recursive), ResBlock.
+    Supported layers: Linear, ReLU, Sigmoid, Tanh, GELU, ELU, Softmax,
+                      Conv2d, BatchNorm1d/2d, Flatten, MaxPool2d,
+                      AvgPool2d, Sequential (recursive), ResBlock.
     Unsupported layers raise ValueError.
 
     Args:
@@ -120,6 +122,8 @@ def convert_model(torch_model, fold_bn: bool = False) -> IntervalSequential:
             interval_layers.append(IntervalGELU())
         elif isinstance(layer, nn.ELU):
             interval_layers.append(IntervalELU(alpha=layer.alpha))
+        elif isinstance(layer, nn.Softmax):
+            interval_layers.append(IntervalSoftmax())
         elif isinstance(layer, nn.Conv2d):
             ic = IntervalConv2d.from_torch(layer)
             if can_fold:
@@ -144,8 +148,9 @@ def convert_model(torch_model, fold_bn: bool = False) -> IntervalSequential:
         else:
             raise ValueError(
                 f"Unsupported layer type: {type(layer).__name__}. "
-                f"Supported: Linear, ReLU, Sigmoid, Tanh, GELU, ELU, Conv2d, "
-                f"BatchNorm1d/2d, Flatten, MaxPool2d, AvgPool2d, Sequential, ResBlock"
+                f"Supported: Linear, ReLU, Sigmoid, Tanh, GELU, ELU, Softmax, "
+                f"Conv2d, BatchNorm1d/2d, Flatten, MaxPool2d, AvgPool2d, "
+                f"Sequential, ResBlock"
             )
 
     return IntervalSequential(interval_layers)

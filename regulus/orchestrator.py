@@ -64,6 +64,7 @@ from .llm.source_verifier import (
     GOOGLE_API_KEY,
 )
 from .prompts.correction import get_fix_prompt
+from .fallacies.detector import detect as detect_fallacy
 from .core.humor import detect_sarcasm_heuristic, SARCASM_ANALYSIS_PROMPT
 from .core.gamerules import is_game_question, GAME_SYSTEM_TABLE_PROMPT
 
@@ -440,7 +441,23 @@ class Orchestrator:
             # Gate failed -> attempt correction (if budget remains)
             if attempt < self.max_corrections:
                 diag_code = get_diagnostic_code(node, parent_domain) or "UNKNOWN"
-                fix_prompt_text = get_fix_prompt(diag_code)
+
+                # Use fallacy detector for targeted fix prompt
+                # (more specific than generic diag_code-based prompts)
+                fallacy_result = detect_fallacy(current_content)
+                if (
+                    not fallacy_result.valid
+                    and fallacy_result.fallacy is not None
+                    and fallacy_result.fallacy.fix_prompt
+                ):
+                    fix_prompt_text = fallacy_result.fallacy.fix_prompt
+                    logger.info(
+                        "Fallacy detected: %s (%s) — using targeted fix",
+                        fallacy_result.fallacy.id,
+                        fallacy_result.fallacy.name,
+                    )
+                else:
+                    fix_prompt_text = get_fix_prompt(diag_code)
 
                 correction = CorrectionAttempt(
                     step_index=step_index,
