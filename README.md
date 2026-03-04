@@ -10,7 +10,9 @@ Regulus is three interconnected systems:
 
 3. **Fallacy Detection** -- a 156-fallacy taxonomy derived from the Theory of Systems, with regex-based signal extraction and LLM-powered classification via cascading gates (ERR/cascade/multigate modes).
 
-Built on the **Theory of Systems** (ToS) framework. Companion formal library: [theory-of-systems-coq](https://github.com/Horsocrates/theory-of-systems-coq).
+4. **Verified Numerics** -- Cauchy real arithmetic and IEEE 754 rounding safety analysis, proving that interval bounds remain sound after floating-point rounding.
+
+Built on the **Theory of Systems** (ToS) framework. Companion formal library: [theory-of-systems-coq](https://github.com/Horsocrates/theory-of-systems-coq) (621 theorems, 13 Admitted).
 
 ---
 
@@ -27,16 +29,16 @@ Given a trained neural network and an input `x`, we ask: *"If the input were per
 Every interval operation is formally verified in Coq (Rocq 9.0.1). All theorems are axiom-free -- `Print Assumptions` returns "Closed under the global context" for every theorem.
 
 ```
-ToS-Coq/
-  PInterval.v               -- 11 base theorems (add, mul, relu, dot, abs, div, ...)
-  PInterval_Linear.v        -- 8 theorems (pi_scale, pi_wdot, width bounds, relu bound)
-  PInterval_Conv.v          -- 13 theorems (Conv2d, BatchNorm, Conv-BN-ReLU chain)
-  PInterval_Composition.v   -- 9 theorems (reanchor, MaxPool, ResBlock, chain width)
-  PInterval_Softmax.v       -- 6 theorems (sound softmax bounds via cross-multiplication)
-  Extraction_PInterval.v    -- OCaml extraction
-  IVT.v                     -- Intermediate Value Theorem
-  Archimedean.v             -- Archimedean property
-  ShrinkingIntervals_uncountable.v -- Diagonal trisection (uncountability)
+ToS-Coq/                            # 320 Qed, 0 Admitted, 0 axioms
+  PInterval.v                        -- Interval arithmetic (add, mul, relu, dot, abs, div, ...)
+  PInterval_Linear.v                 -- Linear layer (scale, wdot, width bounds, relu bound)
+  PInterval_Conv.v                   -- Conv2d, BatchNorm, Conv-BN-ReLU chain
+  PInterval_Composition.v            -- Reanchor, MaxPool, ResBlock, chain width
+  PInterval_Softmax.v                -- Sound softmax bounds (cross-multiplication, parametric)
+  Extraction_PInterval.v             -- OCaml extraction
+  IVT.v                              -- Intermediate Value Theorem
+  Archimedean.v                      -- Archimedean property
+  ShrinkingIntervals_uncountable.v   -- Non-surjectivity via diagonal trisection (167 lemmas)
 ```
 
 **Key theorems:**
@@ -67,6 +69,7 @@ regulus/interval/                    # Pure interval arithmetic (mirrors Coq)
   softmax.py                         -- Sound softmax bounds (PInterval_Softmax.v)
   evt.py                             -- Extreme Value Theorem with verified argmax (EVT_idx.v)
   trisection.py                      -- Diagonal trisection with certified gaps
+  cauchy_real.py                     -- Cauchy reals + IEEE 754 rounding safety (CauchyReal.v, RoundingSafety.v)
 ```
 
 ### Benchmark Results
@@ -219,20 +222,20 @@ RegulusAI/
 |   |-- orchestrator.py        # Main verification loop
 |   +-- cli.py                 # Typer CLI
 |
-|-- ToS-Coq/                   # Coq formalization (47 theorems, 0 axioms)
-|   |-- PInterval.v            # Base interval arithmetic (11 theorems)
-|   |-- PInterval_Linear.v     # Linear layer verification (8 theorems)
-|   |-- PInterval_Conv.v       # Conv2d + BatchNorm verification (13 theorems)
-|   |-- PInterval_Composition.v # Reanchor, MaxPool, ResBlock, chain (9 theorems)
-|   |-- PInterval_Softmax.v    # Softmax bounds (6 theorems)
+|-- ToS-Coq/                   # Coq formalization (320 Qed, 0 Admitted, 0 axioms)
+|   |-- PInterval.v            # Base interval arithmetic
+|   |-- PInterval_Linear.v     # Linear layer verification
+|   |-- PInterval_Conv.v       # Conv2d + BatchNorm verification
+|   |-- PInterval_Composition.v # Reanchor, MaxPool, ResBlock, chain
+|   |-- PInterval_Softmax.v    # Softmax bounds
 |   |-- Extraction_PInterval.v # OCaml extraction
 |   |-- IVT.v                  # Intermediate Value Theorem
 |   |-- Archimedean.v          # Archimedean property
-|   +-- ShrinkingIntervals_uncountable.v
+|   +-- ShrinkingIntervals_uncountable.v  # Non-surjectivity (167 lemmas)
 |
-|-- ToS-StatusMachine/          # Status machine proofs (14 theorems)
+|-- ToS-StatusMachine/          # Status machine proofs (14 Qed, 0 axioms)
 |-- benchmarks/                # LOGIC, MAFALDA, FML benchmarks + integration suite
-|-- tests/                     # 188 tests
+|-- tests/                     # 829+ tests (non-torch)
 |-- skills/                    # Domain instruction files (v3)
 +-- scripts/                   # Experiment scripts (IBP training, CIFAR-10)
 ```
@@ -247,7 +250,7 @@ cd RegulusAI
 # Install
 uv sync
 
-# Run tests (188 tests)
+# Run tests (829+ non-torch tests)
 uv run pytest tests/ -v
 
 # Fallacy detection
@@ -264,24 +267,39 @@ coqc -Q . ToS PInterval_Softmax.v
 
 ## Formal Guarantees Summary
 
-| File | Theorems | Axioms | Domain |
-|------|----------|--------|--------|
-| `PInterval.v` | 11 | 0 | Interval arithmetic (add, mul, relu, dot, ...) |
-| `PInterval_Linear.v` | 8 | 0 | Linear layers, width bounds, L1-norm bound |
-| `PInterval_Conv.v` | 13 | 0 | Conv2d, BatchNorm, Conv-BN-ReLU chain |
-| `PInterval_Composition.v` | 9 | 0 | Reanchor, MaxPool, ResBlock, chain width |
-| `PInterval_Softmax.v` | 6 | 0 | Softmax bounds (cross-multiplication, parametric) |
+### Local Coq Proofs (ToS-Coq/ + ToS-StatusMachine/)
+
+| File | Qed | Axioms | Domain |
+|------|-----|--------|--------|
+| `PInterval.v` | 43 | 0 | Interval arithmetic (add, mul, relu, dot, ...) |
+| `PInterval_Linear.v` | 18 | 0 | Linear layers, width bounds, L1-norm bound |
+| `PInterval_Conv.v` | 16 | 0 | Conv2d, BatchNorm, Conv-BN-ReLU chain |
+| `PInterval_Composition.v` | 26 | 0 | Reanchor, MaxPool, ResBlock, chain width |
+| `PInterval_Softmax.v` | 13 | 0 | Softmax bounds (cross-multiplication) |
+| `IVT.v` | 23 | 0 | Intermediate Value Theorem |
+| `Archimedean.v` | 14 | 0 | Archimedean property |
+| `ShrinkingIntervals_uncountable.v` | 167 | 0 | Non-surjectivity via trisection |
 | `ToS_Status_Machine_v8.v` | 14 | 0 | Status machine, zero-gate law, uniqueness |
-| **Total** | **61** | **0** | |
+| **Local Total** | **334** | **0** | |
+
+### Companion Library ([theory-of-systems-coq](https://github.com/Horsocrates/theory-of-systems-coq))
+
+| Category | Qed | Admitted | Axioms |
+|----------|-----|----------|--------|
+| Core Mathematics | 504 | 13 | `classic` (LEM) only |
+| Architecture of Reasoning | 117 | 0 | None |
+| **Companion Total** | **621** | **13** | |
+
+**Grand Total: 955 proven theorems across both repositories.**
 
 ## Technology
 
 - **Python 3.11+** with full type hints
 - **PyTorch 2.6+** for neural network training
-- **Rocq 9.0.1** (Coq) for formal proofs -- fully constructive, extraction-compatible
+- **Rocq 9.0.1** (Coq) for formal proofs — fully constructive, extraction-compatible
 - **Anthropic Claude** (primary), OpenAI, DeepSeek, ZhipuAI (LLM backends)
 - **Rich** + **Typer** for CLI
-- **pytest** -- 188 tests
+- **pytest** — 829+ tests (non-torch)
 
 ## License
 
