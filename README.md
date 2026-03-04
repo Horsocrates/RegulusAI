@@ -2,19 +2,21 @@
 
 **Deterministic reasoning verification for LLMs + Coq-verified interval arithmetic for neural networks.**
 
-Regulus is two interconnected systems:
+Regulus is three interconnected systems:
 
 1. **LogicGuard** -- a structured multi-agent system that decomposes LLM reasoning into verifiable steps, checks structural integrity through a formal gate mechanism, and forces correction when hallucination is detected. Core principle: make dishonesty **structurally impossible** through `Gtotal`.
 
-2. **Verified Interval Propagation** -- a Coq-verified interval arithmetic library for neural network uncertainty quantification. Propagates `[lo, hi]` bounds through Conv2d, BatchNorm, ReLU, and Dense layers with **machine-checked correctness proofs** and **zero axioms**.
+2. **Verified Interval Propagation** -- a Coq-verified interval arithmetic library for neural network uncertainty quantification. Propagates `[lo, hi]` bounds through Conv2d, BatchNorm, ReLU, Softmax, and Dense layers with **machine-checked correctness proofs** and **zero axioms**.
 
-Built on the **Theory of Systems** (ToS) framework.
+3. **Fallacy Detection** -- a 156-fallacy taxonomy derived from the Theory of Systems, with regex-based signal extraction and LLM-powered classification via cascading gates (ERR/cascade/multigate modes).
+
+Built on the **Theory of Systems** (ToS) framework. Companion formal library: [theory-of-systems-coq](https://github.com/Horsocrates/theory-of-systems-coq).
 
 ---
 
-## Verified Interval Arithmetic (Steps 7-11)
+## Verified Interval Arithmetic
 
-The `regulus/nn/` and `ToS-Coq/` directories implement a complete pipeline for neural network uncertainty quantification with formal guarantees.
+The `regulus/nn/`, `regulus/interval/`, and `ToS-Coq/` directories implement a complete pipeline for neural network uncertainty quantification with formal guarantees.
 
 ### The Idea
 
@@ -26,38 +28,50 @@ Every interval operation is formally verified in Coq (Rocq 9.0.1). All theorems 
 
 ```
 ToS-Coq/
-  PInterval.v          -- 11 base theorems (add, mul, relu, dot, abs, div, ...)
-  PInterval_Linear.v   -- 8 theorems (pi_scale, pi_wdot, width bounds, relu bound)
-  PInterval_Conv.v     -- 13 theorems (Conv2d, BatchNorm, Conv-BN-ReLU chain)
+  PInterval.v               -- 11 base theorems (add, mul, relu, dot, abs, div, ...)
+  PInterval_Linear.v        -- 8 theorems (pi_scale, pi_wdot, width bounds, relu bound)
+  PInterval_Conv.v          -- 13 theorems (Conv2d, BatchNorm, Conv-BN-ReLU chain)
+  PInterval_Composition.v   -- 9 theorems (reanchor, MaxPool, ResBlock, chain width)
+  PInterval_Softmax.v       -- 6 theorems (sound softmax bounds via cross-multiplication)
+  Extraction_PInterval.v    -- OCaml extraction
+  IVT.v                     -- Intermediate Value Theorem
+  Archimedean.v             -- Archimedean property
+  ShrinkingIntervals_uncountable.v -- Diagonal trisection (uncountability)
 ```
 
-**Key theorems (PInterval_Conv.v):**
+**Key theorems:**
 
-| Theorem | Statement |
-|---------|-----------|
-| `pi_affine_correct` | `x in I => scale*x+shift in BN(I)` |
-| `pi_affine_width` | `width(BN(x)) = |scale| * width(x)` |
-| `pi_conv_pixel_correct` | `dot(W, patch) + bias in Conv(patch)` |
-| `pi_conv_pixel_width_uniform_bound` | `width(Conv(x)) <= eps * \|\|W\|\|_1` |
-| **`pi_conv_bn_relu_width_bound`** | **`width(ReLU(BN(Conv(x)))) <= \|s\| * eps * \|\|W\|\|_1`** |
-
-The punchline theorem chains Conv2d, BatchNorm, and ReLU into a single verified width bound -- the first (to our knowledge) Coq-verified interval arithmetic for convolutional neural networks.
+| File | Theorem | Statement |
+|------|---------|-----------|
+| Conv | `pi_conv_bn_relu_width_bound` | `width(ReLU(BN(Conv(x)))) <= \|s\| * eps * \|\|W\|\|_1` |
+| Composition | `reanchored_final_width` | `final_width <= last_factor * 2*eps` (depth-independent) |
+| Composition | `pi_max_pair_width` | `width(MaxPool(I,J)) <= max(width(I), width(J))` |
+| Composition | `pi_resblock_width_bound` | `width(relu(x+f(x))) <= w(x) + w(f(x))` |
+| Softmax | `interval_softmax_correct` | Sound bounds for all points in `[lo,hi]` |
+| Softmax | `softmax_lower_bound` | `f(lo_i)*D_x <= f(x_i)*D_lo` (cross-mul, no division) |
 
 ### Python Implementation
 
 ```
-regulus/nn/
-  interval_tensor.py   -- IntervalTensor: [lo, hi] pairs with arithmetic
-  layers.py            -- IntervalLinear, IntervalConv2d, IntervalBatchNorm,
-                          IntervalReLU, IntervalMaxPool2d, IntervalSoftmax
-  model.py             -- convert_model(): PyTorch model -> interval model
-  reanchor.py          -- Re-Anchoring strategies (midpoint, adaptive, hybrid)
-  architectures.py     -- MLP, CNN+BN, ResNet+BN, CIFAR variants
+regulus/nn/                          # Neural network verification
+  interval_tensor.py                 -- IntervalTensor: [lo, hi] pairs with arithmetic
+  layers.py                          -- IntervalLinear, Conv2d, BatchNorm, ReLU, MaxPool, Softmax
+  model.py                           -- convert_model(): PyTorch model -> interval model
+  reanchor.py                        -- Re-Anchoring (depth-independent width bounds)
+  adversarial.py                     -- Adversarial input generation via diagonal trisection
+  architectures.py                   -- MLP, CNN+BN, ResNet+BN, CIFAR variants
+
+regulus/interval/                    # Pure interval arithmetic (mirrors Coq)
+  interval.py                        -- Interval class (add, mul, relu, sigmoid, tanh, elu, gelu)
+  composition.py                     -- Reanchor, MaxPool, ResBlock, chain width (PInterval_Composition.v)
+  softmax.py                         -- Sound softmax bounds (PInterval_Softmax.v)
+  evt.py                             -- Extreme Value Theorem with verified argmax (EVT_idx.v)
+  trisection.py                      -- Diagonal trisection with certified gaps
 ```
 
 ### Benchmark Results
 
-**MNIST** (Step 9: Architecture Benchmark):
+**MNIST** (Architecture Benchmark):
 
 | Method | MLP AUROC | CNN+BN AUROC | ResNet+BN AUROC | Cost |
 |--------|-----------|--------------|-----------------|------|
@@ -66,7 +80,7 @@ regulus/nn/
 | MC Dropout (N=50) | 0.670 | 0.738 | 0.701 | 50x |
 | Naive IBP | 0.586 | 0.548 | 0.500 | 1x |
 
-**CIFAR-10** (Step 10):
+**CIFAR-10**:
 
 | Method | CNN+BN AUROC | ResNet+BN AUROC | Cost |
 |--------|--------------|-----------------|------|
@@ -76,7 +90,7 @@ regulus/nn/
 
 RA-Margin achieves competitive error detection at 1x cost (single forward pass) vs 50x for MC Dropout.
 
-### Traceable Uncertainty (Step 10)
+### Traceable Uncertainty
 
 Beyond a single confidence score, Regulus shows **which block** caused unreliability:
 
@@ -88,7 +102,37 @@ Block 3 [res2 ]: margin = 0.12  << CRITICAL
 Block 4 [fc   ]: margin = 0.45  (weak)
 ```
 
-The critical block (argmin of margins) pinpoints where the network's internal representation becomes ambiguous under perturbation.
+---
+
+## Fallacy Detection (156 Fallacies)
+
+The `regulus/fallacies/` module implements the full Theory of Systems fallacy taxonomy.
+
+### Taxonomy Structure
+
+| Type | Description | Count |
+|------|-------------|-------|
+| Type 1 | Pre-reasoning failures (reasoning never started) | 36 |
+| Type 2 | Domain violations (D1-D6 structural errors) | 105 |
+| Type 3 | Sequence violations (domain order broken) | 3 |
+| Type 4 | Systemic patterns (multi-domain corruption) | 6 |
+| Type 5 | Context-dependent failures | 6 |
+| **Total** | | **156** |
+
+### Detection Modes
+
+| Mode | How it works | Best for |
+|------|-------------|----------|
+| `regex` | 50+ signal patterns, no LLM needed | Fast screening |
+| `err` | Full ERR+D1-D6 framework in single LLM call | Detailed analysis |
+| `cascade` | Step 1: Type classification, Step 2: Domain+ID | Accuracy |
+| `multigate` | G1-G5 binary elimination gates before classification | Preventing force-fitting |
+
+### Benchmarks
+
+**LOGIC dataset** (150 texts, 13 fallacy types): Binary recall 90%, Type-level F1 6.2%
+
+**MAFALDA dataset** (200 texts, 23 types + clean): Binary detection + fine-grained classification with false positive analysis
 
 ---
 
@@ -164,53 +208,58 @@ Invariants:
 RegulusAI/
 |-- regulus/                    # Core package
 |   |-- core/                  # LogicGuard verification engine
-|   |-- llm/                   # LLM clients (Claude, OpenAI, DeepSeek)
-|   |-- nn/                    # Interval neural network layers
+|   |-- llm/                   # LLM clients (Claude, OpenAI, DeepSeek, ZhipuAI)
+|   |-- nn/                    # Interval neural network layers + adversarial generation
+|   |-- interval/              # Pure interval arithmetic (Coq mirror)
+|   |-- fallacies/             # 156-fallacy taxonomy + detector + LLM extractor
+|   |-- demo/                  # Demo scripts (MNIST, depth study, reliability)
 |   |-- analysis/              # Reliability analysis + traceable uncertainty
 |   |-- benchmark/             # Datasets, metrics, methods
 |   |-- experiments/           # Benchmark scripts (architecture, CIFAR-10)
-|   |-- paper/                 # Figure generation for publication
-|   |-- interval/              # Pure interval arithmetic (Python mirror of Coq)
 |   |-- orchestrator.py        # Main verification loop
 |   +-- cli.py                 # Typer CLI
 |
-|-- ToS-Coq/                   # Coq formalization (32 theorems, 0 axioms)
+|-- ToS-Coq/                   # Coq formalization (47 theorems, 0 axioms)
 |   |-- PInterval.v            # Base interval arithmetic (11 theorems)
 |   |-- PInterval_Linear.v     # Linear layer verification (8 theorems)
 |   |-- PInterval_Conv.v       # Conv2d + BatchNorm verification (13 theorems)
+|   |-- PInterval_Composition.v # Reanchor, MaxPool, ResBlock, chain (9 theorems)
+|   |-- PInterval_Softmax.v    # Softmax bounds (6 theorems)
 |   |-- Extraction_PInterval.v # OCaml extraction
-|   |-- Archimedean.v          # Archimedean property
 |   |-- IVT.v                  # Intermediate Value Theorem
+|   |-- Archimedean.v          # Archimedean property
 |   +-- ShrinkingIntervals_uncountable.v
 |
 |-- ToS-StatusMachine/          # Status machine proofs (14 theorems)
-|-- tests/                     # 131 tests
+|-- benchmarks/                # LOGIC, MAFALDA, FML benchmarks + integration suite
+|-- tests/                     # 188 tests
 |-- skills/                    # Domain instruction files (v3)
-|-- benchmark_results/         # Saved benchmark outputs
-+-- paper/                     # Publication figures (PDF)
++-- scripts/                   # Experiment scripts (IBP training, CIFAR-10)
 ```
 
 ## Quick Start
 
 ```bash
 # Clone
-git clone https://github.com/anthropics/RegulusAI.git
+git clone https://github.com/Horsocrates/RegulusAI.git
 cd RegulusAI
 
 # Install
 uv sync
 
-# Run tests (131 tests)
-.venv313\Scripts\python.exe -m pytest tests/ regulus/nn/test_*.py -v
+# Run tests (188 tests)
+uv run pytest tests/ -v
 
-# Run interval benchmark (quick mode)
-.venv313\Scripts\python.exe -u -m regulus.experiments.architecture_benchmark --quick
+# Fallacy detection
+uv run regulus fallacy-detect "If evolution were true, we'd see dogs turning into cats"
 
 # Compile Coq proofs (requires Rocq 9.0)
 cd ToS-Coq
 coqc -Q . ToS PInterval.v
 coqc -Q . ToS PInterval_Linear.v
 coqc -Q . ToS PInterval_Conv.v
+coqc -Q . ToS PInterval_Composition.v
+coqc -Q . ToS PInterval_Softmax.v
 ```
 
 ## Formal Guarantees Summary
@@ -220,17 +269,19 @@ coqc -Q . ToS PInterval_Conv.v
 | `PInterval.v` | 11 | 0 | Interval arithmetic (add, mul, relu, dot, ...) |
 | `PInterval_Linear.v` | 8 | 0 | Linear layers, width bounds, L1-norm bound |
 | `PInterval_Conv.v` | 13 | 0 | Conv2d, BatchNorm, Conv-BN-ReLU chain |
+| `PInterval_Composition.v` | 9 | 0 | Reanchor, MaxPool, ResBlock, chain width |
+| `PInterval_Softmax.v` | 6 | 0 | Softmax bounds (cross-multiplication, parametric) |
 | `ToS_Status_Machine_v8.v` | 14 | 0 | Status machine, zero-gate law, uniqueness |
-| **Total** | **46** | **0** | |
+| **Total** | **61** | **0** | |
 
 ## Technology
 
 - **Python 3.11+** with full type hints
 - **PyTorch 2.6+** for neural network training
 - **Rocq 9.0.1** (Coq) for formal proofs -- fully constructive, extraction-compatible
-- **Anthropic Claude** (primary), OpenAI, DeepSeek (LLM backends)
+- **Anthropic Claude** (primary), OpenAI, DeepSeek, ZhipuAI (LLM backends)
 - **Rich** + **Typer** for CLI
-- **pytest** -- 131 tests
+- **pytest** -- 188 tests
 
 ## License
 
@@ -243,6 +294,6 @@ MIT
   title={Regulus AI: Verified Interval Propagation for Neural Network Uncertainty},
   author={Horsocrates},
   year={2026},
-  url={https://github.com/anthropics/RegulusAI}
+  url={https://github.com/Horsocrates/RegulusAI}
 }
 ```
