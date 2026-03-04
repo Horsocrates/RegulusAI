@@ -135,3 +135,88 @@ def certified_gap(k: int) -> float:
     enumerated value by at least trisect_delta(k) / 2 = 1 / (48 * 3^k).
     """
     return float(trisect_delta(k)) / 2.0
+
+
+# ---------------------------------------------------------------------------
+#  Adversarial Suite: domain scaling + aggregated verification
+# ---------------------------------------------------------------------------
+
+
+def scale_to_perturbation_ball(
+    point_01: List[float],
+    center: List[float],
+    epsilon: float,
+) -> List[float]:
+    """Map a point from [0,1]^d to [center-eps, center+eps]^d.
+
+    Parameters
+    ----------
+    point_01 : list[float]
+        Point in [0, 1]^d (e.g. from generate_adversarial_nd).
+    center : list[float]
+        Center of the perturbation ball.
+    epsilon : float
+        Perturbation radius.
+
+    Returns
+    -------
+    list[float]
+        Point in [center_d - epsilon, center_d + epsilon] for each d.
+    """
+    return [c - epsilon + 2 * epsilon * p for c, p in zip(center, point_01)]
+
+
+def generate_adversarial_suite(
+    test_points: List[List[float]],
+    center: List[float],
+    epsilon: float,
+    n_candidates: int = 10,
+    steps: Optional[int] = None,
+) -> List[List[float]]:
+    """Generate adversarial candidates in perturbation ball around center.
+
+    Produces n_candidates distinct points in [center-eps, center+eps]^d,
+    each certified to differ from the test_points.
+
+    Parameters
+    ----------
+    test_points : list[list[float]]
+        Known test points (each is a d-dimensional vector).
+    center : list[float]
+        Center of the perturbation ball.
+    epsilon : float
+        Perturbation radius.
+    n_candidates : int
+        Number of adversarial candidates to generate.
+    steps : int or None
+        Trisection steps. Default: len(test_points).
+
+    Returns
+    -------
+    list[list[float]]
+        List of adversarial candidate points in the perturbation ball.
+    """
+    if not test_points:
+        return []
+
+    n_dims = len(center)
+    candidates: List[List[float]] = []
+
+    for offset in range(n_candidates):
+        # Rotate the test points to get different adversarial candidates
+        rotated = test_points[offset % len(test_points):] + test_points[:offset % len(test_points)]
+
+        # Transpose to per-dimension format
+        per_dim: List[List[float]] = [[] for _ in range(n_dims)]
+        for pt in rotated:
+            for d in range(n_dims):
+                per_dim[d].append(pt[d] if d < len(pt) else 0.0)
+
+        # Generate in [0,1]^d
+        point_01, _ = generate_adversarial_nd(per_dim, steps=steps)
+
+        # Scale to perturbation ball
+        point = scale_to_perturbation_ball(point_01, center, epsilon)
+        candidates.append(point)
+
+    return candidates

@@ -36,6 +36,7 @@ from regulus.nn.interval_tensor import IntervalTensor
 from regulus.nn.model import IntervalSequential, convert_model
 from regulus.nn.reanchor import ReanchoredIntervalModel
 from regulus.analysis.reliability import ReliabilityAnalysis
+from regulus.interval.evt import argmax_idx, max_on_grid
 
 
 # =============================================================
@@ -106,6 +107,7 @@ class VerificationContract:
     total_time_ms: float
     metadata: dict = field(default_factory=dict)
     logic_guard_gate: Optional[bool] = None
+    evt_margin: Optional[float] = None  # EVT-based margin (argmax gap)
 
     def summary(self) -> str:
         """Human-readable summary."""
@@ -120,6 +122,8 @@ class VerificationContract:
             f"  Risk:             {self.risk:.4f}",
             f"  Time:             {self.total_time_ms:.1f}ms",
         ]
+        if self.evt_margin is not None:
+            lines.append(f"  EVT margin:       {self.evt_margin:.6f}")
         if self.logic_guard_gate is not None:
             lg_status = "PASS" if self.logic_guard_gate else "FAIL"
             lines.append(f"  LogicGuard gate:  {lg_status}")
@@ -154,6 +158,9 @@ class NNVerificationResult:
     # Strategy and options
     strategy: str = "naive"
     bn_folded: bool = False
+
+    # EVT-based reliability
+    evt_margin: Optional[float] = None  # EVT argmax margin (lo[pred] - hi[2nd])
 
     def summary(self) -> str:
         """Human-readable summary."""
@@ -205,6 +212,41 @@ class NNVerificationResult:
             stab_s = f"{stab * 100:.1f}%" if stab is not None else "  -  "
             lines.append(f"{name} | {mean_w} | {max_w} | {unstable} | {stab_s}")
         return "\n".join(lines)
+
+
+def _compute_evt_margin(
+    output_lo: np.ndarray, output_hi: np.ndarray, predicted: int,
+) -> float:
+    """Compute EVT-based margin between predicted class and runner-up.
+
+    Uses EVT argmax_idx to find the class whose upper bound is closest
+    to threatening the predicted class's lower bound. The margin is:
+        evt_margin = lo[predicted] - max_{j != predicted}(hi[j])
+
+    Positive margin = certified separation. Negative = overlap exists.
+
+    This is the interval-level analog of EVT's argmax: instead of
+    searching over a grid of input perturbations, we search over
+    the output classes to find the "most threatening" competitor.
+    """
+    n_classes = len(output_lo)
+    if n_classes <= 1:
+        return float(output_lo[predicted])
+
+    # Build list of competitor upper bounds (exclude predicted class)
+    competitors = []
+    competitor_indices = []
+    for j in range(n_classes):
+        if j != predicted:
+            competitors.append(float(output_hi[j]))
+            competitor_indices.append(j)
+
+    # Use EVT argmax_idx to find the most threatening competitor
+    # (the one with highest upper bound)
+    threat_idx = argmax_idx(lambda x: x, competitors)
+    worst_hi = competitors[threat_idx]
+
+    return float(output_lo[predicted]) - worst_hi
 
 
 class NNVerificationEngine:
@@ -326,6 +368,9 @@ class NNVerificationEngine:
         certified = analysis["reliable"]
         margin = analysis["gap"]
 
+        # Step 3b: EVT margin — use argmax_idx on per-class margins
+        evt_margin = _compute_evt_margin(output.lo, output.hi, predicted)
+
         # Step 4: Collect per-layer widths and diagnostics
         layer_widths: list[float] = []
         layer_diagnostics: list[dict] = []
@@ -350,6 +395,7 @@ class NNVerificationEngine:
             propagation_time_ms=propagation_ms,
             strategy=self.strategy,
             bn_folded=self.fold_bn,
+            evt_margin=evt_margin,
         )
 
     def _verify_crown(
@@ -384,6 +430,9 @@ class NNVerificationEngine:
         certified = analysis["reliable"]
         margin = analysis["gap"]
 
+        # EVT margin
+        evt_margin = _compute_evt_margin(result.output_lo, result.output_hi, predicted)
+
         # Collect per-layer width info from CROWN
         layer_widths = []
         for lb in result.layer_bounds:
@@ -404,6 +453,7 @@ class NNVerificationEngine:
             propagation_time_ms=propagation_ms,
             strategy="crown",
             bn_folded=True,  # CROWN always folds BN
+            evt_margin=evt_margin,
         )
 
     def verify_from_point(
@@ -473,16 +523,25 @@ class NNVerificationEngine:
             certified = False
             risk = min(1.0, max_width / (abs(result.margin) + 1e-10))
 
+        # EVT-based risk: use evt_margin for finer risk estimation
+        evt_risk = risk
+        if result.evt_margin is not None and self.mode == VerificationMode.CERT:
+            # EVT risk: 0 if margin > 0 (certified), else proportion of gap
+            evt_risk = 0.0 if result.evt_margin > 0 else min(
+                1.0, max_width / (abs(result.evt_margin) + 1e-10)
+            )
+
         return VerificationContract(
             mode=self.mode,
             predicted_class=result.predicted_class,
             certified=certified,
             margin=result.margin,
             max_output_width=max_width,
-            risk=risk,
+            risk=evt_risk if result.evt_margin is not None else risk,
             output_bounds=(result.output_lo, result.output_hi),
             per_layer_widths=result.layer_widths,
             total_time_ms=result.conversion_time_ms + result.propagation_time_ms,
+            evt_margin=result.evt_margin,
             metadata={
                 "strategy": self.strategy,
                 "fold_bn": self.fold_bn,
