@@ -215,7 +215,7 @@ RegulusAI/
 |   |-- nn/                    # Interval neural network layers + adversarial generation
 |   |-- interval/              # Pure interval arithmetic (Coq mirror)
 |   |-- fallacies/             # 156-fallacy taxonomy + detector + LLM extractor
-|   |-- demo/                  # Demo scripts (MNIST, depth study, reliability)
+|   |-- demo/                  # Demo scripts (Logic Censor showcase, MNIST, depth study)
 |   |-- analysis/              # Reliability analysis + traceable uncertainty
 |   |-- benchmark/             # Datasets, metrics, methods
 |   |-- experiments/           # Benchmark scripts (architecture, CIFAR-10)
@@ -250,7 +250,12 @@ cd RegulusAI
 # Install
 uv sync
 
-# Run tests (829+ non-torch tests)
+# Run offline demo (no API keys needed)
+uv run regulus demo --quick       # 5 scenarios: syllogism, ad hominem, liar paradox, domain skip, slippery slope
+uv run regulus demo --list        # List available scenarios
+uv run regulus demo --pick 1 3    # Run specific scenarios
+
+# Run tests (840+ non-torch tests)
 uv run pytest tests/ -v
 
 # Fallacy detection
@@ -299,7 +304,7 @@ coqc -Q . ToS PInterval_Softmax.v
 - **Rocq 9.0.1** (Coq) for formal proofs — fully constructive, extraction-compatible
 - **Anthropic Claude** (primary), OpenAI, DeepSeek, ZhipuAI (LLM backends)
 - **Rich** + **Typer** for CLI
-- **pytest** — 829+ tests (non-torch)
+- **pytest** — 840+ tests (non-torch)
 
 ## License
 

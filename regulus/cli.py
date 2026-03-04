@@ -11,11 +11,13 @@ Commands:
     regulus benchmark               Run hallucination benchmark
     regulus verify file.json         Verify a pre-built reasoning tree
     regulus example                  Run built-in demonstration
+    regulus demo                     Run offline Logic Censor demo (no API keys)
 """
 
 import asyncio
 import os
 import sys
+from typing import List, Optional
 
 import typer
 from pathlib import Path
@@ -689,6 +691,33 @@ def example():
     for prop, (passed, msg) in verifications.items():
         status = "✓" if passed else "✗"
         print(f"  [{status}] {prop}: {msg}")
+
+
+@app.command()
+def demo(
+    list_scenarios: bool = typer.Option(
+        False, "--list", "-l",
+        help="List available demo scenarios",
+    ),
+    pick: Optional[List[int]] = typer.Option(
+        None, "--pick", "-p",
+        help="Run specific scenarios by number (e.g. --pick 1 --pick 3)",
+    ),
+    quick: bool = typer.Option(
+        False, "--quick", "-q",
+        help="Run without pauses between scenarios",
+    ),
+):
+    """Run offline Logic Censor demo with 5 built-in scenarios."""
+    from .demo.demo_showcase import DemoRunner
+
+    runner = DemoRunner()
+
+    if list_scenarios:
+        runner.list_scenarios()
+        return
+
+    runner.run_all(pick=pick, quick=quick)
 
 
 @app.command("demo-nn")
