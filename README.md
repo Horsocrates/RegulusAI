@@ -12,7 +12,7 @@ Regulus is three interconnected systems:
 
 4. **Verified Numerics** -- Cauchy real arithmetic and IEEE 754 rounding safety analysis, proving that interval bounds remain sound after floating-point rounding.
 
-Built on the **Theory of Systems** (ToS) framework. Companion formal library: [theory-of-systems-coq](https://github.com/Horsocrates/theory-of-systems-coq) (621 theorems, 13 Admitted).
+Built on the **Theory of Systems** (ToS) framework. Companion formal library: [theory-of-systems-coq](https://github.com/Horsocrates/theory-of-systems-coq) (658 theorems, 13 Admitted).
 
 ---
 
@@ -286,11 +286,11 @@ coqc -Q . ToS PInterval_Softmax.v
 
 | Category | Qed | Admitted | Axioms |
 |----------|-----|----------|--------|
-| Core Mathematics | 504 | 13 | `classic` (LEM) only |
+| Core Mathematics | 541 | 13 | `classic` (LEM) only |
 | Architecture of Reasoning | 117 | 0 | None |
-| **Companion Total** | **621** | **13** | |
+| **Companion Total** | **658** | **13** | |
 
-**Grand Total: 955 proven theorems across both repositories.**
+**Grand Total: 992 proven theorems across both repositories.**
 
 ## Technology
 
