@@ -206,6 +206,19 @@ comparison = analysis.compare_across_layers()
 
 Every result carries `theorem_used` — full traceability from Python output to the Coq theorem that guarantees correctness. See [UNIFIED_ARCHITECTURE.md](UNIFIED_ARCHITECTURE.md) for the full stack diagram.
 
+### Phase 5 Evaluation: Verified Backend on HLE Math
+
+Post-hoc evaluation of the verified backend on 10 HLE Mathematics questions (GLM-5):
+
+| Metric | Baseline | Verified | Delta |
+|--------|:--------:|:--------:|:-----:|
+| Accuracy | 0/10 | 0/10 | 0 |
+| Calibration Error | 68.4pp | 68.4pp | 0 |
+| D4 Math Verifier triggers | -- | 0/10 | -- |
+| D1 ERR Validator parsed | -- | 4/10 valid | -- |
+
+**Key finding:** HLE-level math (algebraic geometry, topology, stochastic processes) is too abstract for direct theorem matching (IVT, EVT, convergence). The theorem library targets calculus-level problems. Post-hoc verification cannot change answers -- inline integration is needed. See [eval/results/PHASE5_REPORT.md](eval/results/PHASE5_REPORT.md).
+
 ---
 
 ## LogicGuard: Reasoning Verification
@@ -284,7 +297,8 @@ RegulusAI/
 |   |   |-- bridge.py          #   VerifiedBackend: IVT, EVT, CROWN, L5, ERR checks
 |   |   |-- math_verifier.py   #   D4 theorem detection + confidence_override=100%
 |   |   |-- err_validator.py   #   D1 E/R/R gate (4 well-formedness conditions)
-|   |   +-- layers.py          #   Information Layers (P3 multi-perspective analysis)
+|   |   |-- layers.py          #   Information Layers (P3 multi-perspective analysis)
+|   |   +-- pipeline_adapter.py #  Extract D1/D3/D4 from HLE pipeline results
 |   |-- llm/                   # LLM clients (Claude, OpenAI, DeepSeek, ZhipuAI)
 |   |-- nn/                    # Interval neural network layers + adversarial generation
 |   |-- interval/              # Pure interval arithmetic (Coq mirror)
@@ -309,7 +323,8 @@ RegulusAI/
 |
 |-- ToS-StatusMachine/          # Status machine proofs (14 Qed, 0 axioms)
 |-- benchmarks/                # LOGIC, MAFALDA, FML benchmarks + integration suite
-|-- tests/                     # 880+ tests (non-torch)
+|-- eval/                      # Evaluation harnesses + results
+|-- tests/                     # 910+ tests (non-torch)
 |-- skills/                    # Domain instruction files (v3)
 |-- UNIFIED_ARCHITECTURE.md    # Full stack: Coq→OCaml→Python→Pipeline
 +-- scripts/                   # Experiment scripts (IBP training, CIFAR-10)
@@ -379,7 +394,7 @@ coqc -Q . ToS PInterval_Softmax.v
 - **Rocq 9.0.1** (Coq) for formal proofs — fully constructive, extraction-compatible
 - **Anthropic Claude** (primary), OpenAI, DeepSeek, ZhipuAI (LLM backends)
 - **Rich** + **Typer** for CLI
-- **pytest** — 880+ tests (non-torch)
+- **pytest** — 910+ tests (non-torch)
 
 ## License
 
