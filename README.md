@@ -2,7 +2,7 @@
 
 **Deterministic reasoning verification for LLMs + Coq-verified interval arithmetic for neural networks.**
 
-Regulus is three interconnected systems:
+Regulus is four interconnected systems:
 
 1. **LogicGuard** -- a structured multi-agent system that decomposes LLM reasoning into verifiable steps, checks structural integrity through a formal gate mechanism, and forces correction when hallucination is detected. Core principle: make dishonesty **structurally impossible** through `Gtotal`.
 
@@ -10,9 +10,9 @@ Regulus is three interconnected systems:
 
 3. **Fallacy Detection** -- a 156-fallacy taxonomy derived from the Theory of Systems, with regex-based signal extraction and LLM-powered classification via cascading gates (ERR/cascade/multigate modes).
 
-4. **Verified Numerics** -- Cauchy real arithmetic and IEEE 754 rounding safety analysis, proving that interval bounds remain sound after floating-point rounding.
+4. **Verified Computation Backend** -- a Coq→OCaml→Python bridge that integrates 1045 machine-checked theorems into the reasoning pipeline. D1 outputs are validated against formal E/R/R well-formedness (Roles.v, 30 Qed). D4 computations are checked against verified theorems (IVT, EVT, CROWN, Series, Contraction) with **confidence = 100%** when a theorem applies. Information Layers enable principled multi-perspective analysis (P3 Intensional Identity).
 
-Built on the **Theory of Systems** (ToS) framework. Companion formal library: [theory-of-systems-coq](https://github.com/Horsocrates/theory-of-systems-coq) (658 theorems, 13 Admitted).
+Built on the **Theory of Systems** (ToS) framework. Companion formal library: [theory-of-systems-coq](https://github.com/Horsocrates/theory-of-systems-coq) (1045 theorems, 8 Admitted, 0 custom axioms).
 
 ---
 
@@ -139,6 +139,75 @@ The `regulus/fallacies/` module implements the full Theory of Systems fallacy ta
 
 ---
 
+## Verified Computation Backend
+
+The `regulus/verified/` module bridges 1045 Coq-proven theorems into the Python pipeline. Three integration points:
+
+### D1 Gate: E/R/R Structural Validator
+
+After D1 produces E/R/R output, `ERRValidator` checks 4 formal well-formedness conditions (from `Roles.v`, 30 Qed):
+
+| Condition | Description | Violation = |
+|-----------|-------------|-------------|
+| C1 | Category exclusivity | Duplicate components |
+| C2 | No cross-category self-reference | Element = Rule identity |
+| C3 | No cross-level role occupation | Level mismatch |
+| C4 | Acyclic dependencies | Circular status (paradox) |
+
+```python
+from regulus.verified import ERRValidator
+
+validator = ERRValidator()
+gate = validator.gate_d1_to_d2(d1_output)
+# gate["action"] = "proceed_to_d2" or "retry_d1" with guidance
+```
+
+### D4 Hook: Machine-Checked Computation
+
+When D4 performs computation, `MathVerifier` checks if a verified theorem applies:
+
+| Theorem | Trigger Keywords | Coq Source | Qed |
+|---------|-----------------|------------|-----|
+| IVT | "intermediate value", "root finding" | IVT_ERR.v | 23 |
+| EVT | "extreme value", "maximum" | EVT_idx.v | 26 |
+| CROWN | "crown", "interval bound" | PInterval_CROWN.v | 25 |
+| Series Convergence | "convergence", "ratio test" | SeriesConvergence.v | 22 |
+| Fixed Point | "contraction", "banach" | FixedPoint.v | 20 |
+| L5 Resolution | (always available for tie-breaking) | L5Resolution.v | 18 |
+
+When a theorem applies → `confidence_override = 100%` (machine-checked certainty).
+
+```python
+from regulus.verified import MathVerifier
+
+verifier = MathVerifier()
+result = verifier.try_verify("Extreme Value Theorem", {"values": [1, 5, 5, 3]})
+# result.value = {"max_value": 5.0, "max_index": 1, "l5_resolved": True}
+# result.theorem_used = "EVT_idx.argmax_idx_maximizes"
+```
+
+### Information Layers: Multi-Perspective Analysis
+
+Same question analyzed through multiple criteria (P3 Intensional Identity: same substrate + different criterion = different system):
+
+```python
+from regulus.verified import LayeredAnalysis
+from regulus.verified.layers import MATH_LAYER, EMPIRICAL_LAYER
+
+analysis = LayeredAnalysis(substrate=d1_d2_output)
+analysis.add_layer(MATH_LAYER)
+analysis.add_layer(EMPIRICAL_LAYER)
+
+# D6 cross-layer comparison
+comparison = analysis.compare_across_layers()
+# Agreement → high structural confidence
+# Divergence → examine which criterion is most appropriate
+```
+
+Every result carries `theorem_used` — full traceability from Python output to the Coq theorem that guarantees correctness. See [UNIFIED_ARCHITECTURE.md](UNIFIED_ARCHITECTURE.md) for the full stack diagram.
+
+---
+
 ## LogicGuard: Reasoning Verification
 
 ### Architecture
@@ -211,6 +280,11 @@ Invariants:
 RegulusAI/
 |-- regulus/                    # Core package
 |   |-- core/                  # LogicGuard verification engine
+|   |-- verified/              # Verified computation backend (Coq->OCaml->Python bridge)
+|   |   |-- bridge.py          #   VerifiedBackend: IVT, EVT, CROWN, L5, ERR checks
+|   |   |-- math_verifier.py   #   D4 theorem detection + confidence_override=100%
+|   |   |-- err_validator.py   #   D1 E/R/R gate (4 well-formedness conditions)
+|   |   +-- layers.py          #   Information Layers (P3 multi-perspective analysis)
 |   |-- llm/                   # LLM clients (Claude, OpenAI, DeepSeek, ZhipuAI)
 |   |-- nn/                    # Interval neural network layers + adversarial generation
 |   |-- interval/              # Pure interval arithmetic (Coq mirror)
@@ -235,8 +309,9 @@ RegulusAI/
 |
 |-- ToS-StatusMachine/          # Status machine proofs (14 Qed, 0 axioms)
 |-- benchmarks/                # LOGIC, MAFALDA, FML benchmarks + integration suite
-|-- tests/                     # 829+ tests (non-torch)
+|-- tests/                     # 880+ tests (non-torch)
 |-- skills/                    # Domain instruction files (v3)
+|-- UNIFIED_ARCHITECTURE.md    # Full stack: Coq→OCaml→Python→Pipeline
 +-- scripts/                   # Experiment scripts (IBP training, CIFAR-10)
 ```
 
@@ -255,7 +330,7 @@ uv run regulus demo --quick       # 5 scenarios: syllogism, ad hominem, liar par
 uv run regulus demo --list        # List available scenarios
 uv run regulus demo --pick 1 3    # Run specific scenarios
 
-# Run tests (840+ non-torch tests)
+# Run tests (880+ non-torch tests)
 uv run pytest tests/ -v
 
 # Fallacy detection
@@ -291,11 +366,11 @@ coqc -Q . ToS PInterval_Softmax.v
 
 | Category | Qed | Admitted | Axioms |
 |----------|-----|----------|--------|
-| Core Mathematics | 541 | 13 | `classic` (LEM) only |
-| Architecture of Reasoning | 117 | 0 | None |
-| **Companion Total** | **658** | **13** | |
+| Core Mathematics (39 files) | 928 | 8 | `classic` (LEM) only |
+| Architecture of Reasoning (6 files) | 117 | 0 | None |
+| **Companion Total** | **1045** | **8** | |
 
-**Grand Total: 992 proven theorems across both repositories.**
+**Grand Total: 1379 proven theorems across both repositories.**
 
 ## Technology
 
@@ -304,7 +379,7 @@ coqc -Q . ToS PInterval_Softmax.v
 - **Rocq 9.0.1** (Coq) for formal proofs — fully constructive, extraction-compatible
 - **Anthropic Claude** (primary), OpenAI, DeepSeek, ZhipuAI (LLM backends)
 - **Rich** + **Typer** for CLI
-- **pytest** — 840+ tests (non-torch)
+- **pytest** — 880+ tests (non-torch)
 
 ## License
 
