@@ -12,7 +12,7 @@ Regulus is four interconnected systems:
 
 4. **Verified Computation Backend** -- a Coq→OCaml→Python bridge that integrates 1045 machine-checked theorems into the reasoning pipeline. D1 outputs are validated against formal E/R/R well-formedness (Roles.v, 30 Qed). D4 computations are checked against verified theorems (IVT, EVT, CROWN, Series, Contraction) with **confidence = 100%** when a theorem applies. Information Layers enable principled multi-perspective analysis (P3 Intensional Identity). **Convergence analysis** models the pipeline as a Banach contraction on [0, 100] confidence space (ReasoningConvergence.v, 19 Qed) with stall detection, paradigm shift, and iteration bounds.
 
-Built on the **Theory of Systems** (ToS) framework. Companion formal library: [theory-of-systems-coq](https://github.com/Horsocrates/theory-of-systems-coq) (1064 theorems, 8 Admitted, 0 custom axioms).
+Built on the **Theory of Systems** (ToS) framework. Companion formal library: [theory-of-systems-coq](https://github.com/Horsocrates/theory-of-systems-coq) (1198 theorems, 8 Admitted, 0 custom axioms).
 
 ---
 
@@ -407,11 +407,11 @@ coqc -Q . ToS PInterval_Softmax.v
 
 | Category | Qed | Admitted | Axioms |
 |----------|-----|----------|--------|
-| Core Mathematics (40 files) | 947 | 8 | `classic` (LEM) only |
+| Core Mathematics (47 files) | 1081 | 8 | `classic` (LEM) only |
 | Architecture of Reasoning (6 files) | 117 | 0 | None |
-| **Companion Total** | **1064** | **8** | |
+| **Companion Total** | **1198** | **8** | |
 
-**Grand Total: 1398 proven theorems across both repositories.**
+**Grand Total: 1532 proven theorems across both repositories.**
 
 ## Technology
 
