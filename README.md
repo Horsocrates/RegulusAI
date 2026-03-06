@@ -10,9 +10,9 @@ Regulus is four interconnected systems:
 
 3. **Fallacy Detection** -- a 156-fallacy taxonomy derived from the Theory of Systems, with regex-based signal extraction and LLM-powered classification via cascading gates (ERR/cascade/multigate modes).
 
-4. **Verified Computation Backend** -- a Coq→OCaml→Python bridge that integrates 1045 machine-checked theorems into the reasoning pipeline. D1 outputs are validated against formal E/R/R well-formedness (Roles.v, 30 Qed). D4 computations are checked against verified theorems (IVT, EVT, CROWN, Series, Contraction) with **confidence = 100%** when a theorem applies. Information Layers enable principled multi-perspective analysis (P3 Intensional Identity).
+4. **Verified Computation Backend** -- a Coq→OCaml→Python bridge that integrates 1045 machine-checked theorems into the reasoning pipeline. D1 outputs are validated against formal E/R/R well-formedness (Roles.v, 30 Qed). D4 computations are checked against verified theorems (IVT, EVT, CROWN, Series, Contraction) with **confidence = 100%** when a theorem applies. Information Layers enable principled multi-perspective analysis (P3 Intensional Identity). **Convergence analysis** models the pipeline as a Banach contraction on [0, 100] confidence space (ReasoningConvergence.v, 19 Qed) with stall detection, paradigm shift, and iteration bounds.
 
-Built on the **Theory of Systems** (ToS) framework. Companion formal library: [theory-of-systems-coq](https://github.com/Horsocrates/theory-of-systems-coq) (1045 theorems, 8 Admitted, 0 custom axioms).
+Built on the **Theory of Systems** (ToS) framework. Companion formal library: [theory-of-systems-coq](https://github.com/Horsocrates/theory-of-systems-coq) (1064 theorems, 8 Admitted, 0 custom axioms).
 
 ---
 
@@ -206,6 +206,30 @@ comparison = analysis.compare_across_layers()
 
 Every result carries `theorem_used` — full traceability from Python output to the Coq theorem that guarantees correctness. See [UNIFIED_ARCHITECTURE.md](UNIFIED_ARCHITECTURE.md) for the full stack diagram.
 
+### Convergence Analysis (Banach Fixed-Point)
+
+Models the pipeline iteration as a contraction mapping on [0, 100] confidence space. Backed by `ReasoningConvergence.v` (19 Qed, 0 Admitted) in the companion library.
+
+```python
+from regulus.verified import ConvergenceAdvisor
+
+advisor = ConvergenceAdvisor()
+advisor.record(50.0)   # iteration 1
+advisor.record(75.0)   # iteration 2
+advisor.record(87.5)   # iteration 3
+print(advisor.advise())
+# [ACTION] CONTINUE
+# [REASON] Contractive (c=0.500). Estimated 3 more iteration(s) to converge.
+# [ESTIMATE] c = 0.500, iterations remaining = 3, predicted final confidence = 96.9%
+# [THEOREM] FixedPoint.v: Banach_contraction_principle
+```
+
+Key capabilities:
+- **Contraction estimation** — median gap ratio from confidence history
+- **Iteration bounds** — `n >= log(eps*(1-c)/d0) / log(c)` (Banach bound)
+- **Stall detection** — if |T(s) - s| is small, s is near the fixed point (stall_means_near_fixpoint)
+- **Paradigm shift** — non-contractive sequences or 3+ stalls trigger strategy change (paradigm_shift_resets)
+
 ### Phase 5 Evaluation: Verified Backend on HLE Math
 
 Post-hoc evaluation of the verified backend on 10 HLE Mathematics questions (GLM-5):
@@ -298,6 +322,8 @@ RegulusAI/
 |   |   |-- math_verifier.py   #   D4 theorem detection + confidence_override=100%
 |   |   |-- err_validator.py   #   D1 E/R/R gate (4 well-formedness conditions)
 |   |   |-- layers.py          #   Information Layers (P3 multi-perspective analysis)
+|   |   |-- convergence.py     #   Banach contraction convergence analyzer
+|   |   |-- convergence_advisor.py # Human-readable convergence advice
 |   |   +-- pipeline_adapter.py #  Extract D1/D3/D4 from HLE pipeline results
 |   |-- llm/                   # LLM clients (Claude, OpenAI, DeepSeek, ZhipuAI)
 |   |-- nn/                    # Interval neural network layers + adversarial generation
@@ -324,7 +350,7 @@ RegulusAI/
 |-- ToS-StatusMachine/          # Status machine proofs (14 Qed, 0 axioms)
 |-- benchmarks/                # LOGIC, MAFALDA, FML benchmarks + integration suite
 |-- eval/                      # Evaluation harnesses + results
-|-- tests/                     # 910+ tests (non-torch)
+|-- tests/                     # 925+ tests (non-torch)
 |-- skills/                    # Domain instruction files (v3)
 |-- UNIFIED_ARCHITECTURE.md    # Full stack: Coq→OCaml→Python→Pipeline
 +-- scripts/                   # Experiment scripts (IBP training, CIFAR-10)
@@ -381,11 +407,11 @@ coqc -Q . ToS PInterval_Softmax.v
 
 | Category | Qed | Admitted | Axioms |
 |----------|-----|----------|--------|
-| Core Mathematics (39 files) | 928 | 8 | `classic` (LEM) only |
+| Core Mathematics (40 files) | 947 | 8 | `classic` (LEM) only |
 | Architecture of Reasoning (6 files) | 117 | 0 | None |
-| **Companion Total** | **1045** | **8** | |
+| **Companion Total** | **1064** | **8** | |
 
-**Grand Total: 1379 proven theorems across both repositories.**
+**Grand Total: 1398 proven theorems across both repositories.**
 
 ## Technology
 
@@ -394,7 +420,7 @@ coqc -Q . ToS PInterval_Softmax.v
 - **Rocq 9.0.1** (Coq) for formal proofs — fully constructive, extraction-compatible
 - **Anthropic Claude** (primary), OpenAI, DeepSeek, ZhipuAI (LLM backends)
 - **Rich** + **Typer** for CLI
-- **pytest** — 910+ tests (non-torch)
+- **pytest** — 925+ tests (non-torch)
 
 ## License
 
