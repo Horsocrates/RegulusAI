@@ -1,0 +1,87 @@
+{
+  "question": "How many integers n with 1 \u2264 n \u2264 2025 have the property that the sum of the digits of n is a perfect square?",
+  "answer": "293",
+  "expected_answer": 293,
+  "correct": true,
+  "confidence": 95.0,
+  "certificate": {
+    "ask_validated": true,
+    "erfragte_specified": true,
+    "domains_traversed": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "all_domains_valid": true,
+    "gates_all_passed": true,
+    "d2_d3_ready": true,
+    "d4_d5_ready": true,
+    "answer_earned": true,
+    "reflect_valid": true,
+    "err_chain_verified": true,
+    "boundary_audit_passed": true,
+    "return_type": "none",
+    "iterations_used": 1,
+    "paradigm_shifts": 0,
+    "convergence_method": "bounded_iteration",
+    "backing_theorems": [
+      "validate_pipeline_sound (DomainValidation.v)",
+      "validation_cumulative (DomainValidation.v)",
+      "run_pipeline_bounded (PipelineSemantics.v)",
+      "expanding_triggers_shift (PipelineSemantics.v)",
+      "shift_preserves_erfragte (PipelineSemantics.v)",
+      "gate_pass_all_four (DomainValidation.v)"
+    ]
+  },
+  "gate_details": [
+    {
+      "domain": 1,
+      "verdict": "pass",
+      "alignment": true,
+      "coverage": true,
+      "consistency": true,
+      "confidence_matches": true
+    },
+    {
+      "domain": 2,
+      "verdict": "pass",
+      "alignment": true,
+      "coverage": true,
+      "consistency": true,
+      "confidence_matches": true
+    },
+    {
+      "domain": 3,
+      "verdict": "pass",
+      "alignment": true,
+      "coverage": true,
+      "consistency": true,
+      "confidence_matches": true
+    },
+    {
+      "domain": 4,
+      "verdict": "pass",
+      "alignment": true,
+      "coverage": true,
+      "consistency": true,
+      "confidence_matches": true
+    },
+    {
+      "domain": 5,
+      "verdict": "pass",
+      "alignment": true,
+      "coverage": true,
+      "consistency": true,
+      "confidence_matches": true
+    }
+  ],
+  "domain_confidences": [
+    60,
+    75,
+    80,
+    90,
+    95
+  ]
+}
