@@ -349,6 +349,8 @@ class VerifiedPipelineConfig:
     max_shifts: int = 2        # max paradigm shifts
     epsilon: float = 5.0       # convergence threshold (confidence points)
     gate_retry_limit: int = 1  # max retries per gate
+    content_scoring: bool = False  # enable content-level validation
+    tl_verification: bool = False  # enable TL independent verification
 
 
 @dataclass
@@ -361,6 +363,7 @@ class VerifiedAnswer:
     domain_outputs: list[dict]
     gates: list[QuickGate]
     reflect: Optional[D6ReflectFull]
+    content_scores: Optional[dict] = None  # content validation scorecard
 
 
 class VerifiedPipeline:
@@ -380,6 +383,12 @@ class VerifiedPipeline:
     def __init__(self, config: Optional[VerifiedPipelineConfig] = None):
         self.config = config or VerifiedPipelineConfig()
         self._confidence_history: list[float] = []
+        self._content_validator = None
+        self._conspectus: list[str] = []
+
+        if self.config.content_scoring:
+            from regulus.verified.content_validator import ContentValidator
+            self._content_validator = ContentValidator()
 
     def run_sync(
         self,
@@ -387,6 +396,7 @@ class VerifiedPipeline:
         domain_runner: Any = None,
         ask_runner: Any = None,
         reflect_runner: Any = None,
+        tl_runner: Any = None,
     ) -> VerifiedAnswer:
         """Synchronous pipeline execution.
 
@@ -403,6 +413,7 @@ class VerifiedPipeline:
             domain_runner: callable(domain_num, question, prev, ask) -> dict
             ask_runner: callable(question) -> D6AskOutput
             reflect_runner: callable(outputs, gates, ask) -> D6ReflectFull
+            tl_runner: callable(domain_num, question, outputs, conspectus) -> dict
         """
         # ═══ PRE-PIPELINE: D6-ASK ═══
         ask = self._default_ask(question) if ask_runner is None else ask_runner(question)
@@ -467,6 +478,31 @@ class VerifiedPipeline:
                 domain_outputs.append(d)
                 gates.append(gate)
                 prev_output = d
+
+                # ═══ TL VERIFICATION (optional) ═══
+                if self.config.tl_verification and tl_runner is not None:
+                    tl_result = tl_runner(
+                        domain_num, question, domain_outputs,
+                        "\n".join(self._conspectus),
+                    )
+                    if isinstance(tl_result, dict):
+                        tl_data = tl_result.get(
+                            "tl_verification", tl_result
+                        )
+                        # Update conspectus
+                        update = tl_data.get("conspectus_update", "")
+                        if update:
+                            self._conspectus.append(
+                                f"D{domain_num}: {update}"
+                            )
+                        # Handle iterate decision
+                        if tl_data.get("decision") == "iterate":
+                            if domain_runner is not None:
+                                d = domain_runner(
+                                    domain_num, question, prev_output, ask
+                                )
+                                domain_outputs[-1] = d
+                                prev_output = d
 
             # ═══ POST-PIPELINE: D6-REFLECT FULL ═══
             if reflect_runner is not None:
@@ -538,6 +574,23 @@ class VerifiedPipeline:
                 cert.contraction_factor = gaps[-1] / gaps[0]
                 cert.convergence_method = "contraction_estimate"
 
+        # ═══ CONTENT SCORING (optional) ═══
+        content_scores = None
+        if (self._content_validator is not None
+                and len(domain_outputs) == 5):
+            content_scores = self._content_validator.score_all(
+                d1=domain_outputs[0],
+                d2=domain_outputs[1],
+                d3=domain_outputs[2],
+                d4=domain_outputs[3],
+                d5=domain_outputs[4],
+                task_type=ask.task_type,
+            )
+            # Override confidence with scorecard C_final
+            scorecard_conf = content_scores["scorecard"]["c_final"]
+            if scorecard_conf < final_confidence:
+                final_confidence = float(scorecard_conf)
+
         return VerifiedAnswer(
             answer=str(domain_outputs[-1].get("answer", "")) if domain_outputs else "",
             confidence=final_confidence,
@@ -546,6 +599,7 @@ class VerifiedPipeline:
             domain_outputs=domain_outputs,
             gates=gates,
             reflect=reflect,
+            content_scores=content_scores,
         )
 
     # ═══════════════════════════════════
