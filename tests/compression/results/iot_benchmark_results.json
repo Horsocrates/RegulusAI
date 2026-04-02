@@ -1,0 +1,432 @@
+{
+  "metadata": {
+    "N_sensors": 54,
+    "N_snapshots": 200,
+    "temp_range": [
+      19.336567891123956,
+      28.94312642060865
+    ],
+    "humid_range": [
+      30.385452942420635,
+      51.22616575400905
+    ],
+    "data_type": "synthetic_intel_lab"
+  },
+  "single_snapshot": {
+    "temp_correlation": [
+      {
+        "method": "GFT_M10%",
+        "compressed_bytes": 1,
+        "ratio": 0.0023148148148148147,
+        "mse_val": 1.2354863918348558,
+        "snr_db_val": 25.93236020072093,
+        "compress_ms": 1.012599968817085,
+        "decompress_ms": 0.40200003422796726,
+        "notes": "graph=correlation"
+      },
+      {
+        "method": "GFT_M20%",
+        "compressed_bytes": 4,
+        "ratio": 0.009259259259259259,
+        "mse_val": 0.8131458243145071,
+        "snr_db_val": 27.749055501922157,
+        "compress_ms": 0.618399993982166,
+        "decompress_ms": 0.3933999687433243,
+        "notes": "graph=correlation"
+      },
+      {
+        "method": "GFT_M30%",
+        "compressed_bytes": 8,
+        "ratio": 0.018518518518518517,
+        "mse_val": 0.449721935102841,
+        "snr_db_val": 30.32129915618757,
+        "compress_ms": 0.5194999976083636,
+        "decompress_ms": 0.3598000039346516,
+        "notes": "graph=correlation"
+      },
+      {
+        "method": "GFT_M50%",
+        "compressed_bytes": 16,
+        "ratio": 0.037037037037037035,
+        "mse_val": 0.14387184710848097,
+        "snr_db_val": 35.27098166975308,
+        "compress_ms": 0.5504000000655651,
+        "decompress_ms": 0.374099996406585,
+        "notes": "graph=correlation"
+      },
+      {
+        "method": "DFT_M10%",
+        "compressed_bytes": 3,
+        "ratio": 0.006944444444444444,
+        "mse_val": 1.437199225442619,
+        "snr_db_val": 25.27557011858964,
+        "compress_ms": 0.2615000121295452,
+        "decompress_ms": 0.13010000111535192,
+        "notes": ""
+      },
+      {
+        "method": "DFT_M20%",
+        "compressed_bytes": 10,
+        "ratio": 0.023148148148148147,
+        "mse_val": 1.0659902258242873,
+        "snr_db_val": 26.573207637176694,
+        "compress_ms": 0.19950000569224358,
+        "decompress_ms": 0.08079997496679425,
+        "notes": ""
+      },
+      {
+        "method": "DFT_M50%",
+        "compressed_bytes": 36,
+        "ratio": 0.08333333333333333,
+        "mse_val": 0.2965409715654234,
+        "snr_db_val": 32.12989280218252,
+        "compress_ms": 0.3253000322729349,
+        "decompress_ms": 0.12039998546242714,
+        "notes": ""
+      },
+      {
+        "method": "Adaptive_SNR20",
+        "compressed_bytes": 0,
+        "ratio": 0.0,
+        "mse_val": 1.975461244860362,
+        "snr_db_val": 23.894054723420453,
+        "compress_ms": 0.2518999972380698,
+        "decompress_ms": 0,
+        "notes": ""
+      },
+      {
+        "method": "Adaptive_SNR30",
+        "compressed_bytes": 0,
+        "ratio": 0.0,
+        "mse_val": 1.975461244860362,
+        "snr_db_val": 23.894054723420453,
+        "compress_ms": 0.194900028873235,
+        "decompress_ms": 0,
+        "notes": ""
+      },
+      {
+        "method": "zlib_L1",
+        "compressed_bytes": 457,
+        "ratio": 1.0578703703703705,
+        "mse_val": 0.0,
+        "snr_db_val": Infinity,
+        "compress_ms": 0.12310000602155924,
+        "decompress_ms": 0.008200004231184721,
+        "notes": "LOSSLESS"
+      },
+      {
+        "method": "zlib_L6",
+        "compressed_bytes": 443,
+        "ratio": 1.025462962962963,
+        "mse_val": 0.0,
+        "snr_db_val": Infinity,
+        "compress_ms": 0.06799999391660094,
+        "decompress_ms": 0.0027999631129205227,
+        "notes": "LOSSLESS"
+      },
+      {
+        "method": "float32",
+        "compressed_bytes": 216,
+        "ratio": 0.5,
+        "mse_val": 2.7767813643614074e-13,
+        "snr_db_val": 152.41532300315194,
+        "compress_ms": 0,
+        "decompress_ms": 0,
+        "notes": "LOSSY baseline"
+      },
+      {
+        "method": "int16_zlib",
+        "compressed_bytes": 119,
+        "ratio": 0.27546296296296297,
+        "mse_val": 6.371272161869773e-10,
+        "snr_db_val": 118.80847829083197,
+        "compress_ms": 0,
+        "decompress_ms": 0,
+        "notes": "LOSSY+LOSSLESS"
+      },
+      {
+        "method": "raw_float64",
+        "compressed_bytes": 432,
+        "ratio": 1.0,
+        "mse_val": 0.0,
+        "snr_db_val": Infinity,
+        "compress_ms": 0,
+        "decompress_ms": 0,
+        "notes": ""
+      }
+    ],
+    "temp_knn_k5": [
+      {
+        "method": "GFT_M10%",
+        "compressed_bytes": 1,
+        "ratio": 0.0023148148148148147,
+        "mse_val": 0.3596075315819827,
+        "snr_db_val": 31.292452073610278,
+        "compress_ms": 2.0558000542223454,
+        "decompress_ms": 1.96460000006482,
+        "notes": "graph=knn_k5"
+      },
+      {
+        "method": "GFT_M20%",
+        "compressed_bytes": 4,
+        "ratio": 0.009259259259259259,
+        "mse_val": 0.2159172043348103,
+        "snr_db_val": 33.5078673793321,
+        "compress_ms": 2.068099973257631,
+        "decompress_ms": 1.8627000390551984,
+        "notes": "graph=knn_k5"
+      },
+      {
+        "method": "GFT_M30%",
+        "compressed_bytes": 7,
+        "ratio": 0.016203703703703703,
+        "mse_val": 0.13243229505765028,
+        "snr_db_val": 35.6308008087599,
+        "compress_ms": 2.0052000181749463,
+        "decompress_ms": 1.9156999769620597,
+        "notes": "graph=knn_k5"
+      },
+      {
+        "method": "GFT_M50%",
+        "compressed_bytes": 15,
+        "ratio": 0.034722222222222224,
+        "mse_val": 0.048937873927269226,
+        "snr_db_val": 39.95428888538531,
+        "compress_ms": 2.214799984358251,
+        "decompress_ms": 1.8544999766163528,
+        "notes": "graph=knn_k5"
+      },
+      {
+        "method": "DFT_M10%",
+        "compressed_bytes": 3,
+        "ratio": 0.006944444444444444,
+        "mse_val": 1.437199225442619,
+        "snr_db_val": 25.27557011858964,
+        "compress_ms": 0.22799998987466097,
+        "decompress_ms": 0.07930002175271511,
+        "notes": ""
+      },
+      {
+        "method": "DFT_M20%",
+        "compressed_bytes": 10,
+        "ratio": 0.023148148148148147,
+        "mse_val": 1.0659902258242873,
+        "snr_db_val": 26.573207637176694,
+        "compress_ms": 0.19799999427050352,
+        "decompress_ms": 0.0782000133767724,
+        "notes": ""
+      },
+      {
+        "method": "DFT_M50%",
+        "compressed_bytes": 36,
+        "ratio": 0.08333333333333333,
+        "mse_val": 0.2965409715654234,
+        "snr_db_val": 32.12989280218252,
+        "compress_ms": 0.3180000348947942,
+        "decompress_ms": 0.1191999763250351,
+        "notes": ""
+      },
+      {
+        "method": "Adaptive_SNR20",
+        "compressed_bytes": 0,
+        "ratio": 0.0,
+        "mse_val": 1.975461244860362,
+        "snr_db_val": 23.894054723420453,
+        "compress_ms": 0.2107000327669084,
+        "decompress_ms": 0,
+        "notes": ""
+      },
+      {
+        "method": "Adaptive_SNR30",
+        "compressed_bytes": 0,
+        "ratio": 0.0,
+        "mse_val": 1.975461244860362,
+        "snr_db_val": 23.894054723420453,
+        "compress_ms": 0.17969997134059668,
+        "decompress_ms": 0,
+        "notes": ""
+      },
+      {
+        "method": "zlib_L1",
+        "compressed_bytes": 457,
+        "ratio": 1.0578703703703705,
+        "mse_val": 0.0,
+        "snr_db_val": Infinity,
+        "compress_ms": 0.02640002639964223,
+        "decompress_ms": 0.007599999662488699,
+        "notes": "LOSSLESS"
+      },
+      {
+        "method": "zlib_L6",
+        "compressed_bytes": 443,
+        "ratio": 1.025462962962963,
+        "mse_val": 0.0,
+        "snr_db_val": Infinity,
+        "compress_ms": 0.05889998283237219,
+        "decompress_ms": 0.002300017513334751,
+        "notes": "LOSSLESS"
+      },
+      {
+        "method": "float32",
+        "compressed_bytes": 216,
+        "ratio": 0.5,
+        "mse_val": 2.7767813643614074e-13,
+        "snr_db_val": 152.41532300315194,
+        "compress_ms": 0,
+        "decompress_ms": 0,
+        "notes": "LOSSY baseline"
+      },
+      {
+        "method": "int16_zlib",
+        "compressed_bytes": 119,
+        "ratio": 0.27546296296296297,
+        "mse_val": 6.371272161869773e-10,
+        "snr_db_val": 118.80847829083197,
+        "compress_ms": 0,
+        "decompress_ms": 0,
+        "notes": "LOSSY+LOSSLESS"
+      },
+      {
+        "method": "raw_float64",
+        "compressed_bytes": 432,
+        "ratio": 1.0,
+        "mse_val": 0.0,
+        "snr_db_val": Infinity,
+        "compress_ms": 0,
+        "decompress_ms": 0,
+        "notes": ""
+      }
+    ],
+    "temp_no_graph": [
+      {
+        "method": "DFT_M10%",
+        "compressed_bytes": 3,
+        "ratio": 0.006944444444444444,
+        "mse_val": 1.437199225442619,
+        "snr_db_val": 25.27557011858964,
+        "compress_ms": 0.21580001339316368,
+        "decompress_ms": 0.19429996609687805,
+        "notes": ""
+      },
+      {
+        "method": "DFT_M20%",
+        "compressed_bytes": 10,
+        "ratio": 0.023148148148148147,
+        "mse_val": 1.0659902258242873,
+        "snr_db_val": 26.573207637176694,
+        "compress_ms": 0.2212999970652163,
+        "decompress_ms": 0.0836000544950366,
+        "notes": ""
+      },
+      {
+        "method": "DFT_M50%",
+        "compressed_bytes": 36,
+        "ratio": 0.08333333333333333,
+        "mse_val": 0.2965409715654234,
+        "snr_db_val": 32.12989280218252,
+        "compress_ms": 0.3155999584123492,
+        "decompress_ms": 0.1480000209994614,
+        "notes": ""
+      },
+      {
+        "method": "Adaptive_SNR20",
+        "compressed_bytes": 0,
+        "ratio": 0.0,
+        "mse_val": 1.975461244860362,
+        "snr_db_val": 23.894054723420453,
+        "compress_ms": 0.19429996609687805,
+        "decompress_ms": 0,
+        "notes": ""
+      },
+      {
+        "method": "Adaptive_SNR30",
+        "compressed_bytes": 0,
+        "ratio": 0.0,
+        "mse_val": 1.975461244860362,
+        "snr_db_val": 23.894054723420453,
+        "compress_ms": 0.17590000061318278,
+        "decompress_ms": 0,
+        "notes": ""
+      },
+      {
+        "method": "zlib_L1",
+        "compressed_bytes": 457,
+        "ratio": 1.0578703703703705,
+        "mse_val": 0.0,
+        "snr_db_val": Infinity,
+        "compress_ms": 0.034400029107928276,
+        "decompress_ms": 0.006999995093792677,
+        "notes": "LOSSLESS"
+      },
+      {
+        "method": "zlib_L6",
+        "compressed_bytes": 443,
+        "ratio": 1.025462962962963,
+        "mse_val": 0.0,
+        "snr_db_val": Infinity,
+        "compress_ms": 0.06000004941597581,
+        "decompress_ms": 0.002500019036233425,
+        "notes": "LOSSLESS"
+      },
+      {
+        "method": "float32",
+        "compressed_bytes": 216,
+        "ratio": 0.5,
+        "mse_val": 2.7767813643614074e-13,
+        "snr_db_val": 152.41532300315194,
+        "compress_ms": 0,
+        "decompress_ms": 0,
+        "notes": "LOSSY baseline"
+      },
+      {
+        "method": "int16_zlib",
+        "compressed_bytes": 119,
+        "ratio": 0.27546296296296297,
+        "mse_val": 6.371272161869773e-10,
+        "snr_db_val": 118.80847829083197,
+        "compress_ms": 0,
+        "decompress_ms": 0,
+        "notes": "LOSSY+LOSSLESS"
+      },
+      {
+        "method": "raw_float64",
+        "compressed_bytes": 432,
+        "ratio": 1.0,
+        "mse_val": 0.0,
+        "snr_db_val": Infinity,
+        "compress_ms": 0,
+        "decompress_ms": 0,
+        "notes": ""
+      }
+    ]
+  },
+  "temporal_batch": {
+    "N_snapshots": 100,
+    "N_sensors": 54,
+    "original_bytes": 43200,
+    "independent_GFT": {
+      "bytes": 3398,
+      "ratio": 0.07865740740740741,
+      "avg_mse": 0.9421225264787548,
+      "time_ms": 30.053600028622895
+    },
+    "delta_GFT": {
+      "bytes": 1911,
+      "ratio": 0.04423611111111111,
+      "avg_mse": 0.02226582428622268,
+      "time_ms": 32.366500003263354
+    },
+    "zlib_raw": {
+      "bytes": 39701,
+      "ratio": 0.9190046296296296,
+      "mse": 0.0,
+      "time_ms": 1.8319999799132347
+    },
+    "zlib_delta": {
+      "bytes": 39115,
+      "ratio": 0.9054398148148148,
+      "mse": 0.0,
+      "time_ms": 2.1160999895073473
+    }
+  }
+}
