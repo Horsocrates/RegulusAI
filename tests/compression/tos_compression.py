@@ -293,3 +293,266 @@ def parseval_check(f: np.ndarray) -> tuple[float, float]:
     fhat = np.fft.fft(f)
     freq_energy = float(np.sum(np.abs(fhat) ** 2)) / N
     return time_energy, freq_energy
+
+
+# ========================================================================
+#  IMPROVEMENT 1: ADAPTIVE M SELECTION
+#  Select M automatically to meet target quality (SNR, MSE, or ratio).
+#  Uses Parseval: Error(M) = Σ_{k>M} |f̂_k|² / N.
+# ========================================================================
+
+def spectral_energy_curve(f: np.ndarray) -> np.ndarray:
+    """Cumulative spectral energy: E(M) = Σ_{top M} |f̂_k|² / N.
+    Sorted by coefficient magnitude (largest first)."""
+    fhat = dft_graph(f)
+    N = len(f)
+    mags_sq = np.abs(fhat) ** 2 / N
+    sorted_mags = np.sort(mags_sq)[::-1]
+    return np.cumsum(sorted_mags)
+
+
+def find_M_for_target_snr(f: np.ndarray, target_snr: float) -> int:
+    """Find minimum M modes to achieve target SNR (dB).
+    SNR = 10·log10(signal_power / error_power).
+    Error(M) = total - kept = Σ_{discarded} |f̂_k|²/N."""
+    N = len(f)
+    total = float(np.mean(f ** 2))
+    if total < 1e-30:
+        return 1
+    target_noise = total / (10 ** (target_snr / 10))
+    curve = spectral_energy_curve(f)
+    for M in range(1, N + 1):
+        error = total - curve[M - 1]
+        if error <= target_noise:
+            return M
+    return N
+
+
+def find_M_for_target_mse(f: np.ndarray, target_mse: float) -> int:
+    """Find minimum M modes to achieve target MSE."""
+    N = len(f)
+    total = float(np.mean(f ** 2))
+    curve = spectral_energy_curve(f)
+    for M in range(1, N + 1):
+        error = total - curve[M - 1]
+        if error <= target_mse:
+            return M
+    return N
+
+
+def find_M_for_target_ratio(f: np.ndarray, target_ratio: float,
+                              quant_step: float = 0.01) -> int:
+    """Find M modes that gives approximately target compression ratio."""
+    N = len(f)
+    # Each kept mode stores ~2 quantized values (re, im)
+    # Approximate: ratio ≈ 2M * avg_bits / (N * 64)
+    # Solve for M: M ≈ target_ratio * N * 64 / (2 * avg_bits)
+    avg_bits = 8  # rough estimate for Huffman
+    M = max(1, int(target_ratio * N * 64 / (2 * avg_bits)))
+    return min(M, N)
+
+
+def compress_adaptive(f: np.ndarray, *,
+                       target_snr: Optional[float] = None,
+                       target_mse: Optional[float] = None,
+                       target_ratio: Optional[float] = None,
+                       quant_step: float = 0.01,
+                       use_huffman: bool = True) -> CompressedSignal:
+    """Compress with automatic M selection based on quality target.
+    Exactly ONE of target_snr, target_mse, target_ratio must be set."""
+    if target_snr is not None:
+        M = find_M_for_target_snr(f, target_snr)
+    elif target_mse is not None:
+        M = find_M_for_target_mse(f, target_mse)
+    elif target_ratio is not None:
+        M = find_M_for_target_ratio(f, target_ratio, quant_step)
+    else:
+        M = len(f) // 2  # default: keep half
+    return compress(f, M=M, quant_step=quant_step, use_huffman=use_huffman)
+
+
+# ========================================================================
+#  IMPROVEMENT 2: ADAPTIVE QUANTIZATION
+#  More bits for important (low-frequency) coefficients.
+# ========================================================================
+
+def adaptive_quant_step(k: int, N: int, base_step: float = 0.01) -> float:
+    """Quantization step for mode k: finer for low-k, coarser for high-k.
+    bits(k) ≈ max(4, 16 - 2·log₂(k+1)), step = base / 2^(extra_bits)."""
+    # Low modes get finer quantization
+    extra_bits = max(0, 8 - int(2 * np.log2(k + 1)))
+    return base_step * (2 ** max(0, 4 - extra_bits))
+
+
+def compress_adaptive_quant(f: np.ndarray, M: int,
+                              base_step: float = 0.01,
+                              use_huffman: bool = True) -> CompressedSignal:
+    """Compress with per-mode quantization step."""
+    N = len(f)
+    fhat = dft_graph(f)
+    fhat_trunc, kept = truncate(fhat, M)
+
+    # Adaptive quantization per mode
+    indices_list = []
+    for idx in kept:
+        step = adaptive_quant_step(int(idx), N, base_step)
+        re_idx = quantize(np.array([np.real(fhat_trunc[idx])]), step)[0]
+        im_idx = quantize(np.array([np.imag(fhat_trunc[idx])]), step)[0]
+        indices_list.extend([re_idx, im_idx])
+
+    indices = np.array(indices_list, dtype=np.int64)
+
+    bits, codebook = None, None
+    if use_huffman and len(indices) > 0:
+        bits, codebook = huffman_encode(indices)
+
+    return CompressedSignal(
+        indices=indices, kept_modes=kept, quant_step=base_step,
+        N=N, huffman_bits=bits, codebook=codebook
+    )
+
+
+# ========================================================================
+#  IMPROVEMENT 3: DELTA ENCODING FOR TIME SERIES
+# ========================================================================
+
+def compress_delta(f_prev: np.ndarray, f_curr: np.ndarray,
+                    M: int, quant_step: float = 0.01) -> CompressedSignal:
+    """Compress difference between consecutive signals.
+    For time series: f(t+1) ≈ f(t), so delta = f(t+1) - f(t) is small."""
+    delta = f_curr - f_prev
+    return compress(delta, M=M, quant_step=quant_step)
+
+
+def decompress_delta(f_prev: np.ndarray, cs: CompressedSignal) -> np.ndarray:
+    """Reconstruct from previous signal + compressed delta."""
+    delta_recon = decompress(cs)
+    return f_prev + delta_recon
+
+
+# ========================================================================
+#  IMPROVEMENT 4: RUN-LENGTH ENCODING AFTER TRUNCATION
+# ========================================================================
+
+def rle_encode(data: np.ndarray) -> list[tuple[int, int]]:
+    """Run-length encode: (value, count) pairs.
+    Especially effective after truncation (many zeros)."""
+    if len(data) == 0:
+        return []
+    runs = []
+    current = int(data[0])
+    count = 1
+    for i in range(1, len(data)):
+        if int(data[i]) == current:
+            count += 1
+        else:
+            runs.append((current, count))
+            current = int(data[i])
+            count = 1
+    runs.append((current, count))
+    return runs
+
+
+def rle_decode(runs: list[tuple[int, int]]) -> np.ndarray:
+    """Decode run-length encoded data."""
+    result = []
+    for value, count in runs:
+        result.extend([value] * count)
+    return np.array(result, dtype=np.int64)
+
+
+def rle_compressed_size(runs: list[tuple[int, int]]) -> int:
+    """Estimate compressed size in bits: each run = (value_bits + count_bits)."""
+    return sum(16 + max(1, int(np.log2(max(c, 1))) + 1) for _, c in runs)
+
+
+# ========================================================================
+#  IMPROVEMENT 5: GRAPH-AWARE COMPRESSION (GFT)
+# ========================================================================
+
+def gft_compress(f: np.ndarray, adjacency: np.ndarray, M: int,
+                  quant_step: float = 0.01,
+                  use_huffman: bool = True) -> CompressedSignal:
+    """Graph Fourier Transform compression on arbitrary graph.
+    GFT = eigenvectors of graph Laplacian L = D - A.
+    f: signal on N nodes. adjacency: N×N adjacency matrix."""
+    N = len(f)
+    # Graph Laplacian
+    degree = np.diag(np.sum(adjacency, axis=1))
+    laplacian = degree - adjacency
+
+    # Eigendecomposition (GFT basis)
+    eigenvalues, eigenvectors = np.linalg.eigh(laplacian)
+
+    # GFT: project onto eigenvectors
+    fhat = eigenvectors.T @ f
+
+    # Truncate top M by magnitude
+    sorted_idx = np.argsort(np.abs(fhat))[::-1][:M]
+    fhat_trunc = np.zeros(N)
+    fhat_trunc[sorted_idx] = fhat[sorted_idx]
+
+    # Quantize
+    indices = quantize(fhat_trunc[sorted_idx], quant_step)
+
+    bits, codebook = None, None
+    if use_huffman and len(indices) > 0:
+        bits, codebook = huffman_encode(indices)
+
+    return CompressedSignal(
+        indices=indices, kept_modes=sorted_idx, quant_step=quant_step,
+        N=N, huffman_bits=bits, codebook=codebook
+    )
+
+
+def gft_decompress(cs: CompressedSignal,
+                     adjacency: np.ndarray) -> np.ndarray:
+    """Reconstruct from GFT-compressed signal."""
+    N = cs.N
+    degree = np.diag(np.sum(adjacency, axis=1))
+    laplacian = degree - adjacency
+    _, eigenvectors = np.linalg.eigh(laplacian)
+
+    if cs.huffman_bits and cs.codebook:
+        decoded = np.array(huffman_decode(cs.huffman_bits, cs.codebook))
+        values = dequantize(decoded, cs.quant_step)
+    else:
+        values = dequantize(cs.indices, cs.quant_step)
+
+    fhat = np.zeros(N)
+    fhat[cs.kept_modes[:len(values)]] = values
+    return eigenvectors @ fhat
+
+
+def make_knn_graph(points: np.ndarray, k: int = 5) -> np.ndarray:
+    """Build k-nearest-neighbor graph from point cloud.
+    Returns symmetric adjacency matrix."""
+    from scipy.spatial.distance import cdist
+    N = len(points)
+    if points.ndim == 1:
+        points = points.reshape(-1, 1)
+    dists = cdist(points, points)
+    adj = np.zeros((N, N))
+    for i in range(N):
+        neighbors = np.argsort(dists[i])[1:k+1]
+        adj[i, neighbors] = 1
+        adj[neighbors, i] = 1
+    return adj
+
+
+def make_grid_graph(shape: tuple[int, ...]) -> np.ndarray:
+    """Build grid graph adjacency matrix.
+    shape = (H, W) for 2D, (H, W, D) for 3D."""
+    N = int(np.prod(shape))
+    adj = np.zeros((N, N))
+    ndim = len(shape)
+    coords = np.array(np.unravel_index(range(N), shape)).T
+    for i in range(N):
+        for d in range(ndim):
+            for delta in [-1, 1]:
+                neighbor = coords[i].copy()
+                neighbor[d] += delta
+                if 0 <= neighbor[d] < shape[d]:
+                    j = int(np.ravel_multi_index(neighbor, shape))
+                    adj[i, j] = 1
+    return adj
