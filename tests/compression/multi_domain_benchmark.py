@@ -241,44 +241,45 @@ def generate_orderbook(N=2048, levels=10):
 #  DOMAIN 5: AUDIO
 # ========================================================================
 
-def generate_speech(N=8000, fs=8000):
+def _make_chain_graph(N: int) -> np.ndarray:
+    """Path graph P_N: each node connected to neighbors."""
+    adj = np.zeros((N, N))
+    for i in range(N - 1):
+        adj[i, i + 1] = adj[i + 1, i] = 1
+    return adj
+
+
+def generate_speech(N=512, fs=8000):
+    """Speech: 512 samples (64ms frame) with chain graph."""
     rng = np.random.RandomState(42)
     t = np.linspace(0, N / fs, N)
     signal = np.zeros(N)
-    for seg in range(0, N, 2000):
-        end = min(seg + 1500, N)
-        f0 = 120 + 20 * rng.randn()
-        st = t[seg:end] - t[seg]
-        signal[seg:end] += 0.5 * np.sin(2 * np.pi * f0 * st)
-        signal[seg:end] += 0.3 * np.sin(2 * np.pi * f0 * 3 * st)
-        signal[seg:end] += 0.2 * np.sin(2 * np.pi * f0 * 5 * st)
-    for seg in range(1500, N, 2000):
-        end = min(seg + 500, N)
-        signal[seg:end] += 0.2 * rng.randn(end - seg)
-    n_bands = 16
-    adj = np.zeros((n_bands, n_bands))
-    for i in range(n_bands - 1):
-        adj[i, i + 1] = adj[i + 1, i] = 1
-    return signal, adj, {'name': 'speech', 'domain': 'audio',
+    # Voiced: fundamental + formants
+    f0 = 130
+    signal += 0.5 * np.sin(2 * np.pi * f0 * t)
+    signal += 0.3 * np.sin(2 * np.pi * f0 * 3 * t)
+    signal += 0.2 * np.sin(2 * np.pi * f0 * 5 * t)
+    # Unvoiced tail
+    signal[int(N * 0.75):] = 0.2 * rng.randn(N - int(N * 0.75))
+    signal += 0.03 * rng.randn(N)
+    adj = _make_chain_graph(N)
+    return signal, adj, {'name': 'speech_512', 'domain': 'audio',
                           'N': N, 'fs': fs, 'acceptable': 'SNR>20dB'}
 
 
-def generate_music(N=16000, fs=16000):
+def generate_music(N=1024, fs=16000):
+    """Music: 1024 samples (64ms frame) with chain graph."""
     rng = np.random.RandomState(42)
     t = np.linspace(0, N / fs, N)
     signal = np.zeros(N)
     for f in [261.6, 329.6, 392.0]:
         signal += 0.3 * np.sin(2 * np.pi * f * t)
-    for i, f in enumerate([523.3, 587.3, 659.3, 698.5, 784.0]):
-        a, b = i * N // 5, (i + 1) * N // 5
-        env = np.exp(-3 * (t[a:b] - t[a]))
-        signal[a:b] += 0.5 * env * np.sin(2 * np.pi * f * t[a:b])
+    # Melody note
+    env = np.exp(-5 * t)
+    signal += 0.5 * env * np.sin(2 * np.pi * 523.3 * t)
     signal += 0.02 * rng.randn(N)
-    n_bands = 16
-    adj = np.zeros((n_bands, n_bands))
-    for i in range(n_bands - 1):
-        adj[i, i + 1] = adj[i + 1, i] = 1
-    return signal, adj, {'name': 'music', 'domain': 'audio',
+    adj = _make_chain_graph(N)
+    return signal, adj, {'name': 'music_1024', 'domain': 'audio',
                           'N': N, 'fs': fs, 'acceptable': 'SNR>30dB'}
 
 
