@@ -1,0 +1,178 @@
+[
+  {
+    "signal_type": "speech",
+    "method": "DFT (uniform)",
+    "N": 256,
+    "M": 51,
+    "ratio": 0.0389404296875,
+    "snr": 12.346034214481138,
+    "mse_val": 0.006995655193203635,
+    "compress_ms": 31.42749995458871,
+    "graph_type": "cycle"
+  },
+  {
+    "signal_type": "speech",
+    "method": "GFT (Bark cochlear)",
+    "N": 256,
+    "M": 51,
+    "ratio": 0.01776123046875,
+    "snr": 5.27835996095233,
+    "mse_val": 0.035611955406122206,
+    "compress_ms": 18.29480001470074,
+    "graph_type": "cochlear_bark"
+  },
+  {
+    "signal_type": "speech",
+    "method": "GFT (Mel filterbank)",
+    "N": 256,
+    "M": 51,
+    "ratio": 0.01776123046875,
+    "snr": 9.342200675433457,
+    "mse_val": 0.013970493558762839,
+    "compress_ms": 19.831700017675757,
+    "graph_type": "mel"
+  },
+  {
+    "signal_type": "speech",
+    "method": "GFT (chain P_N)",
+    "N": 256,
+    "M": 51,
+    "ratio": 0.01788330078125,
+    "snr": 16.004383507190294,
+    "mse_val": 0.003012960695311279,
+    "compress_ms": 18.58209999045357,
+    "graph_type": "chain"
+  },
+  {
+    "signal_type": "music",
+    "method": "DFT (uniform)",
+    "N": 256,
+    "M": 51,
+    "ratio": 0.0389404296875,
+    "snr": 18.464017517757235,
+    "mse_val": 0.002611466291472489,
+    "compress_ms": 0.4288000054657459,
+    "graph_type": "cycle"
+  },
+  {
+    "signal_type": "music",
+    "method": "GFT (Bark cochlear)",
+    "N": 256,
+    "M": 51,
+    "ratio": 0.01751708984375,
+    "snr": 9.876460143922719,
+    "mse_val": 0.018864276863521875,
+    "compress_ms": 18.192899995483458,
+    "graph_type": "cochlear_bark"
+  },
+  {
+    "signal_type": "music",
+    "method": "GFT (Mel filterbank)",
+    "N": 256,
+    "M": 51,
+    "ratio": 0.01776123046875,
+    "snr": 15.093563010633332,
+    "mse_val": 0.005674529721958373,
+    "compress_ms": 20.928700047079474,
+    "graph_type": "mel"
+  },
+  {
+    "signal_type": "music",
+    "method": "GFT (chain P_N)",
+    "N": 256,
+    "M": 51,
+    "ratio": 0.01788330078125,
+    "snr": 23.277252507536307,
+    "mse_val": 0.0008621065116352929,
+    "compress_ms": 23.35759997367859,
+    "graph_type": "chain"
+  },
+  {
+    "signal_type": "noise",
+    "method": "DFT (uniform)",
+    "N": 256,
+    "M": 51,
+    "ratio": 0.0389404296875,
+    "snr": 3.3708345311873544,
+    "mse_val": 0.10916767494443519,
+    "compress_ms": 0.42209995444864035,
+    "graph_type": "cycle"
+  },
+  {
+    "signal_type": "noise",
+    "method": "GFT (Bark cochlear)",
+    "N": 256,
+    "M": 51,
+    "ratio": 0.01776123046875,
+    "snr": 4.690462571108191,
+    "mse_val": 0.08056218874702012,
+    "compress_ms": 17.505700001493096,
+    "graph_type": "cochlear_bark"
+  },
+  {
+    "signal_type": "noise",
+    "method": "GFT (Mel filterbank)",
+    "N": 256,
+    "M": 51,
+    "ratio": 0.01763916015625,
+    "snr": 4.605193678282124,
+    "mse_val": 0.08215956781705329,
+    "compress_ms": 23.19279999937862,
+    "graph_type": "mel"
+  },
+  {
+    "signal_type": "noise",
+    "method": "GFT (chain P_N)",
+    "N": 256,
+    "M": 51,
+    "ratio": 0.01788330078125,
+    "snr": 4.738252164799215,
+    "mse_val": 0.07968054527722451,
+    "compress_ms": 20.522500039078295,
+    "graph_type": "chain"
+  },
+  {
+    "signal_type": "mixed",
+    "method": "DFT (uniform)",
+    "N": 256,
+    "M": 51,
+    "ratio": 0.0389404296875,
+    "snr": 9.820554638109021,
+    "mse_val": 0.013199362350188294,
+    "compress_ms": 0.5157999694347382,
+    "graph_type": "cycle"
+  },
+  {
+    "signal_type": "mixed",
+    "method": "GFT (Bark cochlear)",
+    "N": 256,
+    "M": 51,
+    "ratio": 0.01776123046875,
+    "snr": 5.352647797038641,
+    "mse_val": 0.03692696675606985,
+    "compress_ms": 17.44440000038594,
+    "graph_type": "cochlear_bark"
+  },
+  {
+    "signal_type": "mixed",
+    "method": "GFT (Mel filterbank)",
+    "N": 256,
+    "M": 51,
+    "ratio": 0.01788330078125,
+    "snr": 8.445343012661056,
+    "mse_val": 0.018116492304903753,
+    "compress_ms": 23.749599989969283,
+    "graph_type": "mel"
+  },
+  {
+    "signal_type": "mixed",
+    "method": "GFT (chain P_N)",
+    "N": 256,
+    "M": 51,
+    "ratio": 0.01788330078125,
+    "snr": 11.276913160139777,
+    "mse_val": 0.009438806851629572,
+    "compress_ms": 20.340599992778152,
+    "graph_type": "chain"
+  }
+]
