@@ -34,15 +34,73 @@ from tests.compression.tos_compression import (
 def make_signals(N: int = 256) -> dict[str, np.ndarray]:
     """Generate test signals of length N."""
     t = np.linspace(0, 1, N, endpoint=False)
-    return {
+    rng = np.random.RandomState(42)
+    signals = {
+        # === BASIC ===
         'constant': np.ones(N) * 3.0,
         'ramp': np.linspace(0, 10, N),
         'sine': np.sin(2 * np.pi * 5 * t),
         'multi_sine': np.sin(2*np.pi*3*t) + 0.5*np.sin(2*np.pi*17*t) + 0.3*np.sin(2*np.pi*41*t),
-        'step': np.concatenate([np.zeros(N//2), np.ones(N//2)]),
-        'noise': np.random.RandomState(42).randn(N),
+        'noise': rng.randn(N),
         'chirp': np.sin(2 * np.pi * (1 + 20*t) * t),
+
+        # === STRUCTURED: periodic + trend + noise (IoT-like) ===
+        'iot_temp': (                                        # temperature sensor
+            20.0                                             # base temperature
+            + 5.0 * np.sin(2 * np.pi * t)                   # daily cycle
+            + 0.3 * np.sin(2 * np.pi * 7 * t)               # weekly harmonic
+            + 2.0 * t                                        # warming trend
+            + 0.1 * rng.randn(N)                             # sensor noise
+        ),
+        'iot_vibration': (                                   # machine vibration
+            np.sin(2 * np.pi * 50 * t)                       # 50 Hz main
+            + 0.3 * np.sin(2 * np.pi * 100 * t)              # 2nd harmonic
+            + 0.1 * np.sin(2 * np.pi * 150 * t)              # 3rd harmonic
+            + 0.5 * t                                         # drift
+            + 0.05 * rng.randn(N)                             # noise
+        ),
+        'iot_pressure': (                                    # pressure with spikes
+            101.3 + 0.5 * np.sin(2 * np.pi * 3 * t)          # slow oscillation
+            + 0.02 * rng.randn(N)                             # noise
+            + 2.0 * (np.abs(t - 0.3) < 0.02).astype(float)   # spike at t=0.3
+            + 1.5 * (np.abs(t - 0.7) < 0.02).astype(float)   # spike at t=0.7
+        ),
+
+        # === MULTI-SCALE: wavelet-like ===
+        'wavelet_haar': np.concatenate([                     # Haar-like blocks
+            np.ones(N//8) * v for v in [1, -1, 0.5, -0.5, 0.25, -0.25, 0.125, -0.125]
+        ]),
+        'wavelet_bump': sum(                                 # multi-scale bumps
+            (0.5**k) * np.exp(-((t - 0.1*(2*k+1))*N/(2**k))**2)
+            for k in range(5)
+        ),
+        'wavelet_chirplet': (                                # chirplet: localized chirp
+            np.exp(-50*(t - 0.5)**2)                          # Gaussian envelope
+            * np.sin(2 * np.pi * 30 * t)                      # carrier
+        ),
+
+        # === STEP FUNCTIONS: piecewise constant (edge test) ===
+        'step': np.concatenate([np.zeros(N//2), np.ones(N//2)]),
+        'step_multi': np.array([                             # 4-level staircase
+            [0.0]*i + [float(k)] * (N//4 - i if k < 3 else N - 3*(N//4))
+            for k, i in enumerate([0, 0, 0, 0])
+        ]).sum(axis=0)[:N] if N >= 4 else np.zeros(N),
+        'step_random': np.repeat(                            # random piecewise constant
+            rng.randn(max(1, N // 16)),                       # 16-sample blocks
+            min(16, N)
+        )[:N],
+        'step_sawtooth': (t * 8 % 1.0),                      # sawtooth with 8 teeth
+        'step_square': np.sign(np.sin(2 * np.pi * 6 * t)),   # square wave, 6 periods
     }
+
+    # Fix step_multi properly
+    quarter = N // 4
+    signals['step_multi'] = np.concatenate([
+        np.zeros(quarter), np.ones(quarter) * 1.0,
+        np.ones(quarter) * 2.5, np.ones(N - 3*quarter) * 4.0
+    ])
+
+    return signals
 
 
 # ========================================================================
@@ -107,6 +165,148 @@ class TestPipelineCorrectness:
         # SNR should be monotonically increasing
         for i in range(len(snr_values) - 1):
             assert snr_values[i] <= snr_values[i+1] + 0.1  # small tolerance
+
+
+class TestStructuredSignals:
+    """Tests for IoT-like structured signals (periodic + trend + noise)."""
+
+    def test_iot_temp_compresses_well(self):
+        """Temperature signal (smooth + periodic) should compress well."""
+        signals = make_signals(256)
+        f = signals['iot_temp']
+        cs = compress(f, M=16, quant_step=0.01)
+        f_recon = decompress(cs)
+        # Smooth periodic signal → high SNR even with few modes
+        assert snr_db(f, f_recon) > 15, f"IoT temp SNR too low: {snr_db(f, f_recon):.1f}"
+
+    def test_iot_vibration_harmonics(self):
+        """Vibration signal has discrete harmonics → very compressible."""
+        signals = make_signals(256)
+        f = signals['iot_vibration']
+        cs = compress(f, M=8, quant_step=0.01)
+        f_recon = decompress(cs)
+        # Harmonics are discrete → 8 modes should capture most energy
+        assert snr_db(f, f_recon) > 5
+
+    def test_iot_pressure_spike_recovery(self):
+        """Pressure with spikes: need enough modes to capture edges."""
+        signals = make_signals(256)
+        f = signals['iot_pressure']
+        # Few modes: lose spikes
+        cs_few = compress(f, M=8, quant_step=0.01)
+        # Many modes: recover spikes
+        cs_many = compress(f, M=64, quant_step=0.01)
+        f_few = decompress(cs_few)
+        f_many = decompress(cs_many)
+        assert snr_db(f, f_many) > snr_db(f, f_few)
+
+    def test_delta_on_iot_timeseries(self):
+        """Delta encoding excels for slowly-drifting IoT signals."""
+        from tests.compression.tos_compression import compress_delta, decompress_delta
+        signals = make_signals(128)
+        base = signals['iot_temp']
+        # Simulate 5 consecutive readings with small drift
+        rng = np.random.RandomState(123)
+        readings = [base + 0.01 * i + 0.005 * rng.randn(128) for i in range(5)]
+        prev = readings[0]
+        for curr in readings[1:]:
+            cs = compress_delta(prev, curr, M=8, quant_step=0.001)
+            recon = decompress_delta(prev, cs)
+            assert mse(curr, recon) < 0.1
+            prev = recon
+
+
+class TestMultiScaleSignals:
+    """Tests for wavelet-like multi-scale signals."""
+
+    def test_haar_blocks_need_many_modes(self):
+        """Haar-like blocks have sharp edges → need more Fourier modes."""
+        signals = make_signals(256)
+        f = signals['wavelet_haar']
+        cs_few = compress(f, M=8, quant_step=0.01)
+        cs_many = compress(f, M=64, quant_step=0.01)
+        # More modes much better for blocky signals
+        snr_few = snr_db(f, decompress(cs_few))
+        snr_many = snr_db(f, decompress(cs_many))
+        assert snr_many > snr_few + 5
+
+    def test_bump_localized(self):
+        """Multi-scale bumps: localized in time → need many Fourier modes."""
+        signals = make_signals(256)
+        f = signals['wavelet_bump']
+        # Localized signals need more modes for good reconstruction
+        cs_few = compress(f, M=16, quant_step=0.001)
+        cs_many = compress(f, M=128, quant_step=0.001)
+        snr_few = snr_db(f, decompress(cs_few))
+        snr_many = snr_db(f, decompress(cs_many))
+        # More modes helps significantly for localized signals
+        assert snr_many > snr_few + 3
+
+    def test_chirplet_time_frequency(self):
+        """Chirplet: localized in both time and frequency."""
+        signals = make_signals(256)
+        f = signals['wavelet_chirplet']
+        cs = compress(f, M=32, quant_step=0.001)
+        f_recon = decompress(cs)
+        assert snr_db(f, f_recon) > 10
+
+
+class TestStepSignals:
+    """Tests for piecewise constant signals (edge compression)."""
+
+    def test_step_gibbs_phenomenon(self):
+        """Single step: Fourier modes cause Gibbs oscillation at edge."""
+        signals = make_signals(256)
+        f = signals['step']
+        cs = compress(f, M=32, quant_step=0.001)
+        f_recon = decompress(cs)
+        # Step functions are HARD for Fourier → limited SNR
+        assert max_error(f, f_recon) > 0.01  # Gibbs guaranteed
+
+    def test_multi_step_staircase(self):
+        """4-level staircase: more edges → harder."""
+        signals = make_signals(256)
+        f = signals['step_multi']
+        cs = compress(f, M=64, quant_step=0.001)
+        f_recon = decompress(cs)
+        assert snr_db(f, f_recon) > 5
+
+    def test_square_wave(self):
+        """Square wave: odd harmonics only → predictable DFT."""
+        signals = make_signals(256)
+        f = signals['step_square']
+        cs = compress(f, M=32, quant_step=0.001)
+        f_recon = decompress(cs)
+        assert snr_db(f, f_recon) > 5
+
+    def test_sawtooth(self):
+        """Sawtooth: all harmonics → harder than square wave."""
+        signals = make_signals(256)
+        f = signals['step_sawtooth']
+        cs = compress(f, M=32, quant_step=0.001)
+        f_recon = decompress(cs)
+        assert snr_db(f, f_recon) > 5
+
+    def test_random_piecewise(self):
+        """Random piecewise constant: 16-sample blocks."""
+        signals = make_signals(256)
+        f = signals['step_random']
+        cs = compress(f, M=32, quant_step=0.01)
+        f_recon = decompress(cs)
+        assert np.all(np.isfinite(f_recon))
+
+    def test_step_vs_smooth_compression(self):
+        """Step signals compress worse than smooth (Fourier disadvantage)."""
+        signals = make_signals(256)
+        f_smooth = signals['sine']
+        f_step = signals['step']
+        M = 16
+        cs_smooth = compress(f_smooth, M=M, quant_step=0.001)
+        cs_step = compress(f_step, M=M, quant_step=0.001)
+        snr_smooth = snr_db(f_smooth, decompress(cs_smooth))
+        snr_step = snr_db(f_step, decompress(cs_step))
+        # Smooth signals compress MUCH better with Fourier
+        assert snr_smooth > snr_step
 
 
 # ========================================================================
