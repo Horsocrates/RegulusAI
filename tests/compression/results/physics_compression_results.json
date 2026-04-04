@@ -1,0 +1,30 @@
+{
+  "wave_propagation": {
+    "delta_mse": 1.6915641030513082e-07,
+    "wave_mse": 8.455597000326942e-08,
+    "improvement": 50.01314472756657,
+    "wave_pred_gain": 42.16240458178507,
+    "delta_pred_gain": 27.52480976546682
+  },
+  "diffusion_IoT": {
+    "delta_mse": 0.00012256252429759256,
+    "wave_mse": 0.0005062783056990195,
+    "improvement": -313.0775770167163,
+    "wave_pred_gain": 13.970269361043341,
+    "delta_pred_gain": 16.980512538869895
+  },
+  "damped_vibration": {
+    "delta_mse": 0.0004906092662414686,
+    "wave_mse": 0.0013863130137299021,
+    "improvement": -182.5696759358771,
+    "wave_pred_gain": 6.523293656232471,
+    "delta_pred_gain": 9.220397203288265
+  },
+  "random_walk": {
+    "delta_mse": 0.017601033614962684,
+    "wave_mse": 0.47567293124620813,
+    "improvement": -2602.5283949337913,
+    "wave_pred_gain": -1.1796287270373007,
+    "delta_pred_gain": 13.621764135329471
+  }
+}
