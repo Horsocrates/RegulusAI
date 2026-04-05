@@ -1,0 +1,263 @@
+{
+  "Indoor Climate": [
+    {
+      "method": "ToS-full(M=10%)",
+      "bytes": 1916,
+      "raw_bytes": 622080,
+      "ratio": 0.0030799897119341566,
+      "mse": 0.00333173681620247,
+      "snr_db": 26.331242399240523,
+      "lossy": true,
+      "physics": "delta"
+    },
+    {
+      "method": "ToS-full(M=20%)",
+      "bytes": 5183,
+      "raw_bytes": 622080,
+      "ratio": 0.008331725823045267,
+      "mse": 0.002059771493053537,
+      "snr_db": 28.41975884524558,
+      "lossy": true,
+      "physics": "delta"
+    },
+    {
+      "method": "ToS-full(M=30%)",
+      "bytes": 9549,
+      "raw_bytes": 622080,
+      "ratio": 0.01535011574074074,
+      "mse": 0.0011998405068346827,
+      "snr_db": 30.766714080912948,
+      "lossy": true,
+      "physics": "delta"
+    },
+    {
+      "method": "ToS-full(M=50%)",
+      "bytes": 18405,
+      "raw_bytes": 622080,
+      "ratio": 0.029586226851851853,
+      "mse": 0.0004054182776826229,
+      "snr_db": 35.47891603479386,
+      "lossy": true,
+      "physics": "delta"
+    },
+    {
+      "method": "float16+zlib",
+      "bytes": 98779,
+      "raw_bytes": 622080,
+      "ratio": 0.15878825874485597,
+      "mse": 2.0289691666126546e-05,
+      "snr_db": 74.12004392785232,
+      "lossy": true
+    },
+    {
+      "method": "int16-scaled+zlib",
+      "bytes": 152010,
+      "raw_bytes": 622080,
+      "ratio": 0.2443576388888889,
+      "mse": 1.560112745996956e-09,
+      "snr_db": 115.26123855061017,
+      "lossy": true
+    },
+    {
+      "method": "delta+zlib",
+      "bytes": 550559,
+      "raw_bytes": 622080,
+      "ratio": 0.8850292566872427,
+      "mse": 0.0,
+      "snr_db": Infinity,
+      "lossy": false
+    },
+    {
+      "method": "zlib-6",
+      "bytes": 568077,
+      "raw_bytes": 622080,
+      "ratio": 0.9131896219135802,
+      "mse": 0.0,
+      "snr_db": Infinity,
+      "lossy": false
+    },
+    {
+      "method": "raw",
+      "bytes": 622080,
+      "raw_bytes": 622080,
+      "ratio": 1.0,
+      "mse": 0,
+      "snr_db": Infinity,
+      "lossy": false
+    }
+  ],
+  "Industrial Furnace": [
+    {
+      "method": "ToS-full(M=10%)",
+      "bytes": 150,
+      "raw_bytes": 96000,
+      "ratio": 0.0015625,
+      "mse": 2.7918197805085994,
+      "snr_db": 24.43156808405932,
+      "lossy": true,
+      "physics": "delta"
+    },
+    {
+      "method": "ToS-full(M=20%)",
+      "bytes": 596,
+      "raw_bytes": 96000,
+      "ratio": 0.006208333333333333,
+      "mse": 1.0077050731942914,
+      "snr_db": 28.85710743401916,
+      "lossy": true,
+      "physics": "delta"
+    },
+    {
+      "method": "ToS-full(M=30%)",
+      "bytes": 1188,
+      "raw_bytes": 96000,
+      "ratio": 0.012375,
+      "mse": 0.5025016943243886,
+      "snr_db": 31.8790665794278,
+      "lossy": true,
+      "physics": "delta"
+    },
+    {
+      "method": "ToS-full(M=50%)",
+      "bytes": 2518,
+      "raw_bytes": 96000,
+      "ratio": 0.026229166666666668,
+      "mse": 0.1277396106857448,
+      "snr_db": 37.82718600165492,
+      "lossy": true,
+      "physics": "delta"
+    },
+    {
+      "method": "float16+zlib",
+      "bytes": 15232,
+      "raw_bytes": 96000,
+      "ratio": 0.15866666666666668,
+      "mse": 0.020994246836746073,
+      "snr_db": 75.40736265807718,
+      "lossy": true
+    },
+    {
+      "method": "int16-scaled+zlib",
+      "bytes": 23971,
+      "raw_bytes": 96000,
+      "ratio": 0.24969791666666666,
+      "mse": 1.0497887333468502e-06,
+      "snr_db": 118.41734657381119,
+      "lossy": true
+    },
+    {
+      "method": "delta+zlib",
+      "bytes": 84696,
+      "raw_bytes": 96000,
+      "ratio": 0.88225,
+      "mse": 0.0,
+      "snr_db": Infinity,
+      "lossy": false
+    },
+    {
+      "method": "zlib-6",
+      "bytes": 87908,
+      "raw_bytes": 96000,
+      "ratio": 0.9157083333333333,
+      "mse": 0.0,
+      "snr_db": Infinity,
+      "lossy": false
+    },
+    {
+      "method": "raw",
+      "bytes": 96000,
+      "raw_bytes": 96000,
+      "ratio": 1.0,
+      "mse": 0,
+      "snr_db": Infinity,
+      "lossy": false
+    }
+  ],
+  "Cold Chain": [
+    {
+      "method": "ToS-full(M=10%)",
+      "bytes": 216,
+      "raw_bytes": 69120,
+      "ratio": 0.003125,
+      "mse": 0.23597890832730617,
+      "snr_db": 8.351360246406118,
+      "lossy": true,
+      "physics": "wave"
+    },
+    {
+      "method": "ToS-full(M=20%)",
+      "bytes": 216,
+      "raw_bytes": 69120,
+      "ratio": 0.003125,
+      "mse": 0.23597890832730617,
+      "snr_db": 8.351360246406118,
+      "lossy": true,
+      "physics": "wave"
+    },
+    {
+      "method": "ToS-full(M=30%)",
+      "bytes": 471,
+      "raw_bytes": 69120,
+      "ratio": 0.006814236111111111,
+      "mse": 0.05990425936525735,
+      "snr_db": 14.305515092544898,
+      "lossy": true,
+      "physics": "wave"
+    },
+    {
+      "method": "ToS-full(M=50%)",
+      "bytes": 1075,
+      "raw_bytes": 69120,
+      "ratio": 0.015552662037037037,
+      "mse": 0.0010821206899723733,
+      "snr_db": 31.73733511571736,
+      "lossy": true,
+      "physics": "wave"
+    },
+    {
+      "method": "float16+zlib",
+      "bytes": 6570,
+      "raw_bytes": 69120,
+      "ratio": 0.09505208333333333,
+      "mse": 2.0274793359229013e-05,
+      "snr_db": 71.67050926539548,
+      "lossy": true
+    },
+    {
+      "method": "int16-scaled+zlib",
+      "bytes": 15013,
+      "raw_bytes": 69120,
+      "ratio": 0.21720196759259258,
+      "mse": 4.766426822419983e-09,
+      "snr_db": 107.95814433303194,
+      "lossy": true
+    },
+    {
+      "method": "delta+zlib",
+      "bytes": 60498,
+      "raw_bytes": 69120,
+      "ratio": 0.8752604166666667,
+      "mse": 0.0,
+      "snr_db": Infinity,
+      "lossy": false
+    },
+    {
+      "method": "zlib-6",
+      "bytes": 61230,
+      "raw_bytes": 69120,
+      "ratio": 0.8858506944444444,
+      "mse": 0.0,
+      "snr_db": Infinity,
+      "lossy": false
+    },
+    {
+      "method": "raw",
+      "bytes": 69120,
+      "raw_bytes": 69120,
+      "ratio": 1.0,
+      "mse": 0,
+      "snr_db": Infinity,
+      "lossy": false
+    }
+  ]
+}
