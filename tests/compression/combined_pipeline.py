@@ -29,8 +29,8 @@ from tests.compression.tos_compression import (
     huffman_encode, kraft_sum,
 )
 from tests.compression.auto_physics import (
-    detect_physics, predict_wave, predict_diffusion, predict_delta,
-    build_laplacian,
+    detect_physics, predict_wave, predict_diffusion, predict_damped,
+    predict_delta, build_laplacian,
 )
 from tests.compression.born_benchmark import compress_born, compress_uniform
 
@@ -64,6 +64,8 @@ def compress_full_pipeline(frames, M=None, bits_per_coeff=8,
             predicted = np.zeros(N)
         elif physics == 'wave' and t >= 2:
             predicted = predict_wave(prev, pprev, N)
+        elif physics == 'damped' and t >= 2:
+            predicted = predict_damped(prev, pprev, N)
         elif physics == 'diffusion':
             predicted = predict_diffusion(prev, N)
         else:

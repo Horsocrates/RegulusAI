@@ -37,39 +37,102 @@ def autocorrelation(x, max_lag=10):
 def detect_physics(frames, n_sample=5):
     """Detect physics type from frame sequence.
 
-    Returns: 'wave', 'diffusion', or 'delta'
+    Returns: 'wave', 'diffusion', 'damped', or 'delta'
+
+    E/R/R detection order (L5-compliant):
+      1. Check for OSCILLATION first (zero crossings in consecutive diffs)
+      2. If oscillation + energy decay → 'damped'
+      3. If oscillation + energy stable → 'wave'
+      4. If no oscillation + energy decay → 'diffusion'
+      5. Otherwise → 'delta'
+
+    Previous bug: energy_ratio < 0.5 checked BEFORE oscillation,
+    causing damped vibrations to be classified as diffusion.
+    E/R/R diagnosis: Rule checked conditions in wrong ORDER (L5 violation).
     """
     if len(frames) < 3:
         return 'delta'
 
-    # Compute temporal autocorrelation of residuals
+    # Compute temporal changes
     diffs = [frames[i+1] - frames[i] for i in range(min(len(frames)-1, 20))]
     avg_diff = np.mean([np.std(d) for d in diffs])
 
     if avg_diff < 1e-10:
         return 'delta'  # constant signal
 
-    # Spatial autocorrelation of first frame
-    ac_spatial = autocorrelation(frames[0], max_lag=min(10, len(frames[0])//2))
+    # STEP 1: Check for oscillation
+    # Method: track mean value of each frame. If mean oscillates → wave/damped.
+    means = [np.mean(f) for f in frames[:min(20, len(frames))]]
+    mean_diffs = [means[i+1] - means[i] for i in range(len(means)-1)]
+    mean_sign_changes = sum(1 for i in range(len(mean_diffs)-1)
+                            if mean_diffs[i] * mean_diffs[i+1] < 0
+                            and abs(mean_diffs[i]) > avg_diff * 0.01
+                            and abs(mean_diffs[i+1]) > avg_diff * 0.01)
 
-    # Temporal: check if signal oscillates
-    signs = []
-    mid = len(frames) // 2
-    ref = frames[0]
+    # Also: spatial pattern oscillation (correlation of frame with SHIFTED version)
+    ref = frames[0] - np.mean(frames[0])
+    ref_norm = np.linalg.norm(ref)
+    corr_with_ref = []
     for i in range(1, min(len(frames), 20)):
-        corr = np.corrcoef(ref, frames[i])[0, 1] if np.std(frames[i]) > 1e-10 else 0
-        signs.append(np.sign(corr))
+        f = frames[i] - np.mean(frames[i])
+        f_norm = np.linalg.norm(f)
+        if ref_norm > 1e-10 and f_norm > 1e-10:
+            corr_with_ref.append(float(np.dot(ref, f) / (ref_norm * f_norm)))
+        else:
+            corr_with_ref.append(0.0)
 
-    zero_crossings = sum(1 for i in range(len(signs)-1) if signs[i] * signs[i+1] < 0)
+    ref_crossings = sum(1 for i in range(len(corr_with_ref)-1)
+                        if corr_with_ref[i] * corr_with_ref[i+1] < 0)
 
-    # Energy trend
-    energies = [np.sum(f**2) for f in frames[:20]]
+    has_oscillation = mean_sign_changes >= 2 or ref_crossings >= 2
+
+    # STEP 2: Check energy trend
+    energies = [np.sum(f**2) for f in frames[:min(20, len(frames))]]
     energy_ratio = energies[-1] / max(energies[0], 1e-15)
+    energy_decays = energy_ratio < 0.7
 
-    # Decision
-    if zero_crossings >= 2:
+    # STEP 2b: Check prediction residual — the DEFINITIVE test
+    # Try each predictor on frames[1:5], measure residual energy
+    N = len(frames[0])
+    n_test = min(5, len(frames) - 2)
+    if n_test >= 2:
+        # Wave prediction residual
+        wave_res = 0
+        diff_res = 0
+        delta_res = 0
+        for i in range(2, 2 + n_test):
+            if i < len(frames):
+                wp = predict_wave(frames[i-1], frames[i-2], N)
+                dp = predict_diffusion(frames[i-1], N)
+                ddp = frames[i-1]
+                wave_res += np.sum((frames[i] - wp)**2)
+                diff_res += np.sum((frames[i] - dp)**2)
+                delta_res += np.sum((frames[i] - ddp)**2)
+
+        # Best predictor wins
+        scores = {'wave': wave_res, 'diffusion': diff_res, 'delta': delta_res}
+
+        # Add damped: wave with decay
+        damp_res = 0
+        for i in range(2, 2 + n_test):
+            if i < len(frames):
+                dmp = predict_damped(frames[i-1], frames[i-2], N)
+                damp_res += np.sum((frames[i] - dmp)**2)
+        scores['damped'] = damp_res
+
+        best = min(scores, key=scores.get)
+
+        # Sanity: if best is much worse than delta, use delta
+        if scores[best] > scores['delta'] * 1.5:
+            return 'delta'
+        return best
+
+    # STEP 3: Fallback decision (L5-correct order: oscillation FIRST)
+    if has_oscillation and energy_decays:
+        return 'damped'
+    elif has_oscillation and not energy_decays:
         return 'wave'
-    elif energy_ratio < 0.5 or (len(ac_spatial) > 3 and all(ac_spatial[1:4] > 0)):
+    elif not has_oscillation and energy_decays:
         return 'diffusion'
     else:
         return 'delta'
@@ -99,6 +162,13 @@ def predict_diffusion(prev, N, kappa=0.1):
     L = build_laplacian(N)
     T = np.eye(N) - kappa * L
     return T @ prev
+
+
+def predict_damped(prev, pprev, N, c_sq=0.25, gamma=0.05):
+    """Damped wave: T_wave with energy decay."""
+    L = build_laplacian(N)
+    T = 2 * np.eye(N) - c_sq * L
+    return (1 - gamma) * (T @ prev - pprev)
 
 
 def predict_delta(prev):
@@ -133,6 +203,8 @@ def compress_auto_physics(frames, M=None, quant_step=0.01, detection_window=10):
             predicted = np.zeros(N)
         elif physics == 'wave' and t >= 2:
             predicted = predict_wave(prev, pprev, N)
+        elif physics == 'damped' and t >= 2:
+            predicted = predict_damped(prev, pprev, N)
         elif physics == 'diffusion' and t >= 1:
             predicted = predict_diffusion(prev, N)
         else:

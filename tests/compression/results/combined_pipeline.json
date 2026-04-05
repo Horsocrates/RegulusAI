@@ -1,11 +1,11 @@
 {
   "Wave 1D": {
-    "full_mse": 0.005706638485980414,
+    "full_mse": 1.6620999182330015e-05,
     "delta_mse": 0.008739907467445717,
     "full_ratio": 0.0625,
     "zlib_ratio": 0.910390625,
-    "improvement_vs_delta": 34.70596219426327,
-    "physics_detected": "diffusion"
+    "improvement_vs_delta": 99.80982637122601,
+    "physics_detected": "wave"
   },
   "Diffusion 1D": {
     "full_mse": 0.0024409893786819033,
@@ -24,12 +24,12 @@
     "physics_detected": "delta"
   },
   "Sensor Net 30": {
-    "full_mse": 0.00587874868953196,
+    "full_mse": 0.032453299779745155,
     "delta_mse": 0.009207602272989168,
     "full_ratio": 0.058333333333333334,
     "zlib_ratio": 0.9226041666666667,
-    "improvement_vs_delta": 36.153316409229795,
-    "physics_detected": "delta"
+    "improvement_vs_delta": -252.46200712804546,
+    "physics_detected": "wave"
   },
   "Vibration 128": {
     "full_mse": 0.0011746206049285477,
