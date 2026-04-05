@@ -1,0 +1,50 @@
+{
+  "Wave 1D": {
+    "full_mse": 0.005706638485980414,
+    "delta_mse": 0.008739907467445717,
+    "full_ratio": 0.0625,
+    "zlib_ratio": 0.910390625,
+    "improvement_vs_delta": 34.70596219426327,
+    "physics_detected": "diffusion"
+  },
+  "Diffusion 1D": {
+    "full_mse": 0.0024409893786819033,
+    "delta_mse": 0.0001244671474496827,
+    "full_ratio": 0.0625,
+    "zlib_ratio": 0.926796875,
+    "improvement_vs_delta": -1861.1515397416024,
+    "physics_detected": "diffusion"
+  },
+  "IoT Grid 8x8": {
+    "full_mse": 0.006347858701760215,
+    "delta_mse": 0.010460424757837825,
+    "full_ratio": 0.0625,
+    "zlib_ratio": 0.9258463541666667,
+    "improvement_vs_delta": 39.31547858987401,
+    "physics_detected": "delta"
+  },
+  "Sensor Net 30": {
+    "full_mse": 0.00587874868953196,
+    "delta_mse": 0.009207602272989168,
+    "full_ratio": 0.058333333333333334,
+    "zlib_ratio": 0.9226041666666667,
+    "improvement_vs_delta": 36.153316409229795,
+    "physics_detected": "delta"
+  },
+  "Vibration 128": {
+    "full_mse": 0.0011746206049285477,
+    "delta_mse": 0.0010569543796060108,
+    "full_ratio": 0.0625,
+    "zlib_ratio": 0.95541015625,
+    "improvement_vs_delta": -11.132573703549818,
+    "physics_detected": "delta"
+  },
+  "Random Walk": {
+    "full_mse": 0.017837681292424922,
+    "delta_mse": 0.017601033614962684,
+    "full_ratio": 0.0625,
+    "zlib_ratio": 0.9596484375,
+    "improvement_vs_delta": -1.3445101159346906,
+    "physics_detected": "delta"
+  }
+}
