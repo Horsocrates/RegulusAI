@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.28 (MiKTeX 25.12) (preloaded format=pdflatex 2026.4.6)  6 APR 2026 11:25
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (MiKTeX 25.12) (preloaded format=pdflatex 2026.4.6)  6 APR 2026 11:33
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -362,25 +362,6 @@ Package: ifvtex 2019/10/25 v1.7 ifvtex legacy package. Use iftex instead.
 \Gm@dimlist=\toks33
 
 (C:\Users\aleks\AppData\Local\Programs\MiKTeX\tex/latex/geometry\geometry.cfg))
-(C:\Users\aleks\AppData\Local\Programs\MiKTeX\tex/latex/fancyhdr\fancyhdr.sty
-Package: fancyhdr 2025/02/07 v5.2 Extensive control of page headers and footers
-
-\f@nch@headwidth=\skip65
-\f@nch@offset@elh=\skip66
-\f@nch@offset@erh=\skip67
-\f@nch@offset@olh=\skip68
-\f@nch@offset@orh=\skip69
-\f@nch@offset@elf=\skip70
-\f@nch@offset@erf=\skip71
-\f@nch@offset@olf=\skip72
-\f@nch@offset@orf=\skip73
-\f@nch@height=\skip74
-\f@nch@footalignment=\skip75
-\f@nch@widthL=\skip76
-\f@nch@widthC=\skip77
-\f@nch@widthR=\skip78
-\@temptokenb=\toks34
-)
 (C:\Users\aleks\AppData\Local\Programs\MiKTeX\tex/latex/xcolor\xcolor.sty
 Package: xcolor 2024/09/29 v3.02 LaTeX color extensions (UK)
 
@@ -413,7 +394,7 @@ sty
 y
 (C:\Users\aleks\AppData\Local\Programs\MiKTeX\tex/generic/pgf/utilities\pgfutil
 -common.tex
-\pgfutil@everybye=\toks35
+\pgfutil@everybye=\toks34
 \pgfutil@tempdima=\dimen196
 \pgfutil@tempdimb=\dimen197
 )
@@ -456,12 +437,12 @@ Package: pgfsys 2025-08-29 v3.1.11a (3.1.11a)
 
 (C:\Users\aleks\AppData\Local\Programs\MiKTeX\tex/generic/pgf/utilities\pgfkeys
 .code.tex
-\pgfkeys@pathtoks=\toks36
-\pgfkeys@temptoks=\toks37
+\pgfkeys@pathtoks=\toks35
+\pgfkeys@temptoks=\toks36
 
 (C:\Users\aleks\AppData\Local\Programs\MiKTeX\tex/generic/pgf/utilities\pgfkeys
 libraryfiltered.code.tex
-\pgfkeys@tmptoks=\toks38
+\pgfkeys@tmptoks=\toks37
 ))
 \pgf@x=\dimen256
 \pgf@y=\dimen257
@@ -479,9 +460,9 @@ libraryfiltered.code.tex
 \c@pgf@countb=\count321
 \c@pgf@countc=\count322
 \c@pgf@countd=\count323
-\t@pgf@toka=\toks39
-\t@pgf@tokb=\toks40
-\t@pgf@tokc=\toks41
+\t@pgf@toka=\toks38
+\t@pgf@tokb=\toks39
+\t@pgf@tokc=\toks40
 \pgf@sys@id@count=\count324
 
 (C:\Users\aleks\AppData\Local\Programs\MiKTeX\tex/generic/pgf/systemlayer\pgf.c
@@ -521,9 +502,9 @@ r.code.tex
 \pgfmath@dimen=\dimen266
 \pgfmath@count=\count327
 \pgfmath@box=\box60
-\pgfmath@toks=\toks42
-\pgfmath@stack@operand=\toks43
-\pgfmath@stack@operation=\toks44
+\pgfmath@toks=\toks41
+\pgfmath@stack@operand=\toks42
+\pgfmath@stack@operation=\toks43
 )
 (C:\Users\aleks\AppData\Local\Programs\MiKTeX\tex/generic/pgf/math\pgfmathfunct
 ions.code.tex)
@@ -683,8 +664,8 @@ code.tex
 Package: pgffor 2025-08-29 v3.1.11a (3.1.11a)
 \pgffor@iter=\dimen293
 \pgffor@skip=\dimen294
-\pgffor@stack=\toks45
-\pgffor@toks=\toks46
+\pgffor@stack=\toks44
+\pgffor@toks=\toks45
 ))
 (C:\Users\aleks\AppData\Local\Programs\MiKTeX\tex/generic/pgf/frontendlayer/tik
 z\tikz.code.tex
@@ -728,8 +709,8 @@ File: tikzlibrarytopaths.code.tex 2025-08-29 v3.1.11a (3.1.11a)
 )))
 (C:\Users\aleks\AppData\Local\Programs\MiKTeX\tex/latex/tools\verbatim.sty
 Package: verbatim 2024-01-22 v1.5x LaTeX2e package for verbatim enhancements
-\every@verbatim=\toks47
-\verbatim@line=\toks48
+\every@verbatim=\toks46
+\verbatim@line=\toks47
 \verbatim@in@stream=\read3
 )
 (C:\Users\aleks\AppData\Local\Programs\MiKTeX\tex/latex/environ\environ.sty
@@ -756,7 +737,7 @@ Package: trimspaces 2009/09/17 v1.1 Trim spaces around a token list
 (C:\Users\aleks\AppData\Local\Programs\MiKTeX\tex/latex/listings\listings.sty
 \lst@mode=\count344
 \lst@gtempboxa=\box79
-\lst@token=\toks49
+\lst@token=\toks48
 \lst@length=\count345
 \lst@currlwidth=\dimen305
 \lst@column=\count346
@@ -795,25 +776,25 @@ File: l3backend-pdftex.def 2025-10-09 L3 backend support: PDF output (pdfTeX)
 ) (main.aux)
 \openout1 = `main.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 64.
-LaTeX Font Info:    ... okay on input line 64.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 64.
-LaTeX Font Info:    ... okay on input line 64.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 64.
-LaTeX Font Info:    ... okay on input line 64.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 64.
-LaTeX Font Info:    ... okay on input line 64.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 64.
-LaTeX Font Info:    ... okay on input line 64.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 64.
-LaTeX Font Info:    ... okay on input line 64.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 64.
-LaTeX Font Info:    ... okay on input line 64.
-LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 64.
-LaTeX Font Info:    ... okay on input line 64.
-LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 64.
-LaTeX Font Info:    ... okay on input line 64.
-Package hyperref Info: Link coloring OFF on input line 64.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 51.
+LaTeX Font Info:    ... okay on input line 51.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 51.
+LaTeX Font Info:    ... okay on input line 51.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 51.
+LaTeX Font Info:    ... okay on input line 51.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 51.
+LaTeX Font Info:    ... okay on input line 51.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 51.
+LaTeX Font Info:    ... okay on input line 51.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 51.
+LaTeX Font Info:    ... okay on input line 51.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 51.
+LaTeX Font Info:    ... okay on input line 51.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 51.
+LaTeX Font Info:    ... okay on input line 51.
+LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 51.
+LaTeX Font Info:    ... okay on input line 51.
+Package hyperref Info: Link coloring OFF on input line 51.
  (main.out) (main.out)
 \@outlinefile=\write4
 \openout4 = `main.out'.
@@ -862,12 +843,12 @@ ii
 \scratchbox=\box81
 \nofMPsegments=\count355
 \nofMParguments=\count356
-\everyMPshowfont=\toks50
+\everyMPshowfont=\toks49
 \MPscratchCnt=\count357
 \MPscratchDim=\dimen310
 \MPnumerator=\count358
 \makeMPintoPDFobject=\count359
-\everyMPtoPDFconversion=\toks51
+\everyMPtoPDFconversion=\toks50
 )
 (C:\Users\aleks\AppData\Local\Programs\MiKTeX\tex/latex/epstopdf-pkg\epstopdf-b
 ase.sty
@@ -880,12 +861,12 @@ fg
 File: epstopdf-sys.cfg 2021/03/18 v2.0 Configuration of epstopdf for MiKTeX
 ))
 \c@lstlisting=\count360
-LaTeX Font Info:    Trying to load font information for U+msa on input line 82.
+LaTeX Font Info:    Trying to load font information for U+msa on input line 68.
 
  (C:\Users\aleks\AppData\Local\Programs\MiKTeX\tex/latex/amsfonts\umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Trying to load font information for U+msb on input line 82.
+LaTeX Font Info:    Trying to load font information for U+msb on input line 68.
 
 
 (C:\Users\aleks\AppData\Local\Programs\MiKTeX\tex/latex/amsfonts\umsb.fd
@@ -899,250 +880,123 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 
 [2]
 LaTeX Font Info:    Font shape `T1/cmtt/bx/n' in size <10> not available
-(Font)              Font shape `T1/cmtt/m/n' tried instead on input line 175.
- [3]
-Overfull \hbox (75.02489pt too wide) in paragraph at lines 198--199
-[]\T1/cmr/bx/n/10.95 Definition 2.5 \T1/cmr/m/n/10.95 (P4 stage-bounded ac-tu-a
-l-ity)\T1/cmr/bx/n/10.95 . []$[]\OT1/cmr/m/n/10.95 ([]) :\OMS/cmsy/m/n/10.95 , 
-8[]\OML/cmm/m/it/10.95 ;  \OMS/cmsy/m/n/10.95 9[]\OML/cmm/m/it/10.95 ;  \OMS/cm
-sy/m/n/10.95 8\OML/cmm/m/it/10.95 n;  []\OT1/cmr/m/n/10.95 ([]\OML/cmm/m/it/10.
-95 ; n\OT1/cmr/m/n/10.95 ) \OMS/cmsy/m/n/10.95 )
+(Font)              Font shape `T1/cmtt/m/n' tried instead on input line 140.
+ [3] [4]
+Overfull \hbox (1.94186pt too wide) in paragraph at lines 225--227
+\T1/cmr/m/n/10.95 ev-ery trun-ca-tion $\OML/cmm/m/it/10.95 N$ \T1/cmr/m/n/10.95
+ and ev-ery $\OML/cmm/m/it/10.95 " > \OT1/cmr/m/n/10.95 0$\T1/cmr/m/n/10.95 , t
+here ex-ists $\OML/cmm/m/it/10.95 M$ \T1/cmr/m/n/10.95 such that for all $\OML/
+cmm/m/it/10.95 i; j \OMS/cmsy/m/n/10.95 ^^U \OML/cmm/m/it/10.95 M$\T1/cmr/m/n/1
+0.95 : $\OML/cmm/m/it/10.95 d[]\OT1/cmr/m/n/10.95 ([](\OML/cmm/m/it/10.95 i\OT1
+/cmr/m/n/10.95 )\OML/cmm/m/it/10.95 ; []\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95
+ j\OT1/cmr/m/n/10.95 )) \OML/cmm/m/it/10.95 <
  []
 
+LaTeX Font Info:    Font shape `T1/cmtt/bx/n' in size <10.95> not available
+(Font)              Font shape `T1/cmtt/m/n' tried instead on input line 252.
+[5]
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 231.
-
-
-Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `\varepsilon' on input line 231.
-
-
-Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `subscript' on input line 231.
+(hyperref)                removing `math shift' on input line 289.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 231.
-
-
-Overfull \hbox (1.62698pt too wide) detected at line 251
-[]
- []
-
-[4]
-
-Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 284.
+(hyperref)                removing `\varepsilon' on input line 289.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `subscript' on input line 284.
+(hyperref)                removing `subscript' on input line 289.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 284.
+(hyperref)                removing `math shift' on input line 289.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 302.
+(hyperref)                removing `math shift' on input line 310.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `\Pi' on input line 302.
+(hyperref)                removing `subscript' on input line 310.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `superscript' on input line 302.
+(hyperref)                removing `math shift' on input line 310.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `subscript' on input line 302.
+(hyperref)                removing `math shift' on input line 316.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 302.
-
-
-LaTeX Warning: `h' float specifier changed to `ht'.
-
-[5] [6] [7] [8]
-Overfull \hbox (42.0817pt too wide) in paragraph at lines 522--523
-[]\T1/cmr/m/it/10.95 Rocq\T1/cmr/m/n/10.95 : \T1/cmtt/m/n/10.95 ProcessMetricCo
-mplete.v\T1/cmr/m/n/10.95 , the-o-rems \T1/cmtt/m/n/10.95 proc_dist_N_self\T1/c
-mr/m/n/10.95 , \T1/cmtt/m/n/10.95 proc_dist_N_sym\T1/cmr/m/n/10.95 , \T1/cmtt/m
-/n/10.95 proc_dist_mono\T1/cmr/m/n/10.95 . 
- []
-
-
-Underfull \hbox (badness 2318) in paragraph at lines 559--560
-[]\T1/cmr/m/n/10.95 Classical com-plete-ness of $\U/msb/m/n/10.95 R$ \T1/cmr/m/
-n/10.95 is re-cov-ered: take the Cauchy-completeness bridge
- []
-
-
-Overfull \hbox (41.7675pt too wide) in paragraph at lines 570--571
-[]\T1/cmr/m/n/10.95 Any stream of observations---rational ap-prox-i-ma-tions, m
-ea-sure-ment out-comes, lat-tice configurations---
- []
-
-[9] [10]
-
-Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 629.
+(hyperref)                removing `\Pi' on input line 316.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 629.
-
-
-Overfull \hbox (15.34064pt too wide) in paragraph at lines 661--662
-\T1/cmr/m/n/10.95 Under P4, the ``in-fi-nite Fourier trans-form'' does not ex-i
-st. What ex-ists is the pro-cess $\OMS/cmsy/m/n/10.95 f[][]g[]$\T1/cmr/m/n/10.9
-5 .
- []
-
-[11]
-Overfull \hbox (21.49622pt too wide) in paragraph at lines 705--706
-[]\T1/cmr/bx/n/10.95 R-formula \T1/cmr/m/n/10.95 (Rules, L5): $\OML/cmm/m/it/10
-.95 '\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 v; t[]\OT1/cmr/m/n/10.95 1) = \OML
-/cmm/m/it/10.95 F\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 '\OT1/cmr/m/n/10.95 (\
-OML/cmm/m/it/10.95 v; t\OT1/cmr/m/n/10.95 )\OML/cmm/m/it/10.95 ; '\OT1/cmr/m/n/
-10.95 (\OML/cmm/m/it/10.95 v; t[]\OT1/cmr/m/n/10.95 1)\OML/cmm/m/it/10.95 ; []\
-OT1/cmr/m/n/10.95 )$\T1/cmr/m/n/10.95 . The evo-lu-tion equation---
- []
+(hyperref)                removing `superscript' on input line 316.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 732.
+(hyperref)                removing `subscript' on input line 316.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `\sin' on input line 732.
+(hyperref)                removing `math shift' on input line 316.
 
-
-Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `superscript' on input line 732.
-
-
-Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `\theta' on input line 732.
-
-
-Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `subscript' on input line 732.
-
-
-Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 732.
-
-
-Overfull \hbox (30.78804pt too wide) in paragraph at lines 746--747
-[]\T1/cmr/m/it/10.95 Rocq\T1/cmr/m/n/10.95 : \T1/cmtt/m/n/10.95 DOFCounting.v\T
-1/cmr/m/n/10.95 , the-o-rem \T1/cmtt/m/n/10.95 sin2_is_3_over_13\T1/cmr/m/n/10.
-95 ; \T1/cmtt/m/n/10.95 WZMassRatio.v\T1/cmr/m/n/10.95 , the-o-rem \T1/cmtt/m/n
-/10.95 match_within_1pct 
- []
-
-
-Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 748.
-
-
-Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `\gamma' on input line 748.
-
-
-Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 748.
-
-[12]
-
-Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 781.
-
-
-Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `\gamma' on input line 781.
-
-
-Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 781.
-
-[13]
-
-Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 840.
-
-
-Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `\beta' on input line 840.
-
-
-Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 840.
-
-[14] [15] [16] (main.aux)
+[6] [7] [8] [9] [10] (main.aux)
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2025-12-24>
  ***********
-
-
-LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
-
 Package rerunfilecheck Info: File `main.out' has not changed.
-(rerunfilecheck)             Checksum: 7008EB0FE5C2B4E2998C6E5DE9F63E40;8394.
+(rerunfilecheck)             Checksum: 3650E2ED4D876813CCF5FBDE92A9166B;5786.
  ) 
 Here is how much of TeX's memory you used:
- 28135 strings out of 467871
- 533346 string characters out of 5418377
- 1013747 words of memory out of 5000000
- 56424 multiletter control sequences out of 15000+600000
- 657974 words of font info for 117 fonts, out of 8000000 for 9000
+ 27671 strings out of 467871
+ 525754 string characters out of 5418377
+ 974696 words of memory out of 5000000
+ 56030 multiletter control sequences out of 15000+600000
+ 656444 words of font info for 111 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 116i,14n,121p,579b,2013s stack positions out of 10000i,1000n,20000p,200000b,200000s
- <C:\Users\aleks\AppData\Local\MiKTeX\fonts/pk/ljfour/jknappen/ec/dpi600\ecrm
-0800.pk> <C:\Users\aleks\AppData\Local\MiKTeX\fonts/pk/ljfour/jknappen/ec/dpi60
-0\tcrm1095.pk> <C:\Users\aleks\AppData\Local\MiKTeX\fonts/pk/ljfour/jknappen/ec
+ 116i,14n,121p,515b,1170s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ <C:\Users\aleks\AppData\Local\MiKTeX\fonts/pk/ljfour/jknappen/ec/dpi600\eccc
+1000.pk> <C:\Users\aleks\AppData\Local\MiKTeX\fonts/pk/ljfour/jknappen/ec/dpi60
+0\ecrm0800.pk> <C:\Users\aleks\AppData\Local\MiKTeX\fonts/pk/ljfour/jknappen/ec
 /dpi600\ecit1095.pk> <C:\Users\aleks\AppData\Local\MiKTeX\fonts/pk/ljfour/jknap
-pen/ec/dpi600\ectt0800.pk> <C:\Users\aleks\AppData\Local\MiKTeX\fonts/pk/ljfour
-/jknappen/ec/dpi600\eccc1095.pk> <C:\Users\aleks\AppData\Local\MiKTeX\fonts/pk/
-ljfour/jknappen/ec/dpi600\ectt1095.pk> <C:\Users\aleks\AppData\Local\MiKTeX\fon
-ts/pk/ljfour/jknappen/ec/dpi600\ecti1095.pk> <C:\Users\aleks\AppData\Local\MiKT
-eX\fonts/pk/ljfour/jknappen/ec/dpi600\ecbx1200.pk> <C:\Users\aleks\AppData\Loca
-l\MiKTeX\fonts/pk/ljfour/jknappen/ec/dpi600\ecrm1095.pk> <C:\Users\aleks\AppDat
-a\Local\MiKTeX\fonts/pk/ljfour/jknappen/ec/dpi600\ecbx1095.pk> <C:\Users\aleks\
-AppData\Local\MiKTeX\fonts/pk/ljfour/jknappen/ec/dpi600\ecbx1440.pk> <C:\Users\
-aleks\AppData\Local\MiKTeX\fonts/pk/ljfour/jknappen/ec/dpi600\eccc1000.pk> <C:\
-Users\aleks\AppData\Local\MiKTeX\fonts/pk/ljfour/jknappen/ec/dpi600\ecti1000.pk
-> <C:\Users\aleks\AppData\Local\MiKTeX\fonts/pk/ljfour/jknappen/ec/dpi600\ecbx1
+pen/ec/dpi600\eccc1095.pk> <C:\Users\aleks\AppData\Local\MiKTeX\fonts/pk/ljfour
+/jknappen/ec/dpi600\ecbi1095.pk> <C:\Users\aleks\AppData\Local\MiKTeX\fonts/pk/
+ljfour/jknappen/ec/dpi600\tcrm1095.pk> <C:\Users\aleks\AppData\Local\MiKTeX\fon
+ts/pk/ljfour/jknappen/ec/dpi600\ectt1095.pk> <C:\Users\aleks\AppData\Local\MiKT
+eX\fonts/pk/ljfour/jknappen/ec/dpi600\ecti1095.pk> <C:\Users\aleks\AppData\Loca
+l\MiKTeX\fonts/pk/ljfour/jknappen/ec/dpi600\ecbx1200.pk> <C:\Users\aleks\AppDat
+a\Local\MiKTeX\fonts/pk/ljfour/jknappen/ec/dpi600\ecrm1095.pk> <C:\Users\aleks\
+AppData\Local\MiKTeX\fonts/pk/ljfour/jknappen/ec/dpi600\ecbx1095.pk> <C:\Users\
+aleks\AppData\Local\MiKTeX\fonts/pk/ljfour/jknappen/ec/dpi600\ecbx1440.pk> <C:\
+Users\aleks\AppData\Local\MiKTeX\fonts/pk/ljfour/jknappen/ec/dpi600\ecbx1000.pk
+> <C:\Users\aleks\AppData\Local\MiKTeX\fonts/pk/ljfour/jknappen/ec/dpi600\ectt1
 000.pk> <C:\Users\aleks\AppData\Local\MiKTeX\fonts/pk/ljfour/jknappen/ec/dpi600
-\ectt1000.pk> <C:\Users\aleks\AppData\Local\MiKTeX\fonts/pk/ljfour/jknappen/ec/
-dpi600\ecrm1000.pk> <C:\Users\aleks\AppData\Local\MiKTeX\fonts/pk/ljfour/jknapp
-en/ec/dpi600\ecrm1200.pk> <C:\Users\aleks\AppData\Local\MiKTeX\fonts/pk/ljfour/
-jknappen/ec/dpi600\ecbx1728.pk><C:/Users/aleks/AppData/Local/Programs/MiKTeX/fo
-nts/type1/public/amsfonts/cm/cmbx8.pfb><C:/Users/aleks/AppData/Local/Programs/M
-iKTeX/fonts/type1/public/amsfonts/cm/cmex10.pfb><C:/Users/aleks/AppData/Local/P
-rograms/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi10.pfb><C:/Users/aleks/AppDat
-a/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi12.pfb><C:/Users/ale
-ks/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi6.pfb><C:/U
-sers/aleks/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi7.p
-fb><C:/Users/aleks/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm
-/cmmi8.pfb><C:/Users/aleks/AppData/Local/Programs/MiKTeX/fonts/type1/public/ams
-fonts/cm/cmmib10.pfb><C:/Users/aleks/AppData/Local/Programs/MiKTeX/fonts/type1/
-public/amsfonts/cm/cmr10.pfb><C:/Users/aleks/AppData/Local/Programs/MiKTeX/font
-s/type1/public/amsfonts/cm/cmr12.pfb><C:/Users/aleks/AppData/Local/Programs/MiK
-TeX/fonts/type1/public/amsfonts/cm/cmr7.pfb><C:/Users/aleks/AppData/Local/Progr
-ams/MiKTeX/fonts/type1/public/amsfonts/cm/cmr8.pfb><C:/Users/aleks/AppData/Loca
-l/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmsy10.pfb><C:/Users/aleks/App
-Data/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmsy7.pfb><C:/Users/a
-leks/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmsy8.pfb><C:
-/Users/aleks/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/symbols/
-msbm10.pfb>
-Output written on main.pdf (16 pages, 523549 bytes).
+\ecrm1000.pk> <C:\Users\aleks\AppData\Local\MiKTeX\fonts/pk/ljfour/jknappen/ec/
+dpi600\ecrm1200.pk> <C:\Users\aleks\AppData\Local\MiKTeX\fonts/pk/ljfour/jknapp
+en/ec/dpi600\ecbx1728.pk><C:/Users/aleks/AppData/Local/Programs/MiKTeX/fonts/ty
+pe1/public/amsfonts/cm/cmbx8.pfb><C:/Users/aleks/AppData/Local/Programs/MiKTeX/
+fonts/type1/public/amsfonts/cm/cmex10.pfb><C:/Users/aleks/AppData/Local/Program
+s/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi10.pfb><C:/Users/aleks/AppData/Loca
+l/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi12.pfb><C:/Users/aleks/App
+Data/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi7.pfb><C:/Users/a
+leks/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi8.pfb><C:
+/Users/aleks/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmmib
+10.pfb><C:/Users/aleks/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfont
+s/cm/cmr10.pfb><C:/Users/aleks/AppData/Local/Programs/MiKTeX/fonts/type1/public
+/amsfonts/cm/cmr12.pfb><C:/Users/aleks/AppData/Local/Programs/MiKTeX/fonts/type
+1/public/amsfonts/cm/cmr7.pfb><C:/Users/aleks/AppData/Local/Programs/MiKTeX/fon
+ts/type1/public/amsfonts/cm/cmr8.pfb><C:/Users/aleks/AppData/Local/Programs/MiK
+TeX/fonts/type1/public/amsfonts/cm/cmsy10.pfb><C:/Users/aleks/AppData/Local/Pro
+grams/MiKTeX/fonts/type1/public/amsfonts/cm/cmsy7.pfb><C:/Users/aleks/AppData/L
+ocal/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmsy8.pfb><C:/Users/aleks/A
+ppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/symbols/msbm10.pfb>
+Output written on main.pdf (10 pages, 410173 bytes).
 PDF statistics:
- 1338 PDF objects out of 1440 (max. 8388607)
- 171 named destinations out of 1000 (max. 500000)
- 405 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 1039 PDF objects out of 1200 (max. 8388607)
+ 105 named destinations out of 1000 (max. 500000)
+ 285 words of extra memory for PDF output out of 10000 (max. 10000000)
 

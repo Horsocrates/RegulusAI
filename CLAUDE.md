@@ -4,73 +4,106 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Regulus AI is a deterministic reasoning verification system for LLMs implementing the Theory of Systems framework. It acts as a "Logic Censor" — decomposing LLM reasoning into steps, verifying structural integrity through the Zero-Gate mechanism, and forcing correction on hallucination attempts. The core principle: make dishonesty structurally impossible through `Gtotal`.
+Regulus AI is a deterministic reasoning verification system for LLMs implementing the Theory of Systems (ToS) framework. It combines:
+- **LogicGuard** -- multi-agent reasoning verification with Zero-Gate mechanism
+- **Process Mathematics** -- complete mathematical foundation (`RealProcess := nat -> Q`) with 21,600+ Rocq theorems
+- **Verified Interval Propagation** -- Rocq-verified neural network uncertainty quantification
+- **Data Compression** -- ToS-derived compression pipeline (`compress() = simulate_physics()`)
+- **E/R/R Framework** -- Elements/Roles/Rules structural decomposition + 156-fallacy taxonomy
+
+Companion formal library: [theory-of-systems-coq](https://github.com/Horsocrates/theory-of-systems-coq) (21,600+ Qed, 0 Admitted, 1483 files).
 
 ## Repository Layout
 
 ```
 RegulusAI/
 ├── CLAUDE.md                        # This file
-├── REGULUS_CLI_SPEC.md              # Full PRD specification (read for detailed module specs)
-├── REGULUS_STARTUP_INSTRUCTIONS.md  # Phase roadmap (Russian)
-├── ToS-StatusMachine/               # Formal verification sources (reference)
-│   ├── ToS_Status_Machine_v8.v      # Coq proofs of status machine properties
-│   ├── tos_status_machine.ml        # OCaml extraction (ported to Python in LogicGuard)
-│   └── STATUS_MACHINE_SUMMARY.md    # Summary of formal properties
-└── LogicGuard/                      # MVP implementation (all source lives here)
-    ├── types.py                     # Core data types (Domain, Status, Node, GateSignals, etc.)
-    ├── zero_gate.py                 # Zero-Gate verification (3-component gate check)
-    ├── status_machine.py            # L5-Resolution: deterministic winner selection
-    ├── engine.py                    # Main LogicGuardEngine orchestration
-    ├── sensor.py                    # Signal extraction + paradox examples
-    ├── visualization.py             # ASCII/Graphviz tree rendering
-    ├── paradox_demo.py              # Runnable paradox demonstrations
-    ├── test_engine.py               # 22+ tests (pytest)
-    └── sample_reasoning.json        # Example verification input
+├── README.md                        # Project overview
+├── REGULUS_CLI_SPEC.md              # Full PRD specification
+├── SYSTEM_MAP.md                    # Architecture map
+├── UNIFIED_ARCHITECTURE.md          # Full stack diagram
+├── regulus/                         # Core Python package
+│   ├── core/                        # LogicGuard engine (types, zero_gate, weight, status_machine)
+│   ├── verified/                    # Verified backend (bridge.py, math_verifier.py, err_validator.py)
+│   ├── llm/                         # LLM clients (Claude, OpenAI, DeepSeek, ZhipuAI)
+│   ├── nn/                          # Interval neural network layers
+│   ├── interval/                    # Pure interval arithmetic (Rocq mirror)
+│   ├── fallacies/                   # 156-fallacy taxonomy + detector
+│   ├── orchestrator.py              # Main verification loop
+│   └── cli.py                       # Typer CLI
+├── _tos_coq_clone/                  # Companion Rocq library (21,600+ Qed, 1483 files)
+│   ├── src/                         # 33 subdirectories (foundation, process, physics, lattice, ...)
+│   └── Architecture_of_Reasoning/   # E/R/R laws correspondence
+├── ToS-Coq/                         # Local Rocq proofs (intervals, 320 Qed)
+├── ToS-StatusMachine/               # Status machine proofs (14 Qed)
+├── LogicGuard/                      # Original MVP (Phase 1)
+├── papers/process_math_v2/          # Academic paper (10 pages)
+├── tests/                           # 1745 tests
+│   ├── compression/                 # ToS compression pipeline + benchmarks
+│   ├── experimental/                # Physics predictions, Higgs corrections
+│   └── HLE/                         # HLE evaluation harness
+├── skills/                          # Domain instruction files (D1-D6, v3)
+└── GoLeo/                           # Go AI project (gitignored, separate)
 ```
 
 ## Commands
 
 ```bash
-# Run tests (from project root)
-PYTHONPATH=. pytest LogicGuard/test_engine.py -v
+# Run all tests (MUST use uv run on this machine, plain python fails)
+uv run pytest tests/ -v
+
+# Run specific test file
+uv run pytest tests/test_core.py -v
 
 # Run a single test
-PYTHONPATH=. pytest LogicGuard/test_engine.py -v -k "test_name"
+uv run pytest tests/test_core.py -v -k "test_name"
 
-# Run built-in example
-python -m logicguard.engine --example
+# Interval tests (37 tests)
+uv run pytest tests/test_interval.py -v
 
-# Verify a JSON file
-python -m logicguard.engine path/to/reasoning.json
+# Compression tests
+uv run pytest tests/compression/ -v
 
-# Type check (when regulus/ structure is set up)
-uv run mypy regulus/
+# CLI
+uv run regulus ask "query" --provider claude -v
+uv run regulus demo --quick
 
-# Dependencies (for future regulus/ package)
-uv add anthropic openai rich typer pydantic httpx python-dotenv
+# Fallacy detection
+uv run regulus fallacy-detect "text to analyze"
+
+# Compile Rocq proofs (companion library)
+cd _tos_coq_clone
+ROCQLIB="C:\\Coq\\Rocq-Platform~9.0~2025.08\\lib\\coq" "C:\\Coq\\Rocq-Platform~9.0~2025.08\\bin\\coqc.exe" -Q src ToS -Q Architecture_of_Reasoning ToS_Arch src/<FILE>.v
+
+# Compile LaTeX paper
+cd papers/process_math_v2
+export PATH="$PATH:/c/Users/aleks/AppData/Local/Programs/MiKTeX/miktex/bin/x64"
+pdflatex -interaction=nonstopmode main.tex
 ```
 
 ## Architecture
 
+### Verification Pipeline
 ```
-Input JSON → Parse Nodes → Zero-Gate → Weight Calc → Status Machine → Diagnostics
-                             ↓
-            G(e) = ⟨gERR, gLevels, gOrder⟩
-                             ↓
-              Gtotal = gERR ∧ gLevels ∧ gOrder
-                             ↓
-            W(e) = Gtotal × (S_struct + S_domain)
-                             ↓
-                   L5-Resolution → PrimaryMax
+Input Question → D1-D6 Domains → Zero-Gate → Weight Calc → Status Machine → Answer
+                                    ↓
+                  G(e) = gERR ∧ gLevels ∧ gOrder
+                                    ↓
+                    Gtotal = 0 ⟹ W = 0 (annihilation)
+                                    ↓
+                         L5-Resolution → PrimaryMax
 ```
 
-**Verification pipeline:**
-1. **Sensor** extracts E/R/R (Elements/Roles/Rules) + domain signals from LLM reasoning
-2. **Zero-Gate** checks structural integrity via three binary gates — if ANY gate = 0, weight = 0 (annihilation, not penalty)
-3. **Weight calculation:** `W(e) = Gtotal × (struct_points + current_domain × 10 + domain_points)`
-4. **Status Machine** assigns exactly one PrimaryMax using weight comparison + legacy_idx tie-breaking
-5. On gate failure: correction loop generates fix prompt and retries (max N attempts)
+### Process Mathematics Pipeline
+```
+A = exists → Laws of Logic (L1-L5) → Principles (P1-P4) → RealProcess := nat → Q
+    ↓
+Classical Analysis (IVT, EVT, Calculus, ODEs, Measure Theory)
+    ↓
+Physics (Quantum, Gauge Theory, Gravity, Standard Model, Navier-Stokes)
+    ↓
+Experimental Predictions (sin²θ_W = 3/13, Born = Parseval)
+```
 
 ## Zero-Gate: The Three Gates
 
@@ -90,9 +123,7 @@ Input JSON → Parse Nodes → Zero-Gate → Weight Calc → Status Machine → 
 | Candidate | Valid but lower weight |
 | Invalid | Gate=0, weight forced to 0 |
 
-## Coq-Proven Properties (Must Preserve in Python)
-
-These three invariants are verified at runtime and must never be broken:
+## Rocq-Proven Invariants (Must Preserve in Python)
 
 1. **Zero-Gate Law:** `G = 0 ⇒ W = 0` — enforced in `apply_zero_gate()`
 2. **Uniqueness:** At most one PrimaryMax — enforced in `compare_entities()` with policy tie-break
@@ -109,21 +140,36 @@ These three invariants are verified at runtime and must never be broken:
 | D5: Inference | What follows? | Non-sequitur |
 | D6: Reflection | Where doesn't it work? | Dogmatism |
 
+## Rocq/Coq Conventions
+
+- Rocq 9.0.1 (Coq rebrand) installed at `C:\Coq\Rocq-Platform~9.0~2025.08`
+- All .v files use `From ToS Require Import` (not bare `Require Import`)
+- NEVER use `[x; y]` list notation with Q values — use `((x:Q) :: (y:Q) :: nil)` or `Qmake`
+- `vm_compute. reflexivity.` for concrete Q equalities (not `lra`)
+- For True statements: `Proof. exact I. Qed.`
+- `repeat split` can consume Qlt goals — use explicit `split. { exact ... }` chains
+- Shell is cmd.exe despite "bash" label in tool
+
 ## Code Conventions
 
 - Python 3.11+, full type hints, dataclasses for models
 - Async/await for LLM calls
 - Rich for terminal UI, Typer for CLI
 - pytest for testing
+- Plain `python` fails with exit code 49 — always use `uv run`
 
-## Development Phases
+## Development Phases (Complete)
 
-- **Phase 1 (Complete):** LogicGuard MVP — core types, zero-gate, status machine, engine, 22+ tests
-- **Phase 2 (Planned):** LLM integration — Claude/OpenAI clients, SensorLLM for real signal extraction
-- **Phase 3 (Planned):** Orchestrator — main CLI loop, correction logic, fix prompt generation
-- **Phase 4 (Planned):** UI & polish — Rich terminal output, Typer CLI, config management
-
-The target directory structure for the full Regulus package is specified in Section 5 of `REGULUS_CLI_SPEC.md`.
+- **Phase 1:** LogicGuard MVP — core types, zero-gate, status machine, engine
+- **Phase 2:** LLM integration — Claude/OpenAI clients, sensor, orchestrator
+- **Phase 3:** Orchestration — merged into Phase 2
+- **Phase 4:** Verified Backend — bridge.py, math_verifier.py, err_validator.py, layers.py
+- **Phase 5:** HLE Evaluation — post-hoc eval on 10 HLE Math questions
+- **Phase 6:** Fixed-Point Convergence — ReasoningConvergence.v, convergence_advisor.py
+- **ToS Phases 1-3:** Extraction, Interval, L5Resolution, SystemMorphism, InfoLayer
+- **ToS-Lang Phases A-D:** Type system, operational semantics, verified compiler
+- **Physics Phases:** Quantum, lattice gauge, Navier-Stokes, Riemann Hypothesis, Standard Model
+- **Process Mathematics (P4):** Analysis, algebra, topology, category theory, measure theory, ODEs
 
 ## P3 Agent Pipeline — STRICT PROTOCOL (HLE Evaluation)
 
@@ -149,3 +195,16 @@ BAD: "Q01:... Q02:... Q03:..." → multiple questions bundled
 BAD: prompt contains "ANSWER: X" → pre-solved by Team Lead
 BAD: launching D1,D2,D3 in parallel for same question → sequential dependency
 ```
+
+## Project Statistics (April 2026)
+
+| Metric | Value |
+|--------|-------|
+| Rocq theorems (companion) | 21,600+ Qed |
+| Rocq theorems (local ToS-Coq) | 320 Qed |
+| Admitted | 0 |
+| Custom axioms | 2 (classic, L4_witness) |
+| Rocq files | 1483 |
+| Python tests | 1745 |
+| Fallacy taxonomy | 156 fallacies |
+| LLM providers | 4 (Claude, OpenAI, DeepSeek, ZhipuAI) |
