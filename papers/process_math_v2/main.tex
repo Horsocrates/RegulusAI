@@ -1,0 +1,589 @@
+\documentclass[11pt,a4paper]{article}
+
+% ── Packages ──
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage{enumitem}
+\usepackage{geometry}
+\usepackage{fancyhdr}
+\usepackage{xcolor}
+\usepackage{tcolorbox}
+\usepackage{listings}
+
+\geometry{margin=2.5cm}
+
+% ── Theorem environments ──
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+% ── Coq listing style ──
+\lstdefinestyle{coq}{
+  language=,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\bfseries\color{blue!70!black},
+  commentstyle=\itshape\color{green!50!black},
+  stringstyle=\color{red!60!black},
+  morekeywords={Definition,Theorem,Lemma,Proof,Qed,Fixpoint,Record,Inductive,
+    forall,exists,fun,match,with,end,let,in,if,then,else,From,Require,Import},
+  breaklines=true,
+  frame=single,
+  backgroundcolor=\color{gray!5},
+  xleftmargin=1em,
+  framexleftmargin=0.5em,
+}
+\lstset{style=coq}
+
+% ── Custom box for key results ──
+\newtcolorbox{keyresult}[1][]{
+  colback=blue!3, colframe=blue!50!black,
+  fonttitle=\bfseries, title={#1},
+  boxrule=0.5pt, arc=2pt
+}
+
+% ── Shortcuts ──
+\newcommand{\RP}{\texttt{RealProcess}}
+\newcommand{\natQ}{\mathbb{N} \to \mathbb{Q}}
+\newcommand{\Qed}{\textsc{Qed}}
+\newcommand{\ToS}{Theory of Systems}
+\newcommand{\ERR}{E/R/R}
+
+% ══════════════════════════════════════════════════════
+\begin{document}
+
+\title{%
+  \textbf{Process Mathematics:\\
+  Classical Analysis, Physics, and Data Compression\\
+  Without Completed Infinity}\\[0.5em]
+  \large A Formal Framework in Rocq from the Theory of Systems
+}
+
+\author{
+  Horsocrates\\
+  \small Independent Researcher\\
+  \small \texttt{github.com/Horsocrates/theory-of-systems-coq}
+}
+
+\date{April 2026}
+
+\maketitle
+
+% ══════════════════════════════════════════════════════
+\begin{abstract}
+We develop a formal framework for mathematics, physics, and data compression in which infinity is treated as a property of processes rather than completed objects.
+The central construction is $\RP := \natQ$---a function from natural numbers to rationals---which replaces the real number line~$\mathbb{R}$.
+
+Within this framework, formalized and fully machine-checked in the Rocq proof assistant (version~9.0.1), we establish:
+
+\begin{enumerate}[nosep]
+\item \textbf{Classical analysis} (21 theorems including IVT, EVT, Bolzano--Weierstrass, Heine--Borel, FTC, MVT, Taylor, Picard--Lindel\"of) without the Axiom of Infinity or Axiom of Choice.
+
+\item \textbf{Proof-theoretic strength}: ordinals to~$\varepsilon_0$ with well-foundedness \emph{proved} (not assumed), ATR$_0$ eliminated as a definition, $\Pi^1_1$~comprehension collapsed to arithmetic under~P4.
+
+\item \textbf{Physics from three formulas}: every physical process on a distinction graph is exactly three \ERR{} formulas---equation of motion (Rules/L5), spectral decomposition (Roles/L4), field on graph (Elements/L1)---instantiated for sound, light, quantum mechanics, thermodynamics, gravity, and the Standard Model.
+
+\item \textbf{Born rule = Parseval theorem}: quantum measurement probabilities are identical to spectral energy fractions. Not analogy---identity through the same formula $P(k) = |A_k|^2$.
+
+\item \textbf{Verified data compression}: a GFT-based pipeline achieving 300--600$\times$ compression on IoT sensor data, where the compression algorithm \emph{is} the physics simulator.
+
+\item \textbf{$\gamma$-unification}: decoherence, damping, and compression loss are the \emph{same} equation $A(t{+}1) = (1{-}\gamma)\,A(t)$ with one parameter $\gamma \in [0,1]$ spanning quantum to classical.
+\end{enumerate}
+
+\noindent
+The complete formalization comprises \textbf{21,500+ machine-verified theorems} (\Qed) across \textbf{1,480+ files} with \textbf{0~Admitted} and only \textbf{2~axioms} (classical logic and constructive witness extraction).
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+% ══════════════════════════════════════════════════════
+\section{Introduction}
+\label{sec:intro}
+% ══════════════════════════════════════════════════════
+
+\subsection{The Problem}
+
+Standard mathematical analysis is built on the real number line~$\mathbb{R}$, conceived as a completed, uncountable set.  This construction requires the Axiom of Infinity (to assert the existence of~$\mathbb{N}$ as a completed set) and typically the Axiom of Choice (for many existence theorems).  The Theory of Systems~\cite{tos2025} offers an alternative: derive all of mathematics from the single principle $A = \text{exists}$ (something exists), with infinity treated as a property of \emph{processes} (Principle~P4), not of completed objects.
+
+An earlier version of this paper~\cite{process_v1} demonstrated five classical theorems (IVT, EVT, BW, Heine--Borel, and a mass gap criterion) formalized in Rocq with 7,767 theorems across 353 files.  Since then, the project has grown to \textbf{21,500+ theorems across 1,480+ files}---expanding from analysis into physics, information theory, and data compression.
+
+\subsection{What Is New}
+
+This paper extends the original framework in five directions:
+
+\begin{enumerate}[nosep]
+\item \textbf{Proof-theoretic analysis} (\S\ref{sec:strength}): We reach ordinal~$\varepsilon_0$ explicitly, prove well-foundedness as a theorem, and show that ATR$_0$ and $\Pi^1_1$-comprehension are eliminable under~P4.
+
+\item \textbf{Process completeness} (\S\ref{sec:completeness}): A formal metric on \RP{} with diagonal-construction completeness, closing the gap between ``Cauchy processes exist'' and ``Cauchy processes form a complete space.''
+
+\item \textbf{Physics as E/R/R} (\S\ref{sec:physics}): Every physical process is exactly three formulas---field (Elements), spectrum (Roles), evolution (Rules)---with seven verified instantiations from acoustics to the Standard Model.
+
+\item \textbf{Born = Parseval} (\S\ref{sec:crown}): The Born rule of quantum mechanics is identified with Parseval's theorem, and the quantum--classical transition is parameterized by a single coupling constant~$\gamma$.
+
+\item \textbf{Verified compression} (\S\ref{sec:compression}): A practical data compression pipeline derived from the physics framework, achieving 300--600$\times$ compression on IoT sensor data.
+\end{enumerate}
+
+
+\subsection{Structure of the Paper}
+
+\S\ref{sec:type} defines the universal type and P4 as prohibition.
+\S\ref{sec:strength} establishes proof-theoretic strength.
+\S\ref{sec:theorems} presents classical theorems as process constructions.
+\S\ref{sec:completeness} proves process completeness.
+\S\ref{sec:wiedijk} maps our results to Wiedijk's 100 theorems.
+\S\ref{sec:fourier} develops Fourier analysis over~$\mathbb{Q}$.
+\S\ref{sec:physics} presents three E/R/R formulas for physics.
+\S\ref{sec:crown} establishes Born = Parseval and $\gamma$-unification.
+\S\ref{sec:compression} demonstrates verified compression.
+\S\ref{sec:massgap} updates the Process Mass Gap criterion.
+\S\ref{sec:survives} discusses scope and limitations.
+\S\ref{sec:stats} gives formalization statistics.
+
+
+% ══════════════════════════════════════════════════════
+\section{The Universal Type and P4 as Prohibition}
+\label{sec:type}
+% ══════════════════════════════════════════════════════
+
+\subsection{RealProcess}
+
+\begin{definition}[RealProcess]
+A \emph{real process} is a function $R : \mathbb{N} \to \mathbb{Q}$.  We write $\RP := \natQ$.
+\end{definition}
+
+\begin{definition}[Cauchy condition]
+A real process~$R$ is \emph{Cauchy} if for every $\varepsilon \in \mathbb{Q}$, $\varepsilon > 0$, there exists $N \in \mathbb{N}$ such that for all $m, n \ge N$:
+\[
+  |R(m) - R(n)| < \varepsilon.
+\]
+\end{definition}
+
+In Rocq:
+\begin{lstlisting}
+Definition RealProcess := nat -> Q.
+
+Definition is_Cauchy (R : RealProcess) : Prop :=
+  forall eps : Q, 0 < eps ->
+    exists N : nat, forall m n : nat,
+      (N <= m)%nat -> (N <= n)%nat ->
+      Qabs (R m - R n) < eps.
+\end{lstlisting}
+
+\begin{remark}
+Under P4, the Cauchy process \emph{is} the real number.  There is no separate limit object---the process itself is the mathematical entity.
+\end{remark}
+
+
+\subsection{P4 as Prohibition}
+
+The earlier paper presented P4 as a \emph{reinterpretation}: infinity can be replaced by processes.  We now establish the stronger result: P4 is \emph{inconsistent} with completed infinities.
+
+\begin{definition}[Completed infinite set]
+$\mathrm{CompletedInfSet}(S) :\Leftrightarrow \forall n : \mathbb{N},\; S(n)$.
+\end{definition}
+
+\begin{definition}[P4 stage-bounded actuality]
+$\mathrm{P4\_bounded}(\mathrm{actual}) :\Leftrightarrow \forall \text{stage},\; \exists \text{bound},\; \forall n,\; \mathrm{actual}(\text{stage}, n) \Rightarrow n \le \text{bound}$.
+\end{definition}
+
+\begin{theorem}[P4 prohibits completed infinity]\label{thm:p4prohibit}
+$\mathrm{CompletedInfSet}(S) \;\wedge\; \mathrm{P4\_bounded}(\mathrm{actual}) \;\wedge\; \mathrm{bridge}(S, \mathrm{actual}) \;\Rightarrow\; \bot.$
+\end{theorem}
+
+\begin{proof}
+P4 gives a bound~$B$ for stage~0.  $\mathrm{CompletedInfSet}$ gives $S(B{+}1)$.  The bridge makes $B{+}1$ actual at stage~0.  But $B{+}1 > B$, contradicting the bound.
+\end{proof}
+
+\noindent
+\emph{Rocq reference}: \texttt{P4CompletedInfinity.v}, theorem \texttt{completed\_inf\_contradicts\_P4}, \Qed.
+
+\begin{keyresult}[Prohibition vs.\ Reinterpretation]
+\emph{Reinterpretation}: P4 provides an \emph{alternative} to the Axiom of Infinity.\\
+\emph{Prohibition}: P4 is \emph{inconsistent} with completed infinity.\\
+Prohibition implies reinterpretation, but not vice versa.  We prove the stronger claim.
+\end{keyresult}
+
+Three consequences (\texttt{P4ProhibitsAC.v}, \texttt{P4ProhibitsImpredicative.v}):
+\begin{enumerate}[nosep]
+\item Full AC on~$\mathbb{N}$ produces a completed infinite object (the choice function) $\Rightarrow$ inconsistent with P4.
+\item Impredicative definitions require quantifying over a completed totality $\Rightarrow$ blocked by P4 + P1.
+\item Potential infinity (``always more, never all at once'') is \emph{compatible} with P4.
+\end{enumerate}
+
+
+% ══════════════════════════════════════════════════════
+\section{Proof-Theoretic Strength}
+\label{sec:strength}
+% ══════════════════════════════════════════════════════
+
+\subsection{Ordinals to $\varepsilon_0$}
+
+We define ordinals as an inductive type in Rocq:
+
+\begin{lstlisting}
+Inductive Ord : Set :=
+  | OZero : Ord
+  | OSucc : Ord -> Ord
+  | OLim  : (nat -> Ord) -> Ord.
+\end{lstlisting}
+
+\noindent
+Concrete ordinals:
+\begin{align}
+  \omega &= \texttt{OLim}(\texttt{nat\_to\_ord}), \\
+  \omega^{\omega} &= \texttt{OLim}(\lambda n.\; \omega^n), \\
+  \varepsilon_0 &= \texttt{OLim}(\texttt{omega\_tower}),
+  \quad\text{where}\quad
+  \texttt{omega\_tower}(0) = \omega,\;
+  \texttt{omega\_tower}(n{+}1) = \omega^{\texttt{omega\_tower}(n)}.
+\end{align}
+
+Full arithmetic (addition, multiplication, exponentiation) is defined by structural recursion and verified.
+
+\subsection{Well-Foundedness as Theorem}
+
+\begin{theorem}[Well-foundedness of ordinal ordering]\label{thm:wf}
+The relation $\texttt{ord\_lt}$ on $\texttt{Ord}$ is well-founded:
+$\texttt{wf\_ord\_lt} : \texttt{well\_founded}\;\texttt{ord\_lt}$.
+\end{theorem}
+
+This is a \emph{theorem} (proved by structural induction on \texttt{Ord} with an accessibility argument), not an axiom.  The proof:
+
+\begin{enumerate}[nosep]
+\item \textbf{Helper}: $\texttt{acc\_succ}$---if $x$ is accessible, then $\texttt{OSucc}(x)$ is accessible (by induction on the \texttt{Acc} derivation).
+\item \textbf{Main}: structural induction on \texttt{Ord}:
+  \begin{itemize}[nosep]
+  \item $\texttt{OZero}$: nothing is below zero (by inversion).
+  \item $\texttt{OSucc}(a)$: use \texttt{acc\_succ} on the inductive hypothesis.
+  \item $\texttt{OLim}(f)$: for each~$k$, $f(k)$ is accessible by IH; use \texttt{Acc\_inv}.
+  \end{itemize}
+\end{enumerate}
+
+\noindent
+\emph{Rocq reference}: \texttt{TransfiniteInduction.v}, \Qed.  No additional axioms.
+
+\begin{corollary}[Transfinite induction]
+For any property~$P$:
+\[
+  \bigl(\forall \alpha.\; (\forall \beta < \alpha.\; P(\beta)) \Rightarrow P(\alpha)\bigr) \;\Rightarrow\; \forall \alpha.\; P(\alpha).
+\]
+\end{corollary}
+
+\subsection{ATR$_0$ Eliminated}
+
+In reverse mathematics, ATR$_0$ (Arithmetical Transfinite Recursion) is an axiom asserting that transfinite recursion along any well-ordering produces a definable sequence.  Under P4, this becomes a \emph{definition}:
+
+\begin{lstlisting}
+Fixpoint iterate_pred (P : (nat -> Prop) -> (nat -> Prop))
+    (alpha : Ord) (base : nat -> Prop) : nat -> Prop :=
+  match alpha with
+  | OZero => base
+  | OSucc a => P (iterate_pred P a base)
+  | OLim f => fun n => forall k, iterate_pred P (f k) base n
+  end.
+\end{lstlisting}
+
+Rocq's termination checker accepts this \texttt{Fixpoint} because recursion is structural on \texttt{Ord}.  The ``axiom'' becomes a function definition.
+
+\emph{Rocq reference}: \texttt{P4\_Eliminates\_ATR.v}, 15~\Qed.
+
+\subsection{$\Pi^1_1$ Collapsed}
+
+Under P4, every function $\mathbb{N} \to \mathbb{N}$ is a computable program (a natural number encoding).  Therefore:
+\[
+  \forall f : \mathbb{N} \to \mathbb{N}.\; \varphi(f, n)
+  \quad\equiv\quad
+  \forall c : \mathbb{N}.\; \varphi(\texttt{eval}(c), n).
+\]
+Second-order quantification collapses to first-order (arithmetic).
+
+\emph{Rocq reference}: \texttt{P4\_Eliminates\_Pi11.v}, 15~\Qed.
+
+\subsection{Position in the Hierarchy}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lccccc}
+\toprule
+System & L3 (EM) & Ax.\ Inf. & AC & Ordinal & Covers \\
+\midrule
+PRA         & varies & no  & no  & $\omega^\omega$ & primitive recursive \\
+PA          & yes    & no  & no  & $\varepsilon_0$ & first-order arithmetic \\
+ACA$_0$     & yes    & yes & no  & $\varepsilon_0$ & predicative analysis \\
+ATR$_0$     & yes    & yes & no  & $\Gamma_0$ & transfinite recursion \\
+$\Pi^1_1$-CA$_0$ & yes & yes & no & $\psi(\Omega_\omega)$ & full 2nd-order \\
+ZFC         & yes    & yes & yes & inaccessible & all standard math \\
+\midrule
+\textbf{ToS (P4)} & \textbf{yes} & \textbf{no} & \textbf{no} & $\boldsymbol{\varepsilon_0}$ & \textbf{analysis + physics} \\
+\bottomrule
+\end{tabular}
+\caption{Position of ToS in the proof-theoretic hierarchy.  ToS reaches~$\varepsilon_0$ without the Axiom of Infinity, matching PA/ACA$_0$ in ordinal strength while covering classical analysis (IVT, EVT, BW, HB, FTC, MVT, Taylor, Picard).}
+\label{tab:hierarchy}
+\end{table}
+
+
+% ══════════════════════════════════════════════════════
+\section{Classical Theorems as Process Constructions}
+\label{sec:theorems}
+% ══════════════════════════════════════════════════════
+
+Every classical existence theorem in analysis has the same structure under~P4: construct an explicit process over~$\mathbb{Q}$, show it is Cauchy with a computable convergence rate, and verify it satisfies the required property at every stage.  We present eight theorems, each decomposed into the \ERR{} framework.
+
+\subsection{Intermediate Value Theorem}
+
+\begin{theorem}[IVT, Process Version]
+Let $f : \mathbb{Q} \to \mathbb{Q}$ be uniformly continuous on $[a, b]$ with $f(a) < 0 < f(b)$.  Then there exists a Cauchy process $c : \mathbb{N} \to \mathbb{Q}$ with $c(n) \in [a, b]$ for all~$n$ and $f(c(n)) \to 0$.
+\end{theorem}
+
+\textbf{Process construction.}  Define $c(0) = (a + b)/2$.  At each step, the interval $[a_n, b_n]$ (with $f(a_n) < 0 < f(b_n)$) is bisected: if $f(c(n)) < 0$, set $a_{n+1} = c(n)$; otherwise $b_{n+1} = c(n)$.  The interval width halves:
+\[
+  |b_n - a_n| = \frac{b - a}{2^n}.
+\]
+
+\textbf{\ERR{} analysis.}
+\begin{itemize}[nosep]
+\item \textbf{Elements (L1):} midpoints $c(n)$ of nested intervals.
+\item \textbf{Roles (L4):} each $c(n)$ is a rational approximation to the root; the process is Cauchy and bounded.
+\item \textbf{Rules (L5):} bisection---evaluate~$f$ at the midpoint, choose the half where the sign change persists (using L3).
+\end{itemize}
+
+\noindent
+\emph{Convergence rate}: $|c(m) - c(n)| \le (b-a)/2^{\min(m,n)}$ (geometric, $r = 1/2$).\\
+\emph{Rocq}: \texttt{IVT\_ERR.v}, 23~\Qed.  Uses \texttt{classic} (L3) for the sign test.
+
+\subsection{Extreme Value Theorem}
+
+\begin{theorem}[EVT, Process Version]
+Let $f : \mathbb{Q} \to \mathbb{Q}$ be uniformly continuous on $[a, b]$.  Then there exists a Cauchy process $x^* : \mathbb{N} \to \mathbb{Q}$ with $x^*(n) \in [a, b]$ such that $f(x^*(n))$ converges to $\sup_{x \in [a,b]} f(x)$.
+\end{theorem}
+
+\textbf{Process construction.}  At stage~$n$, evaluate~$f$ on a grid of $2^n + 1$ equally spaced points in $[a,b]$.  Set $x^*(n) = \arg\max_k f(a + k(b-a)/2^n)$.
+
+\textbf{Key feature:} When multiple grid points achieve the maximum, L5-Resolution selects the \emph{leftmost}---not by convention but as the unique order-respecting choice (\texttt{L5Resolution.v}).
+
+\textbf{\ERR{} analysis.}
+\begin{itemize}[nosep]
+\item \textbf{Elements:} grid maximizers $x^*(n)$ on a $2^n$-point grid.
+\item \textbf{Roles:} each $x^*(n)$ is the best approximation on its grid; the supremum process $\{f(x^*(n))\}$ is monotonically non-decreasing.
+\item \textbf{Rules:} grid refinement (doubling) + leftmost selection (L5).
+\end{itemize}
+
+\noindent
+\emph{Convergence rate}: $\sup f - f(x^*(n)) \le \delta_f(2^{-n})$, where $\delta_f$ is the modulus of uniform continuity.\\
+\emph{Rocq}: \texttt{EVT\_ERR.v}, 36~\Qed.
+
+\subsection{Bolzano--Weierstrass Theorem}
+
+\begin{theorem}[BW, Process Version]
+Every bounded sequence $s : \mathbb{N} \to \mathbb{Q}$ in $[a, b]$ has a subsequential limit: there exists a nested interval process $[a_n, b_n]$ with $b_n - a_n = (b - a)/2^n$ such that infinitely many terms of~$s$ lie in $[a_n, b_n]$.
+\end{theorem}
+
+\textbf{Process construction.}  At each step, bisect the current interval.  At least one half contains infinitely many terms of~$s$ (by pigeonhole).  Choose that half, using L3 (\texttt{classic}) to decide which.
+
+\textbf{\ERR{} analysis.}
+\begin{itemize}[nosep]
+\item \textbf{Elements:} nested intervals $[a_n, b_n]$.
+\item \textbf{Roles:} each interval contains infinitely many terms of~$s$.
+\item \textbf{Rules:} pigeonhole principle + L3 to choose the half.
+\end{itemize}
+
+\noindent
+\emph{Convergence rate}: $b_n - a_n = (b-a)/2^n$ (geometric, $r = 1/2$).\\
+\emph{Rocq}: \texttt{BolzanoWeierstrass.v}, 26~\Qed.
+
+\subsection{Fundamental Theorem of Calculus}
+
+\begin{theorem}[FTC, Process Version]
+If $f : \mathbb{Q} \to \mathbb{Q}$ is Lipschitz on $[a, b]$ with antiderivative process $F(n) = \sum_{k=0}^{2^n-1} f(x_k) \cdot \Delta x_n$ (Riemann sums on a $2^n$-point grid), then $\{F(n)\}$ is Cauchy and $F'(x) = f(x)$ in the process sense.
+\end{theorem}
+
+\textbf{\ERR{} analysis.}
+\begin{itemize}[nosep]
+\item \textbf{Elements:} Riemann sums $F(n)$.
+\item \textbf{Roles:} each $F(n)$ approximates the integral; the process is Cauchy.
+\item \textbf{Rules:} grid refinement; Lipschitz condition bounds the error:
+\[
+  |F(n+1) - F(n)| \le L \cdot (b - a)^2 / 2^{n+1},
+\]
+where $L$ is the Lipschitz constant.
+\end{itemize}
+
+\noindent
+\emph{Rocq}: \texttt{analysis/FTC.v}, 28~\Qed.
+
+\subsection{Mean Value Theorem}
+
+\begin{theorem}[MVT, Process Version]
+If $f$ is differentiable on $(a,b)$ and continuous on $[a,b]$, then there exists a process $c : \mathbb{N} \to \mathbb{Q}$ with $c(n) \in (a,b)$ such that
+\[
+  f'(c(n)) \to \frac{f(b) - f(a)}{b - a}.
+\]
+\end{theorem}
+
+The process is constructed by applying IVT to $g(x) = f(x) - x \cdot \frac{f(b)-f(a)}{b-a}$, which satisfies $g(a) = g(b)$, then finding the extremum of~$g$ via EVT.
+
+\emph{Rocq}: \texttt{MeanValueTheorem.v}, 18~\Qed.
+
+\subsection{Taylor's Theorem}
+
+\begin{theorem}[Taylor, Process Version]
+If $f$ has $n$ derivatives on $[a,b]$, then the Taylor partial sum process
+\[
+  T_n(x) = \sum_{k=0}^{n} \frac{f^{(k)}(a)}{k!}(x - a)^k
+\]
+satisfies $|f(x) - T_n(x)| \le M |x-a|^{n+1}/(n+1)!$, where $M$ bounds $|f^{(n+1)}|$.
+\end{theorem}
+
+\emph{Rocq}: \texttt{TaylorSeries.v}, 18~\Qed.  The bound is verified as a rational inequality.
+
+\subsection{Picard--Lindel\"of Theorem}
+
+\begin{theorem}[Picard, Process Version]
+If $F : \mathbb{Q}^2 \to \mathbb{Q}$ is Lipschitz in the second argument with constant~$L$, and $y_0 \in \mathbb{Q}$, then the Picard iterates
+\[
+  y_{n+1}(t) = y_0 + \int_0^t F(s, y_n(s))\, ds
+\]
+form a Cauchy process with convergence rate $(Lt)^n / n!$.
+\end{theorem}
+
+\textbf{\ERR{} analysis.}
+\begin{itemize}[nosep]
+\item \textbf{Elements:} Picard iterates $y_n(t)$.
+\item \textbf{Roles:} each $y_n$ is a better approximation to the ODE solution.
+\item \textbf{Rules:} Lipschitz contraction; the error satisfies $\|y_{n+1} - y_n\| \le \frac{(Lt)^n}{n!} \|y_1 - y_0\|$.
+\end{itemize}
+
+\emph{Rocq}: \texttt{PicardLindelof.v}, 23~\Qed.
+
+\subsection{The Unified Pattern}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}lllll@{}}
+\toprule
+Theorem & Elements & Roles & Rules & Rate \\
+\midrule
+IVT          & midpoints $c(n)$       & Cauchy, bounded  & bisection           & $1/2^n$ \\
+EVT          & grid maximizers        & monotone, bounded & grid refinement    & $\delta(2^{-n})$ \\
+BW           & nested intervals       & shrinking         & pigeonhole (L3)    & $1/2^n$ \\
+Heine--Borel & grid points            & covering          & Lebesgue number    & finite \\
+FTC          & Riemann sums           & Cauchy            & Lipschitz bound    & $1/2^n$ \\
+MVT          & critical pts           & extremal          & IVT + EVT          & $\delta(2^{-n})$ \\
+Taylor       & partial sums           & bounded error     & remainder bound    & $1/n!$ \\
+Picard       & iterates $y_n$         & Cauchy            & contraction        & $(Lt)^n/n!$ \\
+Monotone CV  & bounded monotone       & converging        & supremum           & $1/n$ \\
+\bottomrule
+\end{tabular}
+\caption{\ERR{} decomposition of nine process theorems.  Each follows the same pattern: a process over~$\mathbb{Q}$ satisfying a Cauchy/bound condition via a specific interaction rule.}
+\label{tab:err}
+\end{table}
+
+The pattern is uniform: \textbf{process + Cauchy + bound = existence}.  No completed infinities at any stage.  Every convergence rate is an explicit rational expression verified by Rocq's kernel
+
+\section{Process Completeness}
+\label{sec:completeness}
+\textit{(To be written: metric, diagonal construction, stagewise completeness theorem.)}
+
+\section{Wiedijk's 100 Theorems}
+\label{sec:wiedijk}
+\textit{(To be written: table of ~20 theorems formalized, comparison with Lean/Isabelle.)}
+
+\section{Fourier Analysis Over $\mathbb{Q}$}
+\label{sec:fourier}
+\textit{(To be written: DFT on graphs, Parseval, convolution, Cayley connection.)}
+
+\section{Three E/R/R Formulas for Physics}
+\label{sec:physics}
+\textit{(To be written: PhysicalProcess record, 7 instantiations, sin$^2\theta$ = 3/13.)}
+
+\section{The Crown Jewel: Born = Parseval}
+\label{sec:crown}
+\textit{(To be written: Born rule identity, $\gamma$-unification, observer = compressor.)}
+
+\section{Verified Data Compression}
+\label{sec:compression}
+\textit{(To be written: GFT pipeline, 300x IoT, Born-optimal quantization.)}
+
+\section{Process Mass Gap}
+\label{sec:massgap}
+\textit{(To be written: PMG criterion, SU(2), one-loop Higgs correction.)}
+
+\section{What Survives, What Changes}
+\label{sec:survives}
+\textit{(To be written: scope, limitations, conservation results.)}
+
+\section{Formalization Statistics}
+\label{sec:stats}
+\textit{(To be written: 21,500+ Qed, breakdown by domain, comparison.)}
+
+
+% ══════════════════════════════════════════════════════
+\section{Conclusion}
+\label{sec:conclusion}
+% ══════════════════════════════════════════════════════
+
+Classical analysis, physics, and data compression work without completed infinities.  The framework $\RP = \natQ$ with P4 (Finite Actuality) provides:
+\begin{itemize}[nosep]
+\item All classical analysis theorems (21+), including five from Wiedijk's 100 list, with complete machine verification.
+\item Proof-theoretic strength reaching~$\varepsilon_0$, with ATR$_0$ eliminated and $\Pi^1_1$ collapsed.
+\item A unified physics framework where every process is three E/R/R formulas.
+\item The identification Born = Parseval and $\gamma$-unification of quantum, thermal, and information theory.
+\item Practical 300--600$\times$ data compression on IoT sensors.
+\end{itemize}
+
+The 21,500+ machine-verified theorems, 0~Admitted, and 2 axioms demonstrate that the framework is not a philosophical proposal but a \emph{working mathematical system}.
+
+
+% ══════════════════════════════════════════════════════
+\begin{thebibliography}{99}
+
+\bibitem{tos2025}
+Horsocrates (2025).
+Theory of Systems: A First-Principles Foundation for Mathematics.
+PhilPapers.
+
+\bibitem{process_v1}
+Horsocrates and Claude (2026).
+Process Mathematics: Classical Analysis Without Completed Infinity.
+Preprint, March 2026.
+
+\bibitem{rocq}
+The Rocq Development Team (2025).
+The Rocq Prover (formerly Coq), version 9.0.1.
+
+\bibitem{bishop}
+Bishop, E. (1967).
+Foundations of Constructive Analysis.
+McGraw-Hill.
+
+\bibitem{hilbert}
+Hilbert, D. (1926).
+\"Uber das Unendliche.
+\textit{Mathematische Annalen}, 95, 161--190.
+
+\bibitem{simpson}
+Simpson, S. G. (2009).
+Subsystems of Second Order Arithmetic.
+Cambridge University Press, 2nd edition.
+
+\bibitem{wiedijk}
+Wiedijk, F. (2008).
+Formalizing 100 Theorems.
+\url{https://www.cs.ru.nl/~freek/100/}
+
+\end{thebibliography}
+
+\end{document}
