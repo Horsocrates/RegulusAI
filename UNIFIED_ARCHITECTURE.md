@@ -2,7 +2,7 @@
 
 ## From First Principle to Verified AI Reasoning
 
-> **A = exists** -> Laws of Logic (L1-L5) -> Principles (P1-P4) -> RealProcess := nat -> Q -> Rocq Proofs (21,600+ Qed) -> OCaml Extraction -> Python Bridge -> Regulus Pipeline
+> **A = exists** -> Laws of Logic (L1-L5) -> Principles (P1-P4) -> RealProcess := nat -> Q -> Rocq Proofs (21,901 Qed) -> OCaml Extraction -> Python Bridge -> Regulus Pipeline
 
 ---
 
@@ -27,8 +27,8 @@
 |  +--------------------------------------------------------------+ |
 |                                                                    |
 |  +--------------------------------------------------------------+ |
-|  |              Rocq Formal Library (21,600+ Qed)                | |
-|  |  1483 .v files -- 0 Admitted -- 2 axioms (classic, L4_witness)| |
+|  |              Rocq Formal Library (21,901 Qed)                | |
+|  |  1497 .v files -- 0 Admitted -- 2 axioms (classic, L4_witness)| |
 |  |  Mathematics + Physics + E/R/R + Standard Model + NS + RH    | |
 |  +--------------------------------------------------------------+ |
 |                                                                    |
@@ -242,11 +242,11 @@ Every function in `regulus/verified/` works WITHOUT OCaml binaries. Python fallb
 
 | Metric | Value |
 |--------|-------|
-| Rocq theorems (companion library) | 21,600+ Qed |
+| Rocq theorems (companion library) | 21,901 Qed |
 | Rocq theorems (local ToS-Coq) | 320 Qed |
 | Admitted | 0 |
 | Custom axioms | 2 (classic, L4_witness) |
-| Rocq files | 1483 |
+| Rocq files | 1497 |
 | Python tests | 1745 |
 | Fallacy taxonomy | 156 fallacies |
 | Src subdirectories | 33 |

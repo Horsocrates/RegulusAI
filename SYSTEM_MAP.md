@@ -4,7 +4,7 @@
 
 ### A. theory-of-systems-coq (Formal Core)
 ```
-21,600+ theorems  |  1483 .v files  |  0 Admitted  |  100% proven
+21,901 theorems  |  1497 .v files  |  0 Admitted  |  100% proven
 ```
 
 | Block | Files | Qed | Axioms | Status |
@@ -24,7 +24,8 @@
 | Architecture of Reasoning | 6 | 117 | 0 | 100% |
 | Dynamical Systems + SFT | ~30 | 250+ | 0 | 100% |
 | Green's Functions + Ising | ~20 | 200+ | 0 | 100% |
-| **TOTAL** | **1483** | **21,600+** | **classic, L4_witness** | **100%** |
+| **E/R/R Three Formulas (Apr 2026)** | **14** | **304** | **0** | **100%** |
+| **TOTAL** | **1497** | **21,901** | **classic, L4_witness** | **100%** |
 
 ### B. RegulusAI (Python Implementation)
 ```
@@ -78,6 +79,11 @@
 | NS regularity | Galerkin + uniform bounds | 6 phases, 800+ theorems |
 | Mass gap | Transfer matrix + spectral | Lattice gauge in 2+1D and 3+1D |
 | compress() = simulate_physics() | E/R/R bijection | Same operation, different names |
+| H2 vibrational gap = 4159 cm^-1 | AnharmonicSHO Morse | 0.05% from observed (4161) |
+| Lyman/Balmer ratio = 27/5 | PlanckBridge | 0.06% from 5.397 observed |
+| Apéry zeta(3) bracket | AperyConstantERR | 1202/1000 < a_3 < 1203/1000 |
+| Periodic table rows 2,8,18,32 | HydrogenStructure (n^2 + Pauli) | exact via 2*n^2 |
+| He^{2+}, Li^{2+}, C^{5+} ground | Z^2-law hydrogen-like | exact (-2, -9/2, -18 Hartree) |
 
 ---
 
@@ -91,7 +97,7 @@ Output: Verdict + Explanation + Correction
 
 Maturity: 90%
 Key files: regulus/fallacies/, regulus/core/, skills/
-Formal base: 21,600+ theorems
+Formal base: 21,901 theorems
 ```
 
 ### Subsystem 2: Interval Verifier (NN Verification)
@@ -185,4 +191,4 @@ Note: 9 collection errors (test_verifier.py etc.) due to torch DLL issues on Win
 | Process Math P4 | Mar 2026 | Analysis, algebra, topology, category |
 | E/R/R + Compression | Mar-Apr 2026 | Foundation formalization, data compression |
 | Paper v2 | Apr 2026 | Academic paper restructured |
-| **Current** | **Apr 2026** | **21,600+ Qed, 0 Admitted, paper compiled** |
+| **Current** | **Apr 2026** | **21,901 Qed, 0 Admitted, paper compiled** |

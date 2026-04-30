@@ -6,12 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Regulus AI is a deterministic reasoning verification system for LLMs implementing the Theory of Systems (ToS) framework. It combines:
 - **LogicGuard** -- multi-agent reasoning verification with Zero-Gate mechanism
-- **Process Mathematics** -- complete mathematical foundation (`RealProcess := nat -> Q`) with 21,600+ Rocq theorems
+- **Process Mathematics** -- complete mathematical foundation (`RealProcess := nat -> Q`) with 21,901 Rocq theorems
 - **Verified Interval Propagation** -- Rocq-verified neural network uncertainty quantification
 - **Data Compression** -- ToS-derived compression pipeline (`compress() = simulate_physics()`)
 - **E/R/R Framework** -- Elements/Roles/Rules structural decomposition + 156-fallacy taxonomy
 
-Companion formal library: [theory-of-systems-coq](https://github.com/Horsocrates/theory-of-systems-coq) (21,600+ Qed, 0 Admitted, 1483 files).
+Companion formal library: [theory-of-systems-coq](https://github.com/Horsocrates/theory-of-systems-coq) (21,901 Qed, 0 Admitted, 1497 files).
 
 ## Repository Layout
 
@@ -31,7 +31,7 @@ RegulusAI/
 │   ├── fallacies/                   # 156-fallacy taxonomy + detector
 │   ├── orchestrator.py              # Main verification loop
 │   └── cli.py                       # Typer CLI
-├── _tos_coq_clone/                  # Companion Rocq library (21,600+ Qed, 1483 files)
+├── _tos_coq_clone/                  # Companion Rocq library (21,901 Qed, 1497 files)
 │   ├── src/                         # 33 subdirectories (foundation, process, physics, lattice, ...)
 │   └── Architecture_of_Reasoning/   # E/R/R laws correspondence
 ├── ToS-Coq/                         # Local Rocq proofs (intervals, 320 Qed)
@@ -196,15 +196,30 @@ BAD: prompt contains "ANSWER: X" → pre-solved by Team Lead
 BAD: launching D1,D2,D3 in parallel for same question → sequential dependency
 ```
 
+## Latest Work: E/R/R Three Formulas Re-derivation (April 2026)
+
+14 new files in `_tos_coq_clone/src/foundation/` totaling **304 Qed**:
+- Single systems: SHO, Qubit, Photon, Acoustic chain (4 files, 85 Qed)
+- Atomic composition: H, H structure, He, Li, C (5 files, 120 Qed)
+- Numerical predictions: Anharmonic, Planck, Apéry zeta(3) (4 files, 66 Qed)
+- ThreeFormulasBridge.v: 6 bridges to existing library (33 Qed)
+
+Verifiable predictions (machine-checked rationals):
+- sin²θ_W = 3/13 = 0.23077 (PDG: 0.23122, 0.19% match)
+- H₂ fundamental 4159 cm⁻¹ (0.05% from 4161)
+- Lyman/Balmer = 27/5 (exact rational, 0.06% from 5.397)
+- Apéry: 1202/1000 < a₃(zeta3) < 1203/1000
+- Periodic table 2, 8, 18, 32 = 2n² (exact from Pauli + SO(4))
+
 ## Project Statistics (April 2026)
 
 | Metric | Value |
 |--------|-------|
-| Rocq theorems (companion) | 21,600+ Qed |
+| Rocq theorems (companion) | 21,901 Qed |
 | Rocq theorems (local ToS-Coq) | 320 Qed |
 | Admitted | 0 |
 | Custom axioms | 2 (classic, L4_witness) |
-| Rocq files | 1483 |
+| Rocq files | 1497 |
 | Python tests | 1745 |
 | Fallacy taxonomy | 156 fallacies |
 | LLM providers | 4 (Claude, OpenAI, DeepSeek, ZhipuAI) |

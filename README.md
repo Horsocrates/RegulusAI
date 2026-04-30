@@ -6,7 +6,7 @@ Regulus is a multi-component system built on the **Theory of Systems** (ToS) fra
 
 1. **LogicGuard** -- a structured multi-agent system that decomposes LLM reasoning into verifiable steps, checks structural integrity through a formal gate mechanism (Zero-Gate), and forces correction when hallucination is detected. Core principle: make dishonesty **structurally impossible** through `Gtotal`.
 
-2. **Process Mathematics** -- a complete mathematical foundation replacing real numbers with `RealProcess := nat -> Q` (rational sequences). All classical analysis theorems are reproven constructively. Formalized in Rocq 9.0.1 with **21,600+ proven theorems, 0 Admitted, 0 custom axioms**.
+2. **Process Mathematics** -- a complete mathematical foundation replacing real numbers with `RealProcess := nat -> Q` (rational sequences). All classical analysis theorems are reproven constructively. Formalized in Rocq 9.0.1 with **21,901 proven theorems, 0 Admitted, 0 custom axioms**.
 
 3. **Verified Interval Propagation** -- Rocq-verified interval arithmetic for neural network uncertainty quantification. Propagates `[lo, hi]` bounds through Conv2d, BatchNorm, ReLU, Softmax, and Dense layers with machine-checked correctness proofs.
 
@@ -14,7 +14,7 @@ Regulus is a multi-component system built on the **Theory of Systems** (ToS) fra
 
 5. **E/R/R Framework** -- Elements/Roles/Rules structural decomposition verified against 3 versions of the Knowledge Base. Physics as three E/R/R formulas. 156-fallacy taxonomy with 4 detection modes.
 
-Companion formal library: [theory-of-systems-coq](https://github.com/Horsocrates/theory-of-systems-coq) (21,600+ Qed, 0 Admitted, 1483 files).
+Companion formal library: [theory-of-systems-coq](https://github.com/Horsocrates/theory-of-systems-coq) (21,901 Qed, 0 Admitted, 1497 files).
 
 ---
 
@@ -42,7 +42,7 @@ The central idea: replace the universal type from R (uncountable, non-constructi
 | Standard Model | 25+ | 400+ | Anomaly cancellation, Higgs mechanism, Weinberg angle |
 | Gravity | 15+ | 200+ | Regge calculus, Schwarzschild, gravitational waves |
 | Compression | 8 | 74 | Spectral, semantic, Huffman, quantization, pipeline |
-| **Total** | **1483** | **21,600+** | **0 Admitted, 2 axioms (classic, L4_witness)** |
+| **Total** | **1497** | **21,901** | **0 Admitted, 2 axioms (classic, L4_witness)** |
 
 ### Key Results
 
@@ -196,8 +196,8 @@ RegulusAI/
 |   |-- orchestrator.py        # Main verification loop
 |   +-- cli.py                 # Typer CLI
 |
-|-- _tos_coq_clone/            # Companion Rocq library (21,600+ Qed)
-|   |-- src/                   # 33 subdirectories, 1483 .v files
+|-- _tos_coq_clone/            # Companion Rocq library (21,901 Qed)
+|   |-- src/                   # 33 subdirectories, 1497 .v files
 |   |   |-- foundation/        # E/R/R, status machine, paradox diagnosis
 |   |   |-- process/           # P4 process mathematics (analysis, algebra, topology, ...)
 |   |   |-- physics/           # Physical processes, Standard Model, gravity
@@ -248,7 +248,7 @@ coqc -Q . ToS PInterval.v
 ## Technology
 
 - **Python 3.11+** with full type hints
-- **Rocq 9.0.1** (Coq) for formal proofs -- 21,600+ theorems, fully constructive
+- **Rocq 9.0.1** (Coq) for formal proofs -- 21,901 theorems, fully constructive
 - **PyTorch 2.6+** for neural network training
 - **Anthropic Claude** (primary), OpenAI, DeepSeek, ZhipuAI (LLM backends)
 - **Rich** + **Typer** for CLI
